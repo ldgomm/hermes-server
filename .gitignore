@@ -1,0 +1,30 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# macOS
+.DS_Store
+
+# Gradle / Kotlin
+.gradle/
+.kotlin/
+build/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Logs
+*.log
+logs/
+
+# Local temp
+tmp/
+temp/
+
+# Docker local volumes if any
+docker-data/
+/.env.example
