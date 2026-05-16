@@ -42,5 +42,15 @@ dependencies {
     implementation("io.lettuce:lettuce-core:7.0.0.RELEASE")
     implementation("io.minio:minio:9.0.0")
     implementation("org.mongodb:mongodb-driver-kotlin-coroutine:5.7.0")
+    implementation("org.mongodb:mongodb-driver-sync:5.2.1")
 
+    testImplementation("org.testcontainers:mongodb:1.20.4")
+    testImplementation("org.testcontainers:junit-jupiter:1.20.4")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.3")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.3")
+
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
