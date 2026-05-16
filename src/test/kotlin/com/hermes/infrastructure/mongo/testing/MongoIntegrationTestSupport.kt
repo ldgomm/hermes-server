@@ -5,7 +5,7 @@ import com.mongodb.client.MongoClients
 import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.testcontainers.containers.MongoDBContainer
 import org.testcontainers.utility.DockerImageName
-import java.util.UUID
+import java.util.*
 
 object MongoIntegrationTestSupport {
     private val imageName: DockerImageName = DockerImageName.parse("mongo:7.0.14")
@@ -33,7 +33,7 @@ object MongoIntegrationTestSupport {
         val container = containerResult.getOrElse { error ->
             throw IllegalStateException(
                 "MongoDB Testcontainers is not available. Start Docker Desktop and rerun the tests, " +
-                    "or keep the test skipped through assumeMongoAvailable().",
+                        "or keep the test skipped through assumeMongoAvailable().",
                 error,
             )
         }

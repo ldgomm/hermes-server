@@ -13,6 +13,8 @@ object MongoCollectionNames {
     const val MEMBERSHIPS = "memberships"
     const val ROLES = "roles"
     const val PERMISSIONS = "permissions"
+    const val CREDENTIAL_EVENTS = "credential_events"
+    const val USER_SESSIONS = "user_sessions"
     const val PLATFORM_CATALOG_FAMILIES = "platform_catalog_families"
     const val PLATFORM_CATALOG_TEMPLATES = "platform_catalog_templates"
     const val ORGANIZATION_CATALOG_ITEMS = "organization_catalog_items"
