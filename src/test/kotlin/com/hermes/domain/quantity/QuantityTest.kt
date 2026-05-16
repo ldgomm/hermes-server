@@ -1,4 +1,4 @@
-package com.hermes.backend.com.hermes.domain.quantity
+package com.hermes.domain.quantity
 
 import com.hermes.domain.quantity.Quantity
 import com.hermes.domain.shared.DomainRuleViolation

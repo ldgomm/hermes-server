@@ -1,4 +1,4 @@
-package com.hermes.backend.com.hermes.domain.money
+package com.hermes.domain.money
 
 import com.hermes.domain.money.Money
 import com.hermes.domain.shared.DomainRuleViolation
