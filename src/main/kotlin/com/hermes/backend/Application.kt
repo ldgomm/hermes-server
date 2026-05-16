@@ -6,13 +6,15 @@ import com.hermes.backend.plugins.configureCallLogging
 import com.hermes.backend.plugins.configureCors
 import com.hermes.backend.plugins.configureSerialization
 import com.hermes.backend.plugins.configureStatusPages
+import com.hermes.backend.routes.configureAuthRoutes
+import com.hermes.backend.routes.configureMeRoutes
+import com.hermes.backend.routes.configureOrganizationRoutes
 import com.hermes.backend.routes.configureSystemRoutes
 import com.hermes.backend.shared.AppResources
 import com.hermes.backend.shared.DefaultAppResources
-import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationStopping
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.netty.Netty
+import io.ktor.server.application.*
+import io.ktor.server.engine.*
+import io.ktor.server.netty.*
 
 fun main() {
     val config = AppConfig.loadFromEnvironment()
@@ -56,6 +58,23 @@ private fun Application.configureHermesApplication(
     configureSystemRoutes(
         config = config,
         healthService = healthService,
+    )
+
+    configureAuthRoutes(
+        registerOwnerUseCase = resources.authModule.registerOwnerUseCase,
+        registerOwnerWorkspaceUseCase = resources.authModule.registerOwnerWorkspaceUseCase,
+        loginUseCase = resources.authModule.loginUseCase,
+        refreshSessionUseCase = resources.authModule.refreshSessionUseCase,
+        revokeSessionUseCase = resources.authModule.revokeSessionUseCase,
+    )
+
+    configureOrganizationRoutes(
+        createOrganizationUseCase = resources.authModule.createOrganizationUseCase,
+        createOwnerMembershipUseCase = resources.authModule.createOwnerMembershipUseCase,
+    )
+
+    configureMeRoutes(
+        meUseCase = resources.authModule.meUseCase,
     )
 
     monitor.subscribe(ApplicationStopping) {

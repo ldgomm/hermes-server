@@ -6,7 +6,7 @@ import com.mongodb.client.MongoClient
 import com.mongodb.client.MongoDatabase
 import org.bson.Document
 import java.time.Instant
-import java.util.Date
+import java.util.*
 import kotlin.system.measureTimeMillis
 
 class DatabaseHealthVerifier private constructor(
@@ -46,7 +46,7 @@ class DatabaseHealthVerifier private constructor(
         val replicaSetName = hello?.getString("setName")
         val isWritablePrimary = hello?.getBoolean("isWritablePrimary") ?: hello?.getBoolean("ismaster")
         val transactionSupported = transactionProbe == TransactionProbeResult.SUPPORTED ||
-            (!probeTransactions && supportsSessions && replicaSetName != null)
+                (!probeTransactions && supportsSessions && replicaSetName != null)
 
         val ok = supportsSessions && transactionSupported
         if (!ok) {

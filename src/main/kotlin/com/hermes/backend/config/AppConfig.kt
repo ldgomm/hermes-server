@@ -7,15 +7,14 @@ data class AppConfig(
     val redis: RedisConfig,
     val minio: MinioConfig,
     val cors: CorsConfig,
+    val auth: AuthConfig,
 ) {
     companion object {
         fun loadFromEnvironment(env: Map<String, String> = System.getenv()): AppConfig {
             val environment = env.valueOrDefault("APP_ENV", "local")
             val isLocal = environment == "local" || environment == "test"
 
-            val corsAnyHost = env.optionalBoolean("CORS_ANY_HOST")
-                ?: isLocal
-
+            val corsAnyHost = env.optionalBoolean("CORS_ANY_HOST") ?: isLocal
             if (!isLocal && corsAnyHost) {
                 error("CORS_ANY_HOST=true is not allowed outside local/test.")
             }
@@ -55,6 +54,23 @@ data class AppConfig(
                         "localhost:3000,localhost:8081,127.0.0.1:3000",
                     ).split(',').map { it.trim() }.filter { it.isNotBlank() },
                 ),
+                auth = AuthConfig(
+                    jwtSecret = env.requiredSecretOrLocalDefault(
+                        key = "JWT_SECRET",
+                        isLocal = isLocal,
+                        localDefault = "local-development-jwt-secret-change-me-please-32chars",
+                    ),
+                    jwtIssuer = env.valueOrDefault("JWT_ISSUER", "hermes-api"),
+                    accessTokenTtlSeconds = env.valueOrDefault("ACCESS_TOKEN_TTL_SECONDS", "900")
+                        .toLongStrict("ACCESS_TOKEN_TTL_SECONDS"),
+                    refreshTokenTtlDays = env.valueOrDefault("REFRESH_TOKEN_TTL_DAYS", "30")
+                        .toLongStrict("REFRESH_TOKEN_TTL_DAYS"),
+                    sessionTtlDays = env.valueOrDefault("SESSION_TTL_DAYS", "30").toLongStrict("SESSION_TTL_DAYS"),
+                    maxFailedLoginAttempts = env.valueOrDefault("MAX_FAILED_LOGIN_ATTEMPTS", "5")
+                        .toIntStrict("MAX_FAILED_LOGIN_ATTEMPTS"),
+                    credentialLockDurationMinutes = env.valueOrDefault("CREDENTIAL_LOCK_MINUTES", "15")
+                        .toLongStrict("CREDENTIAL_LOCK_MINUTES"),
+                ),
             )
         }
 
@@ -70,6 +86,7 @@ data class AppConfig(
                 "REDIS_URI" to "redis://localhost:6379/1",
                 "MINIO_ENDPOINT" to "http://localhost:9000",
                 "CORS_ANY_HOST" to "true",
+                "JWT_SECRET" to "test-jwt-secret-for-hermes-auth-tests-32chars-minimum",
             ),
         )
     }
@@ -109,8 +126,39 @@ data class CorsConfig(
     val allowedHosts: List<String>,
 )
 
+data class AuthConfig(
+    val jwtSecret: String,
+    val jwtIssuer: String,
+    val accessTokenTtlSeconds: Long,
+    val refreshTokenTtlDays: Long,
+    val sessionTtlDays: Long,
+    val maxFailedLoginAttempts: Int,
+    val credentialLockDurationMinutes: Long,
+) {
+    init {
+        require(jwtSecret.length >= 32) { "JWT secret must contain at least 32 characters." }
+        require(jwtIssuer.isNotBlank()) { "JWT issuer cannot be blank." }
+        require(accessTokenTtlSeconds > 0) { "Access token TTL must be positive." }
+        require(refreshTokenTtlDays > 0) { "Refresh token TTL days must be positive." }
+        require(sessionTtlDays > 0) { "Session TTL days must be positive." }
+        require(maxFailedLoginAttempts >= 1) { "Max failed login attempts must be at least 1." }
+        require(credentialLockDurationMinutes > 0) { "Credential lock duration must be positive." }
+    }
+}
+
 private fun Map<String, String>.valueOrDefault(key: String, default: String): String =
     this[key]?.takeIf { it.isNotBlank() } ?: default
+
+private fun Map<String, String>.requiredSecretOrLocalDefault(
+    key: String,
+    isLocal: Boolean,
+    localDefault: String,
+): String {
+    val value = this[key]?.takeIf { it.isNotBlank() }
+    if (value != null) return value
+    if (isLocal) return localDefault
+    error("Environment variable $key is required outside local/test.")
+}
 
 private fun Map<String, String>.optionalBoolean(key: String): Boolean? {
     val raw = this[key]?.takeIf { it.isNotBlank() } ?: return null
@@ -120,3 +168,6 @@ private fun Map<String, String>.optionalBoolean(key: String): Boolean? {
 
 private fun String.toIntStrict(name: String): Int =
     toIntOrNull() ?: error("Environment variable $name must be a valid integer. Current value: $this")
+
+private fun String.toLongStrict(name: String): Long =
+    toLongOrNull() ?: error("Environment variable $name must be a valid long. Current value: $this")

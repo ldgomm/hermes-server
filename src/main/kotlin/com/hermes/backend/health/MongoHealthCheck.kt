@@ -1,6 +1,8 @@
 package com.hermes.backend.health
 
-import com.mongodb.kotlin.client.coroutine.MongoDatabase
+import com.mongodb.client.MongoDatabase
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.bson.Document
 import kotlin.system.measureTimeMillis
 
@@ -13,7 +15,9 @@ class MongoHealthCheck(
 
         val latency = measureTimeMillis {
             try {
-                database.runCommand<Document>(Document("ping", 1))
+                withContext(Dispatchers.IO) {
+                    database.runCommand(Document("ping", 1))
+                }
             } catch (error: Throwable) {
                 message = error.message ?: "MongoDB ping failed"
 
