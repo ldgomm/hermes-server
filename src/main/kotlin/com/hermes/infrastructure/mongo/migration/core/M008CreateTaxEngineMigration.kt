@@ -6,6 +6,7 @@ import com.hermes.infrastructure.mongo.migration.MongoMigrationSupport
 import com.mongodb.client.MongoDatabase
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Indexes
+import org.bson.BsonType
 
 object M008CreateTaxEngineMigration : MongoMigration {
     override val id: String = "M008_create_tax_engine"
@@ -127,15 +128,17 @@ object M008CreateTaxEngineMigration : MongoMigration {
             keys = Indexes.ascending("code"),
             name = "tax_profiles_global_code_unique_idx",
             unique = true,
-            partialFilterExpression = Filters.exists("organizationId", FalseBoolean.FALSE),
+            partialFilterExpression = Filters.eq("organizationId", null),
         )
+
         MongoMigrationSupport.createIndex(
             collection = collection,
             keys = Indexes.ascending("organizationId", "code"),
             name = "tax_profiles_org_code_unique_idx",
             unique = true,
-            partialFilterExpression = Filters.exists("organizationId", true),
+            partialFilterExpression = Filters.type("organizationId", BsonType.STRING),
         )
+
         MongoMigrationSupport.createIndex(
             collection = collection,
             keys = Indexes.ascending("profileType", "status"),
@@ -197,8 +200,4 @@ object M008CreateTaxEngineMigration : MongoMigration {
             partialFilterExpression = Filters.eq("status", "active"),
         )
     }
-}
-
-private object FalseBoolean {
-    const val FALSE: Boolean = false
 }

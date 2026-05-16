@@ -12,6 +12,15 @@ interface AppResources : Closeable {
     val healthChecks: List<HealthCheck>
 }
 
+/**
+ * Uses Mongo Kotlin driver factory syntax.
+ *
+ * If your Gradle dependency is the sync Java driver instead, replace:
+ *   com.mongodb.kotlin.client.coroutine.MongoClient
+ * with:
+ *   com.mongodb.client.MongoClients
+ * and use MongoClients.create(config.mongo.uri)
+ */
 class DefaultAppResources private constructor(
     private val mongoClient: MongoClient,
     private val redisClient: RedisClient,
@@ -20,7 +29,7 @@ class DefaultAppResources private constructor(
 ) : AppResources {
     companion object {
         fun start(config: AppConfig): DefaultAppResources {
-            val mongoClient = MongoClient.create(config.mongo.uri) //Unresolved reference 'create'.
+            val mongoClient = MongoClient.create(config.mongo.uri)
             val mongoDatabase = mongoClient.getDatabase(config.mongo.database)
 
             val redisClient = RedisClient.create(config.redis.uri)

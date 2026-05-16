@@ -4,6 +4,7 @@ import com.hermes.domain.money.Money
 import com.hermes.domain.quantity.Quantity
 import com.hermes.domain.shared.DomainRuleViolation
 
+@ConsistentCopyVisibility
 data class SaleItem private constructor(
     val id: String,
     val catalogItemId: String,
@@ -11,66 +12,63 @@ data class SaleItem private constructor(
     val unitPrice: Money,
     val quantity: Quantity,
     val discount: Money,
-    val status: SaleItemStatus
+    val status: SaleItemStatus,
+    val catalogSnapshot: CatalogItemSnapshot,
+    val taxProfileSnapshot: TaxProfileSnapshotForSale,
+    val taxes: List<SaleItemTax>,
 ) {
-
     val grossTotal: Money
         get() = unitPrice.multiply(quantity.value)
 
-    val lineTotal: Money
+    val netTotal: Money
         get() = grossTotal - discount
 
+    val taxTotal: Money
+        get() = taxes.fold(Money.zero(unitPrice.currency)) { current, tax -> current + tax.amount }
+
+    val lineTotal: Money
+        get() = netTotal + taxTotal
+
     init {
-        if (id.isBlank()) {
-            throw DomainRuleViolation("Sale item id cannot be blank.")
+        if (id.isBlank()) throw DomainRuleViolation("Sale item id cannot be blank.")
+        if (catalogItemId.isBlank()) throw DomainRuleViolation("Catalog item id cannot be blank.")
+        if (name.isBlank()) throw DomainRuleViolation("Sale item name cannot be blank.")
+        if (catalogSnapshot.catalogItemId != catalogItemId) {
+            throw DomainRuleViolation("Sale item catalog snapshot must match catalog item id.")
         }
-
-        if (catalogItemId.isBlank()) {
-            throw DomainRuleViolation("Catalog item id cannot be blank.")
+        if (catalogSnapshot.name.isBlank()) {
+            throw DomainRuleViolation("Sale item catalog snapshot name cannot be blank.")
         }
-
-        if (name.isBlank()) {
-            throw DomainRuleViolation("Sale item name cannot be blank.")
+        if (discount.currency != unitPrice.currency) {
+            throw DomainRuleViolation("Sale item discount currency must match unit price currency.")
         }
-
         if (discount > grossTotal) {
             throw DomainRuleViolation("Sale item discount cannot be greater than gross total.")
+        }
+        taxes.forEach { tax ->
+            if (tax.amount.currency != unitPrice.currency || tax.taxableBase.currency != unitPrice.currency) {
+                throw DomainRuleViolation("Sale item tax currency must match unit price currency.")
+            }
         }
     }
 
     fun start(): SaleItem {
-        if (status != SaleItemStatus.PENDING) {
-            throw DomainRuleViolation("Only a pending sale item can be started.")
-        }
-
+        SaleItemStateMachine.assertCanTransition(status, SaleItemStatus.IN_PROGRESS)
         return copy(status = SaleItemStatus.IN_PROGRESS)
     }
 
     fun markReady(): SaleItem {
-        if (status !in setOf(SaleItemStatus.PENDING, SaleItemStatus.IN_PROGRESS)) {
-            throw DomainRuleViolation("Only pending or in-progress sale items can be marked ready.")
-        }
-
+        SaleItemStateMachine.assertCanTransition(status, SaleItemStatus.READY)
         return copy(status = SaleItemStatus.READY)
     }
 
     fun deliver(): SaleItem {
-        if (status !in setOf(SaleItemStatus.READY, SaleItemStatus.IN_PROGRESS)) {
-            throw DomainRuleViolation("Only ready or in-progress sale items can be delivered.")
-        }
-
+        SaleItemStateMachine.assertCanTransition(status, SaleItemStatus.DELIVERED)
         return copy(status = SaleItemStatus.DELIVERED)
     }
 
     fun cancel(): SaleItem {
-        if (status == SaleItemStatus.DELIVERED) {
-            throw DomainRuleViolation("Delivered sale items cannot be canceled.")
-        }
-
-        if (status == SaleItemStatus.CANCELED) {
-            throw DomainRuleViolation("Sale item is already canceled.")
-        }
-
+        SaleItemStateMachine.assertCanTransition(status, SaleItemStatus.CANCELED)
         return copy(status = SaleItemStatus.CANCELED)
     }
 
@@ -81,7 +79,10 @@ data class SaleItem private constructor(
             name: String,
             unitPrice: Money,
             quantity: Quantity,
-            discount: Money = Money.zero(unitPrice.currency)
+            discount: Money = Money.zero(unitPrice.currency),
+            catalogSnapshot: CatalogItemSnapshot,
+            taxProfileSnapshot: TaxProfileSnapshotForSale,
+            taxes: List<SaleItemTax> = emptyList(),
         ): SaleItem {
             return SaleItem(
                 id = id,
@@ -90,7 +91,10 @@ data class SaleItem private constructor(
                 unitPrice = unitPrice,
                 quantity = quantity,
                 discount = discount,
-                status = SaleItemStatus.PENDING
+                status = SaleItemStatus.PENDING,
+                catalogSnapshot = catalogSnapshot,
+                taxProfileSnapshot = taxProfileSnapshot,
+                taxes = taxes,
             )
         }
     }

@@ -1,0 +1,93 @@
+openapi: 3.1.0
+info:
+  title: Hermes Business Platform API
+  version: 0.1.0-phase-1-4
+  description: Minimal API contract required to close Phases 1–4 before Auth/Fase 5.
+servers:
+  - url: http://localhost:8080
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      tags: [system]
+      responses:
+        "200":
+          description: Application is healthy or degraded.
+        "503":
+          description: Application is down.
+  /version:
+    get:
+      operationId: getVersion
+      tags: [system]
+      responses:
+        "200":
+          description: Application version.
+  /v1/sales/draft:
+    post:
+      operationId: createSaleDraft
+      tags: [sales]
+      summary: Contract placeholder for Fase 5+.
+      responses:
+        "501":
+          description: Not implemented in Fases 1–4.
+components:
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorResponse"
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        requestId:
+          type: [string, "null"]
+        details:
+          type: [string, "null"]
+    Money:
+      type: object
+      required: [amount, currency]
+      properties:
+        amount:
+          type: string
+          example: "24.00"
+        currency:
+          type: string
+          example: USD
+    SaleWorkflowMode:
+      type: string
+      enum:
+        - quick_sale
+        - counter_order
+        - table_order
+        - delivery_order
+        - reservation
+        - appointment
+        - service_order
+        - rental
+        - quote_to_sale
+    SalePaymentStatus:
+      type: string
+      enum:
+        - unpaid
+        - partially_paid
+        - paid
+        - overpaid
+        - refunded
+        - voided
+    PaymentLifecycleStatus:
+      type: string
+      enum:
+        - draft
+        - pending
+        - confirmed
+        - allocated
+        - reversed
+        - voided
+        - failed

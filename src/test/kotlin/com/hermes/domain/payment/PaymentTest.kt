@@ -3,11 +3,7 @@ package com.hermes.domain.payment
 import com.hermes.domain.money.Money
 import com.hermes.domain.shared.DomainRuleViolation
 import java.time.Instant
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 class PaymentTest {
 
@@ -21,10 +17,10 @@ class PaymentTest {
             saleId = "sale_1",
             amount = Money.of("24.00"),
             method = PaymentMethod.CASH,
-            paidAt = now
+            paidAt = now,
         )
 
-        assertEquals(PaymentStatus.PAID, payment.status)
+        assertEquals(PaymentLifecycleStatus.CONFIRMED, payment.status)
         assertTrue(payment.isEffective)
     }
 
@@ -36,23 +32,73 @@ class PaymentTest {
             saleId = "sale_1",
             amount = Money.of("24.00"),
             method = PaymentMethod.CASH,
-            paidAt = now
+            paidAt = now,
         ).void()
 
-        assertEquals(PaymentStatus.VOIDED, payment.status)
+        assertEquals(PaymentLifecycleStatus.VOIDED, payment.status)
         assertFalse(payment.isEffective)
     }
 
     @Test
-    fun `refunded payment cannot be voided`() {
+    fun `reversed payment is not effective`() {
         val payment = Payment.record(
             id = "pay_1",
             organizationId = "org_1",
             saleId = "sale_1",
             amount = Money.of("24.00"),
             method = PaymentMethod.CASH,
-            paidAt = now
-        ).refund()
+            paidAt = now,
+        ).reverse()
+
+        assertEquals(PaymentLifecycleStatus.REVERSED, payment.status)
+        assertFalse(payment.isEffective)
+    }
+
+    @Test
+    fun `reversed payment cannot be voided`() {
+        val payment = Payment.record(
+            id = "pay_1",
+            organizationId = "org_1",
+            saleId = "sale_1",
+            amount = Money.of("24.00"),
+            method = PaymentMethod.CASH,
+            paidAt = now,
+        ).reverse()
+
+        assertFailsWith<DomainRuleViolation> {
+            payment.void()
+        }
+    }
+
+    @Test
+    fun `allocated payment cannot be voided`() {
+        val payment = Payment.record(
+            id = "pay_1",
+            organizationId = "org_1",
+            saleId = "sale_1",
+            amount = Money.of("24.00"),
+            method = PaymentMethod.CASH,
+            paidAt = now,
+        ).allocate()
+
+        assertEquals(PaymentLifecycleStatus.ALLOCATED, payment.status)
+        assertTrue(payment.isEffective)
+
+        assertFailsWith<DomainRuleViolation> {
+            payment.void()
+        }
+    }
+
+    @Test
+    fun `voided payment cannot be voided again`() {
+        val payment = Payment.record(
+            id = "pay_1",
+            organizationId = "org_1",
+            saleId = "sale_1",
+            amount = Money.of("24.00"),
+            method = PaymentMethod.CASH,
+            paidAt = now,
+        ).void()
 
         assertFailsWith<DomainRuleViolation> {
             payment.void()

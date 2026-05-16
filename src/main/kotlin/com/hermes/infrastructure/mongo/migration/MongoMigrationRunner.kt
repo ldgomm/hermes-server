@@ -17,16 +17,20 @@ class MongoMigrationRunner(
     private val lockTtlSeconds: Long = 300,
 ) {
     fun migrate(migrations: List<MongoMigration>): MongoMigrationRunReport {
-        validate(migrations)
+        validateOnly(migrations)
         repository.ensureCollections()
 
         return withLock {
             val appliedBefore = repository.appliedIds()
-            val pending = migrations.sortedBy { it.id }.filterNot { it.id in appliedBefore }
+            val pending = migrations
+                .sortedBy { it.id }
+                .filterNot { it.id in appliedBefore }
+
             val appliedReports = mutableListOf<MongoMigrationAppliedReport>()
 
             pending.forEach { migration ->
                 val checksum = checksum(migration)
+
                 val elapsed = measureTimeMillis {
                     try {
                         migration.up(database)
@@ -41,6 +45,7 @@ class MongoMigrationRunner(
                     executionMillis = elapsed,
                     appliedAt = Instant.now(),
                 )
+
                 appliedReports += MongoMigrationAppliedReport(
                     id = migration.id,
                     description = migration.description,
@@ -56,11 +61,19 @@ class MongoMigrationRunner(
         }
     }
 
-    private fun validate(migrations: List<MongoMigration>) {
+    fun validateOnly(migrations: List<MongoMigration>) {
         val ids = migrations.map { it.id }
-        val duplicates = ids.groupingBy { it }.eachCount().filterValues { it > 1 }.keys
+
+        val duplicates = ids
+            .groupingBy { it }
+            .eachCount()
+            .filterValues { it > 1 }
+            .keys
+
         if (duplicates.isNotEmpty()) {
-            throw MongoMigrationValidationException("Duplicate Mongo migration ids: ${duplicates.joinToString()}.")
+            throw MongoMigrationValidationException(
+                "Duplicate Mongo migration ids: ${duplicates.joinToString()}.",
+            )
         }
 
         migrations.forEach { migration ->
@@ -69,8 +82,11 @@ class MongoMigrationRunner(
                     "Mongo migration id '${migration.id}' is invalid. Expected format: M001_short_description.",
                 )
             }
+
             if (migration.description.isBlank()) {
-                throw MongoMigrationValidationException("Mongo migration '${migration.id}' description cannot be blank.")
+                throw MongoMigrationValidationException(
+                    "Mongo migration '${migration.id}' description cannot be blank.",
+                )
             }
         }
     }
@@ -91,8 +107,12 @@ class MongoMigrationRunner(
             )
         } catch (error: MongoWriteException) {
             if (error.error.category.name == "DUPLICATE_KEY") {
-                throw MongoMigrationLockException("Another Mongo migration runner is already active.", error)
+                throw MongoMigrationLockException(
+                    message = "Another Mongo migration runner is already active.",
+                    cause = error,
+                )
             }
+
             throw error
         }
 
@@ -105,8 +125,14 @@ class MongoMigrationRunner(
 
     private fun checksum(migration: MongoMigration): String {
         val input = "${migration.id}:${migration.description}"
-        val digest = MessageDigest.getInstance("SHA-256").digest(input.toByteArray(Charsets.UTF_8))
-        return digest.joinToString(separator = "") { byte -> "%02x".format(byte) }
+
+        val digest = MessageDigest
+            .getInstance("SHA-256")
+            .digest(input.toByteArray(Charsets.UTF_8))
+
+        return digest.joinToString(separator = "") { byte ->
+            "%02x".format(byte)
+        }
     }
 
     companion object {

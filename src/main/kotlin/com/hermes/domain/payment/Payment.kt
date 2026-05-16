@@ -10,55 +10,43 @@ data class Payment private constructor(
     val saleId: String,
     val amount: Money,
     val method: PaymentMethod,
-    val status: PaymentStatus,
+    val status: PaymentLifecycleStatus, //Unresolved reference 'PaymentLifecycleStatus'.
     val paidAt: Instant,
     val reference: String?,
-    val notes: String?
+    val notes: String?,
 ) {
-
     val isEffective: Boolean
-        get() = status == PaymentStatus.PAID
+        get() = status.isEffective //Unresolved reference 'isEffective'.
 
     init {
-        if (id.isBlank()) {
-            throw DomainRuleViolation("Payment id cannot be blank.")
-        }
+        if (id.isBlank()) throw DomainRuleViolation("Payment id cannot be blank.")
+        if (organizationId.isBlank()) throw DomainRuleViolation("Payment organization id cannot be blank.")
+        if (saleId.isBlank()) throw DomainRuleViolation("Payment sale id cannot be blank.")
+        if (amount.amount.signum() <= 0) throw DomainRuleViolation("Payment amount must be greater than zero.")
+    }
 
-        if (organizationId.isBlank()) {
-            throw DomainRuleViolation("Payment organization id cannot be blank.")
+    fun allocate(): Payment {
+        if (status != PaymentLifecycleStatus.CONFIRMED) { //Unresolved reference 'PaymentLifecycleStatus'.
+            throw DomainRuleViolation("Only a confirmed payment can be allocated.")
         }
-
-        if (saleId.isBlank()) {
-            throw DomainRuleViolation("Payment sale id cannot be blank.")
-        }
-
-        if (amount.amount.signum() <= 0) {
-            throw DomainRuleViolation("Payment amount must be greater than zero.")
-        }
+        return copy(status = PaymentLifecycleStatus.ALLOCATED)
     }
 
     fun void(): Payment {
-        if (status == PaymentStatus.REFUNDED) {
-            throw DomainRuleViolation("Refunded payment cannot be voided.")
+        if (status in setOf(PaymentLifecycleStatus.ALLOCATED, PaymentLifecycleStatus.REVERSED)) {
+            throw DomainRuleViolation("Allocated or reversed payments cannot be voided.")
         }
-
-        if (status == PaymentStatus.VOIDED) {
+        if (status == PaymentLifecycleStatus.VOIDED) {
             throw DomainRuleViolation("Payment is already voided.")
         }
-
-        return copy(status = PaymentStatus.VOIDED)
+        return copy(status = PaymentLifecycleStatus.VOIDED)
     }
 
-    fun refund(): Payment {
-        if (status == PaymentStatus.VOIDED) {
-            throw DomainRuleViolation("Voided payment cannot be refunded.")
+    fun reverse(): Payment {
+        if (status !in setOf(PaymentLifecycleStatus.CONFIRMED, PaymentLifecycleStatus.ALLOCATED)) {
+            throw DomainRuleViolation("Only confirmed or allocated payments can be reversed.")
         }
-
-        if (status == PaymentStatus.REFUNDED) {
-            throw DomainRuleViolation("Payment is already refunded.")
-        }
-
-        return copy(status = PaymentStatus.REFUNDED)
+        return copy(status = PaymentLifecycleStatus.REVERSED)
     }
 
     companion object {
@@ -70,7 +58,7 @@ data class Payment private constructor(
             method: PaymentMethod,
             paidAt: Instant,
             reference: String? = null,
-            notes: String? = null
+            notes: String? = null,
         ): Payment {
             return Payment(
                 id = id,
@@ -78,10 +66,10 @@ data class Payment private constructor(
                 saleId = saleId,
                 amount = amount,
                 method = method,
-                status = PaymentStatus.PAID,
+                status = PaymentLifecycleStatus.CONFIRMED,
                 paidAt = paidAt,
                 reference = reference?.trim()?.takeIf { it.isNotBlank() },
-                notes = notes?.trim()?.takeIf { it.isNotBlank() }
+                notes = notes?.trim()?.takeIf { it.isNotBlank() },
             )
         }
     }

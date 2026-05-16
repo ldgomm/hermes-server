@@ -11,6 +11,15 @@ data class AppConfig(
     companion object {
         fun loadFromEnvironment(env: Map<String, String> = System.getenv()): AppConfig {
             val environment = env.valueOrDefault("APP_ENV", "local")
+            val isLocal = environment == "local" || environment == "test"
+
+            val corsAnyHost = env.optionalBoolean("CORS_ANY_HOST")
+                ?: isLocal
+
+            if (!isLocal && corsAnyHost) {
+                error("CORS_ANY_HOST=true is not allowed outside local/test.")
+            }
+
             return AppConfig(
                 app = AppInfo(
                     name = env.valueOrDefault("APP_NAME", "Hermes Business Platform API"),
@@ -40,7 +49,7 @@ data class AppConfig(
                     healthBucket = env.valueOrDefault("MINIO_HEALTH_BUCKET", "hermes-health"),
                 ),
                 cors = CorsConfig(
-                    anyHost = env.valueOrDefault("CORS_ANY_HOST", (environment == "local").toString()).toBooleanStrictOrNull() ?: true,
+                    anyHost = corsAnyHost,
                     allowedHosts = env.valueOrDefault(
                         "CORS_ALLOWED_HOSTS",
                         "localhost:3000,localhost:8081,127.0.0.1:3000",
@@ -60,6 +69,7 @@ data class AppConfig(
                 "MONGODB_DATABASE" to "hermes_test",
                 "REDIS_URI" to "redis://localhost:6379/1",
                 "MINIO_ENDPOINT" to "http://localhost:9000",
+                "CORS_ANY_HOST" to "true",
             ),
         )
     }
@@ -101,6 +111,12 @@ data class CorsConfig(
 
 private fun Map<String, String>.valueOrDefault(key: String, default: String): String =
     this[key]?.takeIf { it.isNotBlank() } ?: default
+
+private fun Map<String, String>.optionalBoolean(key: String): Boolean? {
+    val raw = this[key]?.takeIf { it.isNotBlank() } ?: return null
+    return raw.toBooleanStrictOrNull()
+        ?: error("Environment variable $key must be true or false. Current value: $raw")
+}
 
 private fun String.toIntStrict(name: String): Int =
     toIntOrNull() ?: error("Environment variable $name must be a valid integer. Current value: $this")

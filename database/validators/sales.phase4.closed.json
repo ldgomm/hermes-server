@@ -1,0 +1,232 @@
+{
+  "$jsonSchema": {
+    "bsonType": "object",
+    "required": [
+      "_id",
+      "organizationId",
+      "activityId",
+      "branchId",
+      "saleType",
+      "workflowMode",
+      "operationalStatus",
+      "paymentStatus",
+      "collectionStatus",
+      "documentStatus",
+      "items",
+      "totals",
+      "createdAt",
+      "updatedAt",
+      "version",
+      "schemaVersion"
+    ],
+    "properties": {
+      "_id": {
+        "bsonType": "string"
+      },
+      "organizationId": {
+        "bsonType": "string"
+      },
+      "branchId": {
+        "bsonType": "string"
+      },
+      "activityId": {
+        "bsonType": "string"
+      },
+      "saleNumber": {
+        "bsonType": [
+          "string",
+          "null"
+        ]
+      },
+      "saleType": {
+        "enum": [
+          "sale",
+          "order",
+          "reservation",
+          "service_order",
+          "rental",
+          "internal_adjustment"
+        ]
+      },
+      "workflowMode": {
+        "enum": [
+          "quick_sale",
+          "counter_order",
+          "table_order",
+          "delivery_order",
+          "reservation",
+          "appointment",
+          "service_order",
+          "rental",
+          "quote_to_sale"
+        ]
+      },
+      "operationalStatus": {
+        "enum": [
+          "draft",
+          "pending",
+          "confirmed",
+          "in_progress",
+          "ready",
+          "delivered",
+          "closed",
+          "canceled"
+        ]
+      },
+      "paymentStatus": {
+        "enum": [
+          "unpaid",
+          "partially_paid",
+          "paid",
+          "overpaid",
+          "refunded",
+          "voided"
+        ]
+      },
+      "collectionStatus": {
+        "enum": [
+          "not_applicable",
+          "pending_receivable",
+          "partially_collected",
+          "settled",
+          "overdue",
+          "written_off",
+          "canceled"
+        ]
+      },
+      "documentStatus": {
+        "enum": [
+          "not_required",
+          "draft",
+          "generated",
+          "validated",
+          "signed",
+          "sent",
+          "received",
+          "authorized",
+          "rejected",
+          "returned",
+          "cancellation_requested",
+          "pending_cancellation",
+          "canceled",
+          "error"
+        ]
+      },
+      "items": {
+        "bsonType": "array",
+        "minItems": 0,
+        "items": {
+          "bsonType": "object",
+          "required": [
+            "id",
+            "catalogItemId",
+            "name",
+            "quantity",
+            "unitPrice",
+            "grossTotal",
+            "discount",
+            "netTotal",
+            "lineTotal",
+            "status",
+            "catalogSnapshot",
+            "taxProfileSnapshot"
+          ],
+          "properties": {
+            "id": {
+              "bsonType": "string"
+            },
+            "catalogItemId": {
+              "bsonType": "string"
+            },
+            "name": {
+              "bsonType": "string"
+            },
+            "status": {
+              "enum": [
+                "pending",
+                "in_progress",
+                "ready",
+                "delivered",
+                "canceled"
+              ]
+            },
+            "quantity": {
+              "bsonType": "object",
+              "required": [
+                "value",
+                "unitCode",
+                "allowsDecimal"
+              ]
+            },
+            "unitPrice": {
+              "bsonType": "object",
+              "required": [
+                "amount",
+                "currency"
+              ]
+            },
+            "grossTotal": {
+              "bsonType": "object",
+              "required": [
+                "amount",
+                "currency"
+              ]
+            },
+            "discount": {
+              "bsonType": "object",
+              "required": [
+                "amount",
+                "currency"
+              ]
+            },
+            "netTotal": {
+              "bsonType": "object",
+              "required": [
+                "amount",
+                "currency"
+              ]
+            },
+            "lineTotal": {
+              "bsonType": "object",
+              "required": [
+                "amount",
+                "currency"
+              ]
+            },
+            "catalogSnapshot": {
+              "bsonType": "object",
+              "required": [
+                "catalogItemId",
+                "globalCatalogId",
+                "name",
+                "type",
+                "taxProfileId"
+              ]
+            },
+            "taxProfileSnapshot": {
+              "bsonType": "object",
+              "required": [
+                "code",
+                "taxName",
+                "rate",
+                "sriTaxCode",
+                "sriRateCode",
+                "treatment"
+              ]
+            }
+          }
+        }
+      },
+      "totals": {
+        "bsonType": "object",
+        "required": [
+          "subtotal",
+          "discount",
+          "taxTotal",
+          "grandTotal",
+          "currency"
+        ]
+      }
+    }
+  }
+}

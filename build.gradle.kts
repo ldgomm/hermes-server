@@ -31,9 +31,10 @@ dependencies {
     implementation(libs.koin.ktor)
     implementation(libs.koin.loggerSlf4j)
     implementation(libs.logback.classic)
-    implementation(libs.mongodb.bson)
-    implementation(libs.mongodb.driverCore)
-    implementation(libs.mongodb.driverSync)
+
+//    implementation(platform(libs.mongodb.bom))
+//    implementation(libs.mongodb.driverSync)
+//    implementation(libs.mongodb.driverKotlinCoroutine)
 
     testImplementation(kotlin("test"))
     testImplementation(ktorLibs.server.testHost)
@@ -41,8 +42,11 @@ dependencies {
     implementation("io.github.oshai:kotlin-logging-jvm:7.0.3")
     implementation("io.lettuce:lettuce-core:7.0.0.RELEASE")
     implementation("io.minio:minio:9.0.0")
+
+    implementation("org.mongodb:mongodb-driver-sync:5.7.0")
+    implementation("org.mongodb:mongodb-driver-core:5.7.0")
+    implementation("org.mongodb:bson:5.7.0")
     implementation("org.mongodb:mongodb-driver-kotlin-coroutine:5.7.0")
-    implementation("org.mongodb:mongodb-driver-sync:5.2.1")
 
     testImplementation("org.testcontainers:mongodb:1.20.4")
     testImplementation("org.testcontainers:junit-jupiter:1.20.4")
@@ -53,4 +57,12 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+tasks.register<JavaExec>("runMigrationCommand") {
+    group = "hermes"
+    description = "Runs Hermes MongoDB migrations"
+
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.hermes.infrastructure.mongo.migration.MigrationCommandKt")
 }
