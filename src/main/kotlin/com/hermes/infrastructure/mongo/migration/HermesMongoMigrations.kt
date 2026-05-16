@@ -3,7 +3,7 @@ package com.hermes.infrastructure.mongo.migration
 import com.hermes.infrastructure.mongo.migration.core.*
 
 object HermesMongoMigrations {
-    val phase41: List<MongoMigration> = listOf(
+    val all: List<MongoMigration> = listOf(
         M001CreateOrganizationsMigration,
         M002CreateOrganizationActivitiesMigration,
         M003CreateBranchesAndEmissionPointsMigration,
@@ -12,7 +12,25 @@ object HermesMongoMigrations {
         M006CreateOrganizationCatalogMigration,
         M007CreateCatalogRequestsMigration,
         M008CreateTaxEngineMigration,
+        M009CreateCustomersMigration,
+        M010CreateSalesMigration,
+        M011CreateServicesReservationsMigration,
+        M012CreatePaymentsReceivablesMigration,
+        M013CreateCashMigration,
+        M014CreateCommercialDocumentsMigration,
+        M015CreateElectronicSignaturesMigration,
+        M016CreateInventoryMigration,
+        M017CreateAuditLogsMigration,
+        M018CreateSettingsFeatureFlagsMigration,
+        M019CreateCountersMigration,
+        M020CreateOutboxEventsMigration,
+        M021CreateCatalogIdentityFoundationMigration,
+        M022CreateCatalogAttributeDefinitionsMigration,
+        M023CreateCatalogMediaAssetsMigration,
+        M024CreateUnitConversionsMigration,
+        M025CreateBusinessHoursSpecialHoursMigration,
+        M026CreateServiceAreasMigration,
+        M027CreateCatalogImportJobsFutureMigration,
+        M028CreateReturnAndWarrantyPoliciesFutureMigration,
     )
-
-    val all: List<MongoMigration> = phase41
 }

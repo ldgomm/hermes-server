@@ -6,13 +6,13 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class MongoMigrationsTest {
+class RemainingMongoMigrationsTest {
     @Test
-    fun `applies full phase 4 migrations once and creates all collections`() {
+    fun `applies full phase 4 migrations once and creates operational collections`() {
         MongoIntegrationTestSupport.assumeMongoAvailable()
 
         MongoIntegrationTestSupport.client().use { client ->
-            val database = client.getDatabase(MongoIntegrationTestSupport.databaseName("phase_4_all_migrations_test"))
+            val database = client.getDatabase(MongoIntegrationTestSupport.databaseName("phase_4_remaining_migrations_test"))
             val runner = MongoMigrationRunner(database)
 
             val firstRun = runner.migrate(HermesMongoMigrations.all)
@@ -30,23 +30,6 @@ class MongoMigrationsTest {
     }
 
     private val expectedCollections = setOf(
-        MongoCollectionNames.ORGANIZATIONS,
-        MongoCollectionNames.ORGANIZATION_ACTIVITIES,
-        MongoCollectionNames.BRANCHES,
-        MongoCollectionNames.EMISSION_POINTS,
-        MongoCollectionNames.USERS,
-        MongoCollectionNames.MEMBERSHIPS,
-        MongoCollectionNames.ROLES,
-        MongoCollectionNames.PERMISSIONS,
-        MongoCollectionNames.CREDENTIAL_EVENTS,
-        MongoCollectionNames.USER_SESSIONS,
-        MongoCollectionNames.PLATFORM_CATALOG_FAMILIES,
-        MongoCollectionNames.PLATFORM_CATALOG_TEMPLATES,
-        MongoCollectionNames.ORGANIZATION_CATALOG_ITEMS,
-        MongoCollectionNames.CATALOG_ITEM_REQUESTS,
-        MongoCollectionNames.TAX_RATES,
-        MongoCollectionNames.TAX_PROFILES,
-        MongoCollectionNames.ORGANIZATION_TAX_SETTINGS,
         MongoCollectionNames.CUSTOMERS,
         MongoCollectionNames.SALES,
         MongoCollectionNames.SERVICE_ORDERS,

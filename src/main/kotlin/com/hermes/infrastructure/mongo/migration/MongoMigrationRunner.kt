@@ -8,8 +8,7 @@ import com.mongodb.client.model.Filters.eq
 import org.bson.Document
 import java.security.MessageDigest
 import java.time.Instant
-import java.util.Date
-import java.util.UUID
+import java.util.*
 import kotlin.system.measureTimeMillis
 
 class MongoMigrationRunner(

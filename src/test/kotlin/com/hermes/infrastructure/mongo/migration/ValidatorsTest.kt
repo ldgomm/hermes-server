@@ -17,8 +17,8 @@ class ValidatorsTest {
         MongoIntegrationTestSupport.assumeMongoAvailable()
 
         MongoIntegrationTestSupport.client().use { client ->
-            val database = client.getDatabase(MongoIntegrationTestSupport.databaseName("phase_4_1_validators_org_test"))
-            MongoMigrationRunner(database).migrate(HermesMongoMigrations.phase41)
+            val database = client.getDatabase(MongoIntegrationTestSupport.databaseName("phase_4_validators_org_test"))
+            MongoMigrationRunner(database).migrate(HermesMongoMigrations.all)
 
             val organizations = database.getCollection(MongoCollectionNames.ORGANIZATIONS)
 
@@ -42,8 +42,8 @@ class ValidatorsTest {
 
         MongoIntegrationTestSupport.client().use { client ->
             val database =
-                client.getDatabase(MongoIntegrationTestSupport.databaseName("phase_4_1_validators_catalog_test"))
-            MongoMigrationRunner(database).migrate(HermesMongoMigrations.phase41)
+                client.getDatabase(MongoIntegrationTestSupport.databaseName("phase_4_validators_catalog_test"))
+            MongoMigrationRunner(database).migrate(HermesMongoMigrations.all)
 
             val catalog = database.getCollection(MongoCollectionNames.ORGANIZATION_CATALOG_ITEMS)
 

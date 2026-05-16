@@ -1,11 +1,7 @@
 package com.hermes.backend.shared
 
 import com.hermes.backend.config.AppConfig
-import com.hermes.backend.health.ApplicationHealthCheck
-import com.hermes.backend.health.HealthCheck
-import com.hermes.backend.health.MinioHealthCheck
-import com.hermes.backend.health.MongoHealthCheck
-import com.hermes.backend.health.RedisHealthCheck
+import com.hermes.backend.health.*
 import com.mongodb.kotlin.client.coroutine.MongoClient
 import io.lettuce.core.RedisClient
 import io.lettuce.core.api.StatefulRedisConnection

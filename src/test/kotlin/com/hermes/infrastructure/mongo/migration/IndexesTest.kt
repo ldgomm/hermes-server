@@ -13,10 +13,10 @@ class IndexesTest {
 
         MongoIntegrationTestSupport.client().use { client ->
             val database = client.getDatabase(
-                MongoIntegrationTestSupport.databaseName("phase_4_1_indexes_test"),
+                MongoIntegrationTestSupport.databaseName("phase_4_indexes_test"),
             )
 
-            MongoMigrationRunner(database).migrate(HermesMongoMigrations.phase41)
+            MongoMigrationRunner(database).migrate(HermesMongoMigrations.all)
 
             assertHasIndex(database, MongoCollectionNames.ORGANIZATIONS, "organizations_country_tax_id_unique_idx")
             assertHasIndex(

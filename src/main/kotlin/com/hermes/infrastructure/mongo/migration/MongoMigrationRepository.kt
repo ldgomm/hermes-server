@@ -9,7 +9,7 @@ import com.mongodb.client.model.IndexOptions
 import com.mongodb.client.model.Indexes
 import org.bson.Document
 import java.time.Instant
-import java.util.Date
+import java.util.*
 
 class MongoMigrationRepository(
     private val database: MongoDatabase,
