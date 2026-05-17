@@ -6,10 +6,7 @@ import com.hermes.backend.plugins.configureCallLogging
 import com.hermes.backend.plugins.configureCors
 import com.hermes.backend.plugins.configureSerialization
 import com.hermes.backend.plugins.configureStatusPages
-import com.hermes.backend.routes.configureAuthRoutes
-import com.hermes.backend.routes.configureMeRoutes
-import com.hermes.backend.routes.configureOrganizationRoutes
-import com.hermes.backend.routes.configureSystemRoutes
+import com.hermes.backend.routes.*
 import com.hermes.backend.shared.AppResources
 import com.hermes.backend.shared.DefaultAppResources
 import io.ktor.server.application.*
@@ -66,6 +63,13 @@ private fun Application.configureHermesApplication(
         loginUseCase = resources.authModule.loginUseCase,
         refreshSessionUseCase = resources.authModule.refreshSessionUseCase,
         revokeSessionUseCase = resources.authModule.revokeSessionUseCase,
+        authenticateRequestUseCase = resources.authModule.authenticateRequestUseCase,
+        activeOrganizationResolverUseCase = resources.authModule.activeOrganizationResolverUseCase,
+        effectivePermissionResolverUseCase = resources.authModule.effectivePermissionResolverUseCase,
+    )
+
+    configureCredentialAdminRoutes(
+        authModule = resources.authModule,
     )
 
     configureOrganizationRoutes(

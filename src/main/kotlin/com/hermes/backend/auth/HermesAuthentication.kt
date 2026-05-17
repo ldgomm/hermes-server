@@ -1,21 +1,12 @@
 package com.hermes.backend.auth
 
-import com.hermes.application.auth.ActiveOrganizationResolverUseCase
-import com.hermes.application.auth.AuthenticateRequestUseCase
-import com.hermes.application.auth.AuthenticatedRequestContext
-import com.hermes.application.auth.EffectivePermissionResolverUseCase
-import com.hermes.application.auth.ResolveActiveOrganizationCommand
-import com.hermes.application.auth.ResolveEffectivePermissionsCommand
+import com.hermes.application.auth.*
 import com.hermes.domain.shared.DomainRuleViolation
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.ApplicationCall
-import io.ktor.server.application.ApplicationCallPipeline
-import io.ktor.server.application.call
-import io.ktor.server.request.header
-import io.ktor.server.response.respond
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.intercept
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 
 fun Route.hermesAuthenticated(
     authenticateRequestUseCase: AuthenticateRequestUseCase,
@@ -41,6 +32,7 @@ fun Route.hermesAuthenticated(
                     required = requireOrganization,
                 ),
             )
+
             val effectivePermissions = activeOrganization?.let { organizationContext ->
                 effectivePermissionResolverUseCase.execute(
                     ResolveEffectivePermissionsCommand(
@@ -56,7 +48,12 @@ fun Route.hermesAuthenticated(
                 effectivePermissions = effectivePermissions,
             )
         }.getOrElse { error ->
-            val status = if (error is DomainRuleViolation) HttpStatusCode.Unauthorized else HttpStatusCode.InternalServerError
+            val status = if (error is DomainRuleViolation) {
+                HttpStatusCode.Unauthorized
+            } else {
+                HttpStatusCode.InternalServerError
+            }
+
             call.respond(status, mapOf("error" to (error.message ?: "authentication_failed")))
             finish()
             return@intercept
@@ -85,3 +82,4 @@ fun ApplicationCall.requestedOrganizationId(): String? =
         ?.trim()
         ?.takeIf { it.isNotBlank() }
         ?: request.queryParameters["organizationId"]?.trim()?.takeIf { it.isNotBlank() }
+        ?: parameters["organizationId"]?.trim()?.takeIf { it.isNotBlank() }

@@ -64,7 +64,7 @@ class PasswordResetUseCasesTest {
 
         val result = confirm.execute(
             ConfirmPasswordResetCommand(
-                resetToken = requested.rawResetToken!!,
+                resetToken = requested.rawResetToken,
                 newPassword = "NewStrong1!",
             )
         )

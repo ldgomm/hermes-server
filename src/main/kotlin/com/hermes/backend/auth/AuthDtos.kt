@@ -1,10 +1,6 @@
 package com.hermes.backend.auth
 
-import com.hermes.application.auth.AuthTokenResult
-import com.hermes.application.auth.RefreshSessionResult
-import com.hermes.application.auth.RegisterOwnerResult
-import com.hermes.application.auth.RegisterOwnerWorkspaceResult
-import com.hermes.application.auth.RevokeSessionResult
+import com.hermes.application.auth.*
 import com.hermes.domain.credential.UserCredential
 import com.hermes.domain.user.User
 import kotlinx.serialization.Serializable
@@ -42,18 +38,14 @@ data class RefreshTokenRequest(
 
 @Serializable
 data class RevokeSessionRequest(
-    val sessionId: String,
-    val actorUserId: String,
+    val sessionId: String? = null,
     val reason: String = "User logout",
 )
 
 @Serializable
 data class RevokeAllUserSessionsRequest(
-    val targetUserId: String,
-    val actorUserId: String,
-    val reason: String,
-    val organizationId: String? = null,
-    val actorEffectivePermissions: Set<String> = emptySet(),
+    val targetUserId: String? = null,
+    val reason: String = "User logout from all sessions",
 )
 
 @Serializable

@@ -1,33 +1,12 @@
 package com.hermes.backend.routes
 
-import com.hermes.application.auth.LoginCommand
-import com.hermes.application.auth.LoginUseCase
-import com.hermes.application.auth.RefreshSessionCommand
-import com.hermes.application.auth.RefreshSessionUseCase
-import com.hermes.application.auth.RegisterOwnerCommand
-import com.hermes.application.auth.RegisterOwnerUseCase
-import com.hermes.application.auth.RegisterOwnerWorkspaceCommand
-import com.hermes.application.auth.RegisterOwnerWorkspaceUseCase
-import com.hermes.application.auth.RevokeAllUserSessionsCommand
-import com.hermes.application.auth.RevokeSessionCommand
-import com.hermes.application.auth.RevokeSessionUseCase
-import com.hermes.backend.auth.LoginRequest
-import com.hermes.backend.auth.RefreshTokenRequest
-import com.hermes.backend.auth.RegisterOwnerRequest
-import com.hermes.backend.auth.RegisterOwnerWorkspaceRequest
-import com.hermes.backend.auth.RevokeAllUserSessionsRequest
-import com.hermes.backend.auth.RevokeSessionRequest
-import com.hermes.backend.auth.toResponse
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.Application
-import io.ktor.server.application.call
-import io.ktor.server.request.header
-import io.ktor.server.request.receive
-import io.ktor.server.response.respond
-import io.ktor.server.routing.post
-import io.ktor.server.routing.route
-import io.ktor.server.routing.routing
+import com.hermes.application.auth.*
+import com.hermes.backend.auth.*
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 
 fun Application.configureAuthRoutes(
     registerOwnerUseCase: RegisterOwnerUseCase,
@@ -35,6 +14,9 @@ fun Application.configureAuthRoutes(
     loginUseCase: LoginUseCase,
     refreshSessionUseCase: RefreshSessionUseCase,
     revokeSessionUseCase: RevokeSessionUseCase,
+    authenticateRequestUseCase: AuthenticateRequestUseCase,
+    activeOrganizationResolverUseCase: ActiveOrganizationResolverUseCase,
+    effectivePermissionResolverUseCase: EffectivePermissionResolverUseCase,
 ) {
     routing {
         authRoutes(
@@ -43,16 +25,22 @@ fun Application.configureAuthRoutes(
             loginUseCase = loginUseCase,
             refreshSessionUseCase = refreshSessionUseCase,
             revokeSessionUseCase = revokeSessionUseCase,
+            authenticateRequestUseCase = authenticateRequestUseCase,
+            activeOrganizationResolverUseCase = activeOrganizationResolverUseCase,
+            effectivePermissionResolverUseCase = effectivePermissionResolverUseCase,
         )
     }
 }
 
-fun io.ktor.server.routing.Route.authRoutes(
+fun Route.authRoutes(
     registerOwnerUseCase: RegisterOwnerUseCase,
     registerOwnerWorkspaceUseCase: RegisterOwnerWorkspaceUseCase,
     loginUseCase: LoginUseCase,
     refreshSessionUseCase: RefreshSessionUseCase,
     revokeSessionUseCase: RevokeSessionUseCase,
+    authenticateRequestUseCase: AuthenticateRequestUseCase,
+    activeOrganizationResolverUseCase: ActiveOrganizationResolverUseCase,
+    effectivePermissionResolverUseCase: EffectivePermissionResolverUseCase,
 ) {
     route("/auth") {
         post("/owners") {
@@ -108,35 +96,60 @@ fun io.ktor.server.routing.Route.authRoutes(
             call.respond(HttpStatusCode.OK, result.toResponse())
         }
 
-        post("/sessions/revoke") {
-            val request = call.receive<RevokeSessionRequest>()
-            val result = revokeSessionUseCase.revokeSession(
-                RevokeSessionCommand(
-                    sessionId = request.sessionId,
-                    actorUserId = request.actorUserId,
-                    reason = request.reason,
-                ),
-            )
-            call.respond(HttpStatusCode.OK, result.toResponse())
-        }
+        hermesAuthenticated(
+            authenticateRequestUseCase = authenticateRequestUseCase,
+            activeOrganizationResolverUseCase = activeOrganizationResolverUseCase,
+            effectivePermissionResolverUseCase = effectivePermissionResolverUseCase,
+            requireOrganization = false,
+        ) {
+            post("/sessions/revoke") {
+                val context = call.hermesAuthContext()
+                val request = call.receive<RevokeSessionRequest>()
 
-        post("/sessions/revoke-all") {
-            val request = call.receive<RevokeAllUserSessionsRequest>()
-            val result = revokeSessionUseCase.revokeAllUserSessions(
-                RevokeAllUserSessionsCommand(
-                    targetUserId = request.targetUserId,
-                    actorUserId = request.actorUserId,
-                    reason = request.reason,
-                    organizationId = request.organizationId,
-                    actorEffectivePermissions = request.actorEffectivePermissions,
-                ),
-            )
-            call.respond(HttpStatusCode.OK, result.toResponse())
+                val result = revokeSessionUseCase.revokeSession(
+                    RevokeSessionCommand(
+                        sessionId = request.sessionId?.trim()?.takeIf { it.isNotBlank() } ?: context.sessionId,
+                        actorUserId = context.userId,
+                        reason = request.reason,
+                    ),
+                )
+
+                call.respond(HttpStatusCode.OK, result.toResponse())
+            }
+
+            post("/sessions/revoke-all") {
+                val context = call.hermesAuthContext()
+                val request = call.receive<RevokeAllUserSessionsRequest>()
+                val targetUserId = request.targetUserId?.trim()?.takeIf { it.isNotBlank() } ?: context.userId
+
+                if (targetUserId != context.userId) {
+                    call.respond(
+                        HttpStatusCode.Forbidden,
+                        mapOf(
+                            "error" to "admin_session_revocation_requires_organization_route",
+                            "message" to "Use /organizations/{organizationId}/users/{userId}/sessions/revoke-all.",
+                        ),
+                    )
+                    return@post
+                }
+
+                val result = revokeSessionUseCase.revokeAllUserSessions(
+                    RevokeAllUserSessionsCommand(
+                        targetUserId = context.userId,
+                        actorUserId = context.userId,
+                        reason = request.reason,
+                        organizationId = null,
+                        actorEffectivePermissions = emptySet(),
+                    ),
+                )
+
+                call.respond(HttpStatusCode.OK, result.toResponse())
+            }
         }
     }
 }
 
-private fun io.ktor.server.application.ApplicationCall.clientIpAddress(): String? =
+private fun ApplicationCall.clientIpAddress(): String? =
     request.header("X-Forwarded-For")
         ?.split(',')
         ?.firstOrNull()

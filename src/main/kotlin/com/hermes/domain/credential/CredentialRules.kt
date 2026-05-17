@@ -4,9 +4,33 @@ import com.hermes.domain.shared.DomainRuleViolation
 
 object CredentialRules {
 
+    /**
+     * Normal application access.
+     *
+     * Only ACTIVE credentials can access protected business routes normally.
+     * TEMPORARY and FORCE_CHANGE_REQUIRED credentials must be limited to
+     * password-change flows.
+     */
     fun assertCanAuthenticate(status: CredentialStatus) {
         if (status != CredentialStatus.ACTIVE) {
-            throw DomainRuleViolation("Only active credentials can authenticate for normal access.")
+            throw DomainRuleViolation("Credential cannot authenticate from status $status.")
+        }
+    }
+
+    /**
+     * Login is allowed for ACTIVE, TEMPORARY and FORCE_CHANGE_REQUIRED credentials.
+     *
+     * TEMPORARY and FORCE_CHANGE_REQUIRED can log in only so the backend/client
+     * can force the password-change flow.
+     */
+    fun assertCanStartLogin(status: CredentialStatus) {
+        if (status !in setOf(
+                CredentialStatus.ACTIVE,
+                CredentialStatus.TEMPORARY,
+                CredentialStatus.FORCE_CHANGE_REQUIRED,
+            )
+        ) {
+            throw DomainRuleViolation("Credential cannot start login from status $status.")
         }
     }
 
@@ -15,7 +39,7 @@ object CredentialRules {
                 CredentialStatus.ACTIVE,
                 CredentialStatus.TEMPORARY,
                 CredentialStatus.FORCE_CHANGE_REQUIRED,
-                CredentialStatus.EXPIRED
+                CredentialStatus.EXPIRED,
             )
         ) {
             throw DomainRuleViolation("Credential cannot start password change from status $status.")

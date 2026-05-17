@@ -1,11 +1,10 @@
 package com.hermes.backend.plugins
 
+import com.hermes.backend.auth.HermesHeaders
 import com.hermes.backend.config.AppConfig
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpMethod
-import io.ktor.server.application.Application
-import io.ktor.server.application.install
-import io.ktor.server.plugins.cors.routing.CORS
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.plugins.cors.routing.*
 
 fun Application.configureCors(config: AppConfig) {
     install(CORS) {
@@ -16,6 +15,7 @@ fun Application.configureCors(config: AppConfig) {
         allowMethod(HttpMethod.Options)
         allowHeader(HttpHeaders.Authorization)
         allowHeader(HttpHeaders.ContentType)
+        allowHeader(HermesHeaders.ORGANIZATION_ID)
         allowHeader("X-App-Version")
         allowHeader("X-Platform")
         allowHeader("X-Request-Id")

@@ -24,25 +24,44 @@ data class UserCredential(
         if (passwordHash.isBlank()) throw DomainRuleViolation("Credential password hash cannot be blank.")
         if (failedAttempts < 0) throw DomainRuleViolation("Credential failed attempts cannot be negative.")
         if (version < 1) throw DomainRuleViolation("Credential version must be greater than zero.")
+
         if (status == CredentialStatus.REVOKED && revokedAt == null) {
             throw DomainRuleViolation("Revoked credential requires revokedAt.")
         }
+
         if (status == CredentialStatus.LOCKED && lockedUntil == null) {
             throw DomainRuleViolation("Locked credential requires lockedUntil.")
         }
+
         if (temporaryPassword && !mustChangePassword) {
             throw DomainRuleViolation("Temporary credential must require password change.")
         }
     }
 
+    /**
+     * Normal application access.
+     */
     fun assertCanAuthenticate(now: Instant) {
         CredentialRules.assertCanAuthenticate(status)
-        if (lockedUntil != null && now.isBefore(lockedUntil)) {
-            throw DomainRuleViolation("Credential is temporarily locked.")
-        }
+        assertNotCurrentlyLocked(now)
     }
 
-    fun recordFailedAttempt(now: Instant, maxAttempts: Int, lockDurationSeconds: Long): UserCredential {
+    /**
+     * Login access.
+     *
+     * Temporary credentials and credentials requiring password change can login,
+     * but the caller must enforce the password-change flow before normal access.
+     */
+    fun assertCanStartLogin(now: Instant) {
+        CredentialRules.assertCanStartLogin(status)
+        assertNotCurrentlyLocked(now)
+    }
+
+    fun recordFailedAttempt(
+        now: Instant,
+        maxAttempts: Int,
+        lockDurationSeconds: Long,
+    ): UserCredential {
         if (maxAttempts < 1) throw DomainRuleViolation("Max attempts must be greater than zero.")
         if (lockDurationSeconds < 1) throw DomainRuleViolation("Lock duration must be greater than zero.")
 
@@ -66,8 +85,14 @@ data class UserCredential(
             version = version + 1,
         )
 
-    fun replacePassword(newPasswordHash: String, changedAt: Instant): UserCredential {
-        if (newPasswordHash.isBlank()) throw DomainRuleViolation("New password hash cannot be blank.")
+    fun replacePassword(
+        newPasswordHash: String,
+        changedAt: Instant,
+    ): UserCredential {
+        if (newPasswordHash.isBlank()) {
+            throw DomainRuleViolation("New password hash cannot be blank.")
+        }
+
         CredentialRules.assertCanStartPasswordChange(status)
 
         return copy(
@@ -105,6 +130,12 @@ data class UserCredential(
         )
     }
 
+    private fun assertNotCurrentlyLocked(now: Instant) {
+        if (lockedUntil != null && now.isBefore(lockedUntil)) {
+            throw DomainRuleViolation("Credential is temporarily locked.")
+        }
+    }
+
     companion object {
         fun createPasswordCredential(
             id: String,
@@ -112,16 +143,17 @@ data class UserCredential(
             passwordHash: String,
             now: Instant,
             temporary: Boolean = false,
-        ): UserCredential = UserCredential(
-            id = id,
-            userId = userId,
-            passwordHash = passwordHash,
-            status = if (temporary) CredentialStatus.TEMPORARY else CredentialStatus.ACTIVE,
-            mustChangePassword = temporary,
-            temporaryPassword = temporary,
-            createdAt = now,
-            updatedAt = now,
-            lastPasswordChangedAt = if (temporary) null else now,
-        )
+        ): UserCredential =
+            UserCredential(
+                id = id,
+                userId = userId,
+                passwordHash = passwordHash,
+                status = if (temporary) CredentialStatus.TEMPORARY else CredentialStatus.ACTIVE,
+                mustChangePassword = temporary,
+                temporaryPassword = temporary,
+                createdAt = now,
+                updatedAt = now,
+                lastPasswordChangedAt = if (temporary) null else now,
+            )
     }
 }

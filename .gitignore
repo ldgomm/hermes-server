@@ -30,3 +30,4 @@ docker-data/
 /.env.example
 /export_kotlin_to_md.sh
 /project_kotlin_files.md
+/export_all.sh

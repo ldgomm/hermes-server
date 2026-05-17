@@ -2,56 +2,39 @@ package com.hermes.backend.routes
 
 import com.hermes.application.auth.*
 import com.hermes.backend.auth.*
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationCall
-import io.ktor.server.request.header
-import io.ktor.server.request.receive
-import io.ktor.server.response.respond
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.post
-import io.ktor.server.routing.route
-import io.ktor.server.routing.routing
+import com.hermes.domain.permission.PermissionCatalog
+import com.hermes.domain.shared.DomainRuleViolation
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 
 fun Application.configureCredentialAdminRoutes(
-    inviteUserUseCase: InviteUserUseCase,
-    acceptInvitationUseCase: AcceptInvitationUseCase,
-    createTemporaryUserUseCase: CreateTemporaryUserUseCase,
-    changePasswordUseCase: ChangePasswordUseCase,
-    requestPasswordResetUseCase: RequestPasswordResetUseCase,
-    confirmPasswordResetUseCase: ConfirmPasswordResetUseCase,
-    blockUserUseCase: BlockUserUseCase,
-    unblockUserUseCase: UnblockUserUseCase,
+    authModule: AuthModule,
 ) {
     routing {
         credentialAdminRoutes(
-            inviteUserUseCase = inviteUserUseCase,
-            acceptInvitationUseCase = acceptInvitationUseCase,
-            createTemporaryUserUseCase = createTemporaryUserUseCase,
-            changePasswordUseCase = changePasswordUseCase,
-            requestPasswordResetUseCase = requestPasswordResetUseCase,
-            confirmPasswordResetUseCase = confirmPasswordResetUseCase,
-            blockUserUseCase = blockUserUseCase,
-            unblockUserUseCase = unblockUserUseCase,
+            authenticateRequestUseCase = authModule.authenticateRequestUseCase,
+            activeOrganizationResolverUseCase = authModule.activeOrganizationResolverUseCase,
+            effectivePermissionResolverUseCase = authModule.effectivePermissionResolverUseCase,
+            credentialAdministrationModule = authModule.credentialAdministrationModule,
+            revokeSessionUseCase = authModule.revokeSessionUseCase,
         )
     }
 }
 
 fun Route.credentialAdminRoutes(
-    inviteUserUseCase: InviteUserUseCase,
-    acceptInvitationUseCase: AcceptInvitationUseCase,
-    createTemporaryUserUseCase: CreateTemporaryUserUseCase,
-    changePasswordUseCase: ChangePasswordUseCase,
-    requestPasswordResetUseCase: RequestPasswordResetUseCase,
-    confirmPasswordResetUseCase: ConfirmPasswordResetUseCase,
-    blockUserUseCase: BlockUserUseCase,
-    unblockUserUseCase: UnblockUserUseCase,
+    authenticateRequestUseCase: AuthenticateRequestUseCase,
+    activeOrganizationResolverUseCase: ActiveOrganizationResolverUseCase,
+    effectivePermissionResolverUseCase: EffectivePermissionResolverUseCase,
+    credentialAdministrationModule: CredentialAdministrationModule,
+    revokeSessionUseCase: RevokeSessionUseCase,
 ) {
     route("/auth") {
         post("/invitations/accept") {
             val request = call.receive<AcceptInvitationRequest>()
-            val result = acceptInvitationUseCase.execute(
+            val result = credentialAdministrationModule.acceptInvitationUseCase.execute(
                 AcceptInvitationCommand(
                     invitationToken = request.invitationToken,
                     password = request.password,
@@ -59,129 +42,205 @@ fun Route.credentialAdminRoutes(
                     phone = request.phone,
                     ipAddress = call.clientIpAddress(),
                     userAgent = call.request.header(HttpHeaders.UserAgent),
-                )
-            )
-            call.respond(HttpStatusCode.OK, result.toCredentialResponse())
-        }
-
-        post("/change-password") {
-            val request = call.receive<ChangePasswordRequest>()
-            val result = changePasswordUseCase.execute(
-                ChangePasswordCommand(
-                    userId = request.userId,
-                    currentPassword = request.currentPassword,
-                    newPassword = request.newPassword,
-                    sessionId = request.sessionId,
-                    revokeOtherSessions = request.revokeOtherSessions,
-                    ipAddress = call.clientIpAddress(),
-                    userAgent = call.request.header(HttpHeaders.UserAgent),
-                )
+                ),
             )
             call.respond(HttpStatusCode.OK, result.toCredentialResponse())
         }
 
         post("/password-reset/request") {
             val request = call.receive<RequestPasswordResetRequest>()
-            val result = requestPasswordResetUseCase.execute(
+            val result = credentialAdministrationModule.requestPasswordResetUseCase.execute(
                 RequestPasswordResetCommand(
                     email = request.email,
                     ipAddress = call.clientIpAddress(),
                     userAgent = call.request.header(HttpHeaders.UserAgent),
-                )
+                ),
             )
             call.respond(HttpStatusCode.OK, result.toCredentialResponse())
         }
 
         post("/password-reset/confirm") {
             val request = call.receive<ConfirmPasswordResetRequest>()
-            val result = confirmPasswordResetUseCase.execute(
+            val result = credentialAdministrationModule.confirmPasswordResetUseCase.execute(
                 ConfirmPasswordResetCommand(
                     resetToken = request.resetToken,
                     newPassword = request.newPassword,
                     ipAddress = call.clientIpAddress(),
                     userAgent = call.request.header(HttpHeaders.UserAgent),
-                )
+                ),
             )
             call.respond(HttpStatusCode.OK, result.toCredentialResponse())
+        }
+
+        hermesAuthenticated(
+            authenticateRequestUseCase = authenticateRequestUseCase,
+            activeOrganizationResolverUseCase = activeOrganizationResolverUseCase,
+            effectivePermissionResolverUseCase = effectivePermissionResolverUseCase,
+            requireOrganization = false,
+        ) {
+            post("/change-password") {
+                val context = call.hermesAuthContext()
+                val request = call.receive<ChangePasswordRequest>()
+
+                val result = credentialAdministrationModule.changePasswordUseCase.execute(
+                    ChangePasswordCommand(
+                        userId = context.userId,
+                        currentPassword = request.currentPassword,
+                        newPassword = request.newPassword,
+                        sessionId = context.sessionId,
+                        revokeOtherSessions = request.revokeOtherSessions,
+                        ipAddress = call.clientIpAddress(),
+                        userAgent = call.request.header(HttpHeaders.UserAgent),
+                    ),
+                )
+
+                call.respond(HttpStatusCode.OK, result.toCredentialResponse())
+            }
         }
     }
 
     route("/organizations/{organizationId}/users") {
-        post("/invite") {
-            val organizationId = call.parameters["organizationId"] ?: error("organizationId is required")
-            val request = call.receive<InviteUserRequest>()
-            val result = inviteUserUseCase.execute(
-                InviteUserCommand(
-                    organizationId = organizationId,
-                    actorUserId = request.actorUserId,
-                    actorEffectivePermissions = request.actorEffectivePermissions,
-                    email = request.email,
-                    displayName = request.displayName,
-                    roleIds = request.roleIds,
-                    ipAddress = call.clientIpAddress(),
-                    userAgent = call.request.header(HttpHeaders.UserAgent),
-                )
-            )
-            call.respond(HttpStatusCode.Created, result.toCredentialResponse())
-        }
+        hermesAuthenticated(
+            authenticateRequestUseCase = authenticateRequestUseCase,
+            activeOrganizationResolverUseCase = activeOrganizationResolverUseCase,
+            effectivePermissionResolverUseCase = effectivePermissionResolverUseCase,
+            requireOrganization = true,
+        ) {
+            hermesRequiresPermission(PermissionCatalog.CREDENTIALS_USERS_INVITE) {
+                post("/invite") {
+                    val organizationId = call.requiredOrganizationId()
+                    val context = call.requireActiveOrganization(organizationId)
+                    val request = call.receive<InviteUserRequest>()
 
-        post {
-            val organizationId = call.parameters["organizationId"] ?: error("organizationId is required")
-            val request = call.receive<CreateTemporaryUserRequest>()
-            val result = createTemporaryUserUseCase.execute(
-                CreateTemporaryUserCommand(
-                    organizationId = organizationId,
-                    actorUserId = request.actorUserId,
-                    actorEffectivePermissions = request.actorEffectivePermissions,
-                    email = request.email,
-                    displayName = request.displayName,
-                    roleIds = request.roleIds,
-                    temporaryPassword = request.temporaryPassword,
-                    phone = request.phone,
-                    ipAddress = call.clientIpAddress(),
-                    userAgent = call.request.header(HttpHeaders.UserAgent),
-                )
-            )
-            call.respond(HttpStatusCode.Created, result.toCredentialResponse())
-        }
+                    val result = credentialAdministrationModule.inviteUserUseCase.execute(
+                        InviteUserCommand(
+                            organizationId = organizationId,
+                            actorUserId = context.userId,
+                            actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
+                            email = request.email,
+                            displayName = request.displayName,
+                            roleIds = request.roleIds,
+                            ipAddress = call.clientIpAddress(),
+                            userAgent = call.request.header(HttpHeaders.UserAgent),
+                        ),
+                    )
 
-        post("/{userId}/block") {
-            val organizationId = call.parameters["organizationId"] ?: error("organizationId is required")
-            val userId = call.parameters["userId"] ?: error("userId is required")
-            val request = call.receive<BlockUserRequest>()
-            val result = blockUserUseCase.execute(
-                BlockUserCommand(
-                    organizationId = organizationId,
-                    actorUserId = request.actorUserId,
-                    targetUserId = userId,
-                    actorEffectivePermissions = request.actorEffectivePermissions,
-                    reason = request.reason,
-                    ipAddress = call.clientIpAddress(),
-                    userAgent = call.request.header(HttpHeaders.UserAgent),
-                )
-            )
-            call.respond(HttpStatusCode.OK, result.toCredentialResponse())
-        }
+                    call.respond(HttpStatusCode.Created, result.toCredentialResponse())
+                }
+            }
 
-        post("/{userId}/unblock") {
-            val organizationId = call.parameters["organizationId"] ?: error("organizationId is required")
-            val userId = call.parameters["userId"] ?: error("userId is required")
-            val request = call.receive<UnblockUserRequest>()
-            val result = unblockUserUseCase.execute(
-                UnblockUserCommand(
-                    organizationId = organizationId,
-                    actorUserId = request.actorUserId,
-                    targetUserId = userId,
-                    actorEffectivePermissions = request.actorEffectivePermissions,
-                    reason = request.reason,
-                    ipAddress = call.clientIpAddress(),
-                    userAgent = call.request.header(HttpHeaders.UserAgent),
-                )
-            )
-            call.respond(HttpStatusCode.OK, result.toCredentialResponse())
+            hermesRequiresPermission(PermissionCatalog.CREDENTIALS_USERS_CREATE) {
+                post {
+                    val organizationId = call.requiredOrganizationId()
+                    val context = call.requireActiveOrganization(organizationId)
+                    val request = call.receive<CreateTemporaryUserRequest>()
+
+                    val result = credentialAdministrationModule.createTemporaryUserUseCase.execute(
+                        CreateTemporaryUserCommand(
+                            organizationId = organizationId,
+                            actorUserId = context.userId,
+                            actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
+                            email = request.email,
+                            displayName = request.displayName,
+                            roleIds = request.roleIds,
+                            temporaryPassword = request.temporaryPassword,
+                            phone = request.phone,
+                            ipAddress = call.clientIpAddress(),
+                            userAgent = call.request.header(HttpHeaders.UserAgent),
+                        ),
+                    )
+
+                    call.respond(HttpStatusCode.Created, result.toCredentialResponse())
+                }
+            }
+
+            hermesRequiresPermission(PermissionCatalog.CREDENTIALS_USERS_BLOCK) {
+                post("/{userId}/block") {
+                    val organizationId = call.requiredOrganizationId()
+                    val context = call.requireActiveOrganization(organizationId)
+                    val userId = call.requiredUserId()
+                    val request = call.receive<BlockUserRequest>()
+
+                    val result = credentialAdministrationModule.blockUserUseCase.execute(
+                        BlockUserCommand(
+                            organizationId = organizationId,
+                            actorUserId = context.userId,
+                            targetUserId = userId,
+                            actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
+                            reason = request.reason,
+                            ipAddress = call.clientIpAddress(),
+                            userAgent = call.request.header(HttpHeaders.UserAgent),
+                        ),
+                    )
+
+                    call.respond(HttpStatusCode.OK, result.toCredentialResponse())
+                }
+            }
+
+            hermesRequiresPermission(PermissionCatalog.CREDENTIALS_USERS_UNBLOCK) {
+                post("/{userId}/unblock") {
+                    val organizationId = call.requiredOrganizationId()
+                    val context = call.requireActiveOrganization(organizationId)
+                    val userId = call.requiredUserId()
+                    val request = call.receive<UnblockUserRequest>()
+
+                    val result = credentialAdministrationModule.unblockUserUseCase.execute(
+                        UnblockUserCommand(
+                            organizationId = organizationId,
+                            actorUserId = context.userId,
+                            targetUserId = userId,
+                            actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
+                            reason = request.reason,
+                            ipAddress = call.clientIpAddress(),
+                            userAgent = call.request.header(HttpHeaders.UserAgent),
+                        ),
+                    )
+
+                    call.respond(HttpStatusCode.OK, result.toCredentialResponse())
+                }
+            }
+
+            hermesRequiresPermission(PermissionCatalog.CREDENTIALS_SESSIONS_REVOKE) {
+                post("/{userId}/sessions/revoke-all") {
+                    val organizationId = call.requiredOrganizationId()
+                    val context = call.requireActiveOrganization(organizationId)
+                    val userId = call.requiredUserId()
+                    val request = call.receive<RevokeUserSessionsByAdminRequest>()
+
+                    val result = revokeSessionUseCase.revokeAllUserSessions(
+                        RevokeAllUserSessionsCommand(
+                            targetUserId = userId,
+                            actorUserId = context.userId,
+                            reason = request.reason,
+                            organizationId = organizationId,
+                            actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
+                        ),
+                    )
+
+                    call.respond(HttpStatusCode.OK, result.toResponse())
+                }
+            }
         }
     }
 }
+
+private fun ApplicationCall.requiredOrganizationId(): String =
+    parameters["organizationId"]?.trim()?.takeIf { it.isNotBlank() }
+        ?: throw DomainRuleViolation("Organization id path parameter is required.")
+
+private fun ApplicationCall.requiredUserId(): String =
+    parameters["userId"]?.trim()?.takeIf { it.isNotBlank() }
+        ?: throw DomainRuleViolation("User id path parameter is required.")
+
+private fun ApplicationCall.requireActiveOrganization(expectedOrganizationId: String) =
+    hermesAuthContext().also { context ->
+        val activeOrganizationId = context.organizationId
+            ?: throw DomainRuleViolation("Active organization is required.")
+
+        if (activeOrganizationId != expectedOrganizationId) {
+            throw DomainRuleViolation("Path organization does not match active organization.")
+        }
+    }
 
 private fun ApplicationCall.clientIpAddress(): String? =
     request.header("X-Forwarded-For")

@@ -33,7 +33,7 @@ class LoginUseCase(
 
         try {
             user.assertCanAuthenticate()
-            credential.assertCanAuthenticate(now)
+            credential.assertCanStartLogin(now)
         } catch (error: DomainRuleViolation) {
             auditLoginFailed(now, user.id, command, error.message)
             throw error

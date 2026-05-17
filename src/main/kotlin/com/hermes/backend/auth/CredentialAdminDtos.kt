@@ -5,8 +5,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class InviteUserRequest(
-    val actorUserId: String,
-    val actorEffectivePermissions: Set<String>,
     val email: String,
     val displayName: String,
     val roleIds: Set<String>,
@@ -22,8 +20,6 @@ data class AcceptInvitationRequest(
 
 @Serializable
 data class CreateTemporaryUserRequest(
-    val actorUserId: String,
-    val actorEffectivePermissions: Set<String>,
     val email: String,
     val displayName: String,
     val roleIds: Set<String>,
@@ -33,10 +29,8 @@ data class CreateTemporaryUserRequest(
 
 @Serializable
 data class ChangePasswordRequest(
-    val userId: String,
     val currentPassword: String,
     val newPassword: String,
-    val sessionId: String? = null,
     val revokeOtherSessions: Boolean = true,
 )
 
@@ -53,16 +47,17 @@ data class ConfirmPasswordResetRequest(
 
 @Serializable
 data class BlockUserRequest(
-    val actorUserId: String,
-    val actorEffectivePermissions: Set<String>,
     val reason: String,
 )
 
 @Serializable
 data class UnblockUserRequest(
-    val actorUserId: String,
-    val actorEffectivePermissions: Set<String>,
     val reason: String,
+)
+
+@Serializable
+data class RevokeUserSessionsByAdminRequest(
+    val reason: String = "Admin revoked user sessions",
 )
 
 @Serializable
