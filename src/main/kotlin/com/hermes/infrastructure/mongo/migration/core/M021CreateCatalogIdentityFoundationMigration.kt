@@ -1,10 +1,12 @@
 package com.hermes.infrastructure.mongo.migration.core
 
 import com.hermes.infrastructure.mongo.MongoCollectionNames
+import com.hermes.infrastructure.mongo.MongoDocumentFields
 import com.hermes.infrastructure.mongo.migration.MongoMigration
 import com.hermes.infrastructure.mongo.migration.MongoMigrationSupport
 import com.mongodb.client.MongoDatabase
 import com.mongodb.client.model.Indexes
+import org.bson.Document
 
 object M021CreateCatalogIdentityFoundationMigration : MongoMigration {
     override val id: String = "M021_create_catalog_identity_foundation"
@@ -23,41 +25,12 @@ object M021CreateCatalogIdentityFoundationMigration : MongoMigration {
             .append("branchId", MongoMigrationSupport.nullableString(maxLength = 128))
             .append("ownerType", MongoMigrationSupport.enum(listOf("platform_template", "organization_item")))
             .append("ownerId", MongoMigrationSupport.string(maxLength = 128))
-            .append(
-                "identifierType",
-                MongoMigrationSupport.enum(
-                    listOf(
-                        "sku_master",
-                        "sku_local",
-                        "internal_code",
-                        "supplier_code",
-                        "barcode",
-                        "gtin",
-                        "ean_8",
-                        "ean_13",
-                        "upc_a",
-                        "isbn",
-                        "manufacturer_part_number"
-                    )
-                )
-            )
+            .append("identifierType", MongoMigrationSupport.enum(IDENTIFIER_TYPES))
             .append("value", MongoMigrationSupport.string(maxLength = 256))
             .append("normalizedValue", MongoMigrationSupport.string(maxLength = 256))
-            .append("scope", MongoMigrationSupport.enum(listOf("global", "organization", "branch")))
-            .append("source", MongoMigrationSupport.enum(listOf("platform", "organization", "supplier", "import")))
-            .append(
-                "status",
-                MongoMigrationSupport.enum(
-                    listOf(
-                        "proposed",
-                        "active",
-                        "verified",
-                        "conflict",
-                        "deprecated",
-                        "rejected"
-                    )
-                )
-            )
+            .append("scope", MongoMigrationSupport.enum(IDENTIFIER_SCOPES))
+            .append("source", MongoMigrationSupport.enum(IDENTIFIER_SOURCES))
+            .append("status", MongoMigrationSupport.enum(IDENTIFIER_STATUSES))
             .append("isPrimary", MongoMigrationSupport.bool())
 
         val collection = MongoMigrationSupport.ensureCollection(
@@ -82,38 +55,25 @@ object M021CreateCatalogIdentityFoundationMigration : MongoMigration {
         MongoMigrationSupport.createIndex(
             collection,
             Indexes.ascending("identifierType", "normalizedValue", "scope", "status"),
-            "catalog_identifier_registry_type_value_scope_status_idx"
+            "catalog_identifier_registry_type_value_scope_status_idx",
         )
         MongoMigrationSupport.createIndex(
             collection,
             Indexes.ascending("organizationId", "identifierType", "normalizedValue"),
             "catalog_identifier_registry_org_type_value_idx",
-            sparse = true
+            sparse = true,
         )
         MongoMigrationSupport.createIndex(
             collection,
             Indexes.ascending("ownerType", "ownerId"),
-            "catalog_identifier_registry_owner_idx"
+            "catalog_identifier_registry_owner_idx",
         )
     }
 
     private fun createIdentityConflicts(database: MongoDatabase) {
         val properties = MongoMigrationSupport.commonRootProperties(requireOrganizationId = false)
-            .append(
-                "conflictType",
-                MongoMigrationSupport.enum(
-                    listOf(
-                        "duplicate_global_identifier",
-                        "duplicate_local_sku",
-                        "family_variant_duplicate",
-                        "template_merge_candidate"
-                    )
-                )
-            )
-            .append(
-                "status",
-                MongoMigrationSupport.enum(listOf("open", "under_review", "resolved", "rejected", "archived"))
-            )
+            .append("conflictType", MongoMigrationSupport.enum(CONFLICT_TYPES))
+            .append("status", MongoMigrationSupport.enum(CONFLICT_STATUSES))
             .append("identifierType", MongoMigrationSupport.nullableString(maxLength = 64))
             .append("normalizedValue", MongoMigrationSupport.nullableString(maxLength = 256))
             .append("ownerRefs", MongoMigrationSupport.array())
@@ -126,7 +86,7 @@ object M021CreateCatalogIdentityFoundationMigration : MongoMigration {
                 required = MongoMigrationSupport.commonRequired(requireOrganizationId = false) + listOf(
                     "conflictType",
                     "status",
-                    "ownerRefs"
+                    "ownerRefs",
                 ),
                 properties = properties,
             ),
@@ -135,37 +95,40 @@ object M021CreateCatalogIdentityFoundationMigration : MongoMigration {
         MongoMigrationSupport.createIndex(
             collection,
             Indexes.ascending("status", "conflictType", "updatedAt"),
-            "catalog_identity_conflicts_status_type_updated_idx"
+            "catalog_identity_conflicts_status_type_updated_idx",
         )
         MongoMigrationSupport.createIndex(
             collection,
             Indexes.ascending("identifierType", "normalizedValue", "status"),
             "catalog_identity_conflicts_identifier_status_idx",
-            sparse = true
+            sparse = true,
         )
     }
 
     private fun createPriceHistory(database: MongoDatabase) {
-        val properties = MongoMigrationSupport.commonRootProperties(requireOrganizationId = true)
-            .append("branchId", MongoMigrationSupport.nullableString(maxLength = 128))
-            .append("catalogItemId", MongoMigrationSupport.id(prefix = "item_"))
+        val properties = Document()
+            .append(MongoDocumentFields.ID, MongoMigrationSupport.id())
+            .append(MongoDocumentFields.ORGANIZATION_ID, MongoMigrationSupport.id(prefix = "org_"))
+            .append("catalogItemId", MongoMigrationSupport.id())
             .append("oldPrice", MongoMigrationSupport.moneyObject())
             .append("newPrice", MongoMigrationSupport.moneyObject())
-            .append("priceIncludesTax", MongoMigrationSupport.bool())
-            .append("effectiveFrom", MongoMigrationSupport.date())
-            .append("changedBy", MongoMigrationSupport.nullableString(maxLength = 128))
-            .append("reason", MongoMigrationSupport.nullableString(maxLength = 2048))
+            .append("changedByUserId", MongoMigrationSupport.id(prefix = "usr_"))
+            .append("reason", MongoMigrationSupport.string(maxLength = 2048))
+            .append("changedAt", MongoMigrationSupport.date())
 
         val collection = MongoMigrationSupport.ensureCollection(
             database,
             MongoCollectionNames.CATALOG_PRICE_HISTORY,
             MongoMigrationSupport.jsonSchema(
-                required = MongoMigrationSupport.commonRequired(requireOrganizationId = true) + listOf(
+                required = listOf(
+                    MongoDocumentFields.ID,
+                    MongoDocumentFields.ORGANIZATION_ID,
                     "catalogItemId",
                     "oldPrice",
                     "newPrice",
-                    "priceIncludesTax",
-                    "effectiveFrom"
+                    "changedByUserId",
+                    "reason",
+                    "changedAt",
                 ),
                 properties = properties,
             ),
@@ -173,14 +136,32 @@ object M021CreateCatalogIdentityFoundationMigration : MongoMigration {
 
         MongoMigrationSupport.createIndex(
             collection,
-            Indexes.ascending("organizationId", "catalogItemId", "effectiveFrom"),
-            "catalog_price_history_org_item_effective_idx"
+            Indexes.ascending("organizationId", "catalogItemId", "changedAt"),
+            "catalog_price_history_org_item_changed_at_idx",
         )
         MongoMigrationSupport.createIndex(
             collection,
-            Indexes.ascending("organizationId", "branchId", "effectiveFrom"),
-            "catalog_price_history_org_branch_effective_idx",
-            sparse = true
+            Indexes.ascending("organizationId", "changedAt"),
+            "catalog_price_history_org_changed_at_idx",
         )
     }
+
+    private val IDENTIFIER_TYPES = listOf(
+        "SKU_MASTER",
+        "SKU_LOCAL",
+        "INTERNAL_CODE",
+        "SUPPLIER_CODE",
+        "BARCODE",
+        "GTIN",
+        "EAN_8",
+        "EAN_13",
+        "UPC_A",
+        "ISBN",
+        "MANUFACTURER_PART_NUMBER",
+    )
+    private val IDENTIFIER_SCOPES = listOf("GLOBAL", "ORGANIZATION", "BRANCH")
+    private val IDENTIFIER_SOURCES = listOf("PLATFORM", "ORGANIZATION", "SUPPLIER", "IMPORT")
+    private val IDENTIFIER_STATUSES = listOf("PROPOSED", "ACTIVE", "VERIFIED", "CONFLICT", "DEPRECATED", "REJECTED")
+    private val CONFLICT_TYPES = listOf("duplicate_global_identifier", "duplicate_local_sku", "family_variant_duplicate", "template_merge_candidate")
+    private val CONFLICT_STATUSES = listOf("open", "under_review", "resolved", "rejected", "archived")
 }

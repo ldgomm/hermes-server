@@ -1,10 +1,12 @@
 package com.hermes.infrastructure.mongo.migration.core
 
 import com.hermes.infrastructure.mongo.MongoCollectionNames
+import com.hermes.infrastructure.mongo.MongoDocumentFields
 import com.hermes.infrastructure.mongo.migration.MongoMigration
 import com.hermes.infrastructure.mongo.migration.MongoMigrationSupport
 import com.mongodb.client.MongoDatabase
 import com.mongodb.client.model.Indexes
+import org.bson.Document
 
 object M005CreatePlatformCatalogMigration : MongoMigration {
     override val id: String = "M005_create_platform_catalog"
@@ -16,29 +18,26 @@ object M005CreatePlatformCatalogMigration : MongoMigration {
     }
 
     private fun createFamilies(database: MongoDatabase) {
-        val properties = MongoMigrationSupport.commonRootProperties(requireOrganizationId = false)
+        val properties = Document()
+            .append(MongoDocumentFields.ID, MongoMigrationSupport.id())
             .append("globalFamilyId", MongoMigrationSupport.string(maxLength = 128))
             .append("canonicalName", MongoMigrationSupport.string(maxLength = 256))
             .append("normalizedName", MongoMigrationSupport.string(maxLength = 256))
-            .append("categoryCode", MongoMigrationSupport.string(maxLength = 128))
-            .append(
-                "itemType",
-                MongoMigrationSupport.enum(listOf("product", "service", "activity", "package", "rental", "fee"))
-            )
-            .append("status", MongoMigrationSupport.enum(listOf("draft", "active", "deprecated", "archived")))
-            .append("searchKeywords", MongoMigrationSupport.array(MongoMigrationSupport.string(maxLength = 128)))
-            .append("semanticTags", MongoMigrationSupport.array(MongoMigrationSupport.string(maxLength = 128)))
+            .append("categoryCode", MongoMigrationSupport.nullableString(maxLength = 128))
+            .append("type", MongoMigrationSupport.enum(CATALOG_ITEM_TYPES))
+            .append("status", MongoMigrationSupport.enum(TEMPLATE_STATUSES))
+            .append("attributes", MongoMigrationSupport.obj())
 
         val collection = MongoMigrationSupport.ensureCollection(
             database = database,
             name = MongoCollectionNames.PLATFORM_CATALOG_FAMILIES,
             validator = MongoMigrationSupport.jsonSchema(
-                required = MongoMigrationSupport.commonRequired(requireOrganizationId = false) + listOf(
+                required = listOf(
+                    MongoDocumentFields.ID,
                     "globalFamilyId",
                     "canonicalName",
                     "normalizedName",
-                    "categoryCode",
-                    "itemType",
+                    "type",
                     "status",
                 ),
                 properties = properties,
@@ -53,47 +52,45 @@ object M005CreatePlatformCatalogMigration : MongoMigration {
         )
         MongoMigrationSupport.createIndex(
             collection = collection,
-            keys = Indexes.ascending("categoryCode", "status"),
-            name = "platform_catalog_families_category_status_idx",
+            keys = Indexes.ascending("normalizedName"),
+            name = "platform_catalog_families_normalized_name_idx",
         )
         MongoMigrationSupport.createIndex(
             collection = collection,
-            keys = Indexes.text("canonicalName"),
-            name = "platform_catalog_families_name_text_idx",
+            keys = Indexes.ascending("status"),
+            name = "platform_catalog_families_status_idx",
         )
     }
 
     private fun createTemplates(database: MongoDatabase) {
-        val properties = MongoMigrationSupport.commonRootProperties(requireOrganizationId = false)
+        val properties = Document()
+            .append(MongoDocumentFields.ID, MongoMigrationSupport.id())
             .append("globalCatalogId", MongoMigrationSupport.string(maxLength = 128))
-            .append("productFamilyId", MongoMigrationSupport.nullableString(maxLength = 128))
             .append("canonicalName", MongoMigrationSupport.string(maxLength = 256))
             .append("normalizedName", MongoMigrationSupport.string(maxLength = 256))
-            .append("brand", MongoMigrationSupport.nullableString(maxLength = 128))
-            .append("categoryCode", MongoMigrationSupport.string(maxLength = 128))
-            .append(
-                "itemType",
-                MongoMigrationSupport.enum(listOf("product", "service", "activity", "package", "rental", "fee"))
-            )
-            .append("status", MongoMigrationSupport.enum(listOf("draft", "published", "deprecated", "archived")))
-            .append("identifiers", MongoMigrationSupport.array())
+            .append("type", MongoMigrationSupport.enum(CATALOG_ITEM_TYPES))
+            .append("status", MongoMigrationSupport.enum(TEMPLATE_STATUSES))
+            .append("productFamilyId", MongoMigrationSupport.nullableString(maxLength = 128))
             .append("variantAttributes", MongoMigrationSupport.obj())
+            .append("identifiers", MongoMigrationSupport.array())
             .append("attributes", MongoMigrationSupport.obj())
             .append("media", MongoMigrationSupport.array())
-            .append("searchKeywords", MongoMigrationSupport.array(MongoMigrationSupport.string(maxLength = 128)))
-            .append("semanticTags", MongoMigrationSupport.array(MongoMigrationSupport.string(maxLength = 128)))
 
         val collection = MongoMigrationSupport.ensureCollection(
             database = database,
             name = MongoCollectionNames.PLATFORM_CATALOG_TEMPLATES,
             validator = MongoMigrationSupport.jsonSchema(
-                required = MongoMigrationSupport.commonRequired(requireOrganizationId = false) + listOf(
+                required = listOf(
+                    MongoDocumentFields.ID,
                     "globalCatalogId",
                     "canonicalName",
                     "normalizedName",
-                    "categoryCode",
-                    "itemType",
+                    "type",
                     "status",
+                    "variantAttributes",
+                    "identifiers",
+                    "attributes",
+                    "media",
                 ),
                 properties = properties,
             ),
@@ -113,14 +110,22 @@ object M005CreatePlatformCatalogMigration : MongoMigration {
         )
         MongoMigrationSupport.createIndex(
             collection = collection,
+            keys = Indexes.ascending("type", "status"),
+            name = "platform_catalog_templates_type_status_idx",
+        )
+        MongoMigrationSupport.createIndex(
+            collection = collection,
+            keys = Indexes.ascending("normalizedName"),
+            name = "platform_catalog_templates_normalized_name_idx",
+        )
+        MongoMigrationSupport.createIndex(
+            collection = collection,
             keys = Indexes.ascending("identifiers.normalizedValue"),
             name = "platform_catalog_templates_identifier_idx",
             sparse = true,
         )
-        MongoMigrationSupport.createIndex(
-            collection = collection,
-            keys = Indexes.text("canonicalName"),
-            name = "platform_catalog_templates_name_text_idx",
-        )
     }
+
+    private val CATALOG_ITEM_TYPES = listOf("PRODUCT", "SERVICE", "PACKAGE", "RENTAL", "FEE")
+    private val TEMPLATE_STATUSES = listOf("DRAFT", "ACTIVE", "PAUSED", "ARCHIVED")
 }

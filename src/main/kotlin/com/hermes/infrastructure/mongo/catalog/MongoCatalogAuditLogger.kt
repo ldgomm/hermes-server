@@ -13,17 +13,39 @@ class MongoCatalogAuditLogger(database: MongoDatabase) : CatalogAuditLogger {
     private val collection = database.getCollection(MongoCollectionNames.AUDIT_LOGS)
 
     override fun log(event: CatalogAuditEvent) {
+        val occurredAt = MongoInstantMapper.toDate(event.createdAt)
+        val organizationId = event.organizationId ?: PLATFORM_AUDIT_ORGANIZATION_ID
+        val targetId = event.targetId ?: organizationId
+        val actorUserId = event.actorUserId?.takeIf { it.isNotBlank() }
+
         collection.insertOne(
-            Document(MongoDocumentFields.ID, "caud_" + UUID.randomUUID().toString().replace("-", ""))
+            Document(MongoDocumentFields.ID, "aud_" + UUID.randomUUID().toString().replace("-", ""))
+                .append(MongoDocumentFields.ORGANIZATION_ID, organizationId)
+                .append(MongoDocumentFields.CREATED_AT, occurredAt)
+                .append(MongoDocumentFields.CREATED_BY, actorUserId)
+                .append(MongoDocumentFields.UPDATED_AT, occurredAt)
+                .append(MongoDocumentFields.UPDATED_BY, actorUserId)
+                .append(MongoDocumentFields.VERSION, 1)
+                .append(MongoDocumentFields.SCHEMA_VERSION, 1)
                 .append("module", "catalog")
+                .append("actorUserId", actorUserId)
+                .append("actorType", if (actorUserId == null) "system" else "user")
                 .append("action", event.action.name)
-                .append("actorUserId", event.actorUserId)
-                .append("organizationId", event.organizationId)
-                .append("targetId", event.targetId)
+                .append("entityType", "catalog")
+                .append("entityId", targetId)
+                .append("targetId", targetId)
+                .append("occurredAt", occurredAt)
+                .append("createdAt", occurredAt)
+                .append("ipAddress", null)
+                .append("requestId", null)
+                .append("reason", event.reason)
                 .append("before", Document(event.before))
                 .append("after", Document(event.after))
-                .append("reason", event.reason)
-                .append(MongoDocumentFields.CREATED_AT, MongoInstantMapper.toDate(event.createdAt))
+                .append("metadata", Document("module", "catalog")),
         )
+    }
+
+    private companion object {
+        const val PLATFORM_AUDIT_ORGANIZATION_ID = "org_platform"
     }
 }

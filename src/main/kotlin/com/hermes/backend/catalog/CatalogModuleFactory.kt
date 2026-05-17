@@ -1,6 +1,5 @@
 package com.hermes.backend.catalog
 
-import com.hermes.application.catalog.AssignTaxProfileToCatalogItemUseCase
 import com.hermes.application.catalog.CatalogCopyTemplateToOrganizationUseCase
 import com.hermes.application.catalog.CatalogCreatePlatformTemplateUseCase
 import com.hermes.application.catalog.CatalogDisableLocalItemUseCase
@@ -9,7 +8,9 @@ import com.hermes.application.catalog.CatalogReviewRequestUseCase
 import com.hermes.application.catalog.CatalogSearchMasterTemplatesUseCase
 import com.hermes.application.catalog.CatalogSearchOrganizationItemsUseCase
 import com.hermes.application.catalog.CatalogUpdateLocalItemUseCase
+import com.hermes.application.catalog.AssignTaxProfileToCatalogItemUseCase
 import com.hermes.application.catalog.UuidCatalogIdGenerator
+import com.hermes.infrastructure.mongo.catalog.CatalogMongoBootstrap
 import com.hermes.infrastructure.mongo.catalog.MongoCatalogAuditLogger
 import com.hermes.infrastructure.mongo.catalog.MongoCatalogStore
 import com.hermes.infrastructure.mongo.tax.MongoTaxStore
@@ -21,6 +22,8 @@ object CatalogModuleFactory {
         database: MongoDatabase,
         clock: Clock = Clock.systemUTC(),
     ): CatalogModule {
+        CatalogMongoBootstrap.ensureIndexes(database)
+
         val catalogStore = MongoCatalogStore(database)
         val taxStore = MongoTaxStore(database)
         val idGenerator = UuidCatalogIdGenerator()
