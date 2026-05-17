@@ -5,21 +5,36 @@ import com.hermes.application.auth.AuthenticateRequestUseCase
 import com.hermes.application.auth.EffectivePermissionResolverUseCase
 import com.hermes.application.tax.TaxGetProfileCommand
 import com.hermes.application.tax.TaxGetRateCommand
-import com.hermes.backend.auth.AuthModule
 import com.hermes.backend.auth.hermesAuthContext
 import com.hermes.backend.auth.hermesAuthenticated
 import com.hermes.backend.auth.hermesRequiresPermission
-import com.hermes.backend.tax.*
+import com.hermes.backend.tax.TaxCreateProfileRequest
+import com.hermes.backend.tax.TaxCreateRateRequest
+import com.hermes.backend.tax.TaxModule
+import com.hermes.backend.tax.TaxSettingsResponse
+import com.hermes.backend.tax.TaxUpdateOrganizationSettingsRequest
+import com.hermes.backend.tax.TaxUpdateProfileRequest
+import com.hermes.backend.tax.TaxUpdateRateRequest
+import com.hermes.backend.tax.taxAuditCommandFromQuery
+import com.hermes.backend.tax.toCommand
+import com.hermes.backend.tax.toResponse
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.shared.DomainRuleViolation
-import io.ktor.http.*
-import io.ktor.server.application.*
-import io.ktor.server.request.*
-import io.ktor.server.response.*
-import io.ktor.server.routing.*
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationCall
+import io.ktor.server.application.call
+import io.ktor.server.request.receive
+import io.ktor.server.response.respond
+import io.ktor.server.routing.Route
+import io.ktor.server.routing.get
+import io.ktor.server.routing.patch
+import io.ktor.server.routing.post
+import io.ktor.server.routing.route
+import io.ktor.server.routing.routing
 
 fun Application.configureTaxAdminRoutes(
-    authModule: AuthModule,
+    authModule: com.hermes.backend.auth.AuthModule,
     taxModule: TaxModule,
 ) {
     routing {
@@ -142,6 +157,30 @@ fun Route.taxAdminRoutes(
             effectivePermissionResolverUseCase = effectivePermissionResolverUseCase,
             requireOrganization = true,
         ) {
+            hermesRequiresPermission(PermissionCatalog.TAX_SETTINGS_VIEW) {
+                get("/tax/audit") {
+                    val context = call.hermesAuthContext()
+                    val organizationId = call.requiredPathParameter("organizationId")
+                    call.assertRouteOrganizationMatchesContext(organizationId)
+
+                    val result = taxModule.listAuditEventsUseCase.execute(
+                        taxAuditCommandFromQuery(
+                            organizationId = organizationId,
+                            actorUserId = context.userId,
+                            actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
+                            actions = call.request.queryParameters["actions"],
+                            targetId = call.request.queryParameters["targetId"],
+                            auditedActorUserId = call.request.queryParameters["actorUserId"],
+                            from = call.request.queryParameters["from"],
+                            to = call.request.queryParameters["to"],
+                            limit = call.request.queryParameters["limit"],
+                        )
+                    )
+
+                    call.respond(HttpStatusCode.OK, result.toResponse())
+                }
+            }
+
             hermesRequiresPermission(PermissionCatalog.TAX_SETTINGS_UPDATE_ORGANIZATION_REGIME) {
                 patch("/tax-settings") {
                     val context = call.hermesAuthContext()

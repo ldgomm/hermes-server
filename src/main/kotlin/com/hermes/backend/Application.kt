@@ -6,12 +6,20 @@ import com.hermes.backend.plugins.configureCallLogging
 import com.hermes.backend.plugins.configureCors
 import com.hermes.backend.plugins.configureSerialization
 import com.hermes.backend.plugins.configureStatusPages
-import com.hermes.backend.routes.*
+import com.hermes.backend.routes.configureAuthRoutes
+import com.hermes.backend.routes.configureCatalogRoutes
+import com.hermes.backend.routes.configureCredentialAdminRoutes
+import com.hermes.backend.routes.configureMeRoutes
+import com.hermes.backend.routes.configureOrganizationRoutes
+import com.hermes.backend.routes.configureSystemRoutes
+import com.hermes.backend.routes.configureTaxAdminRoutes
+import com.hermes.backend.routes.configureTaxRoutes
 import com.hermes.backend.shared.AppResources
 import com.hermes.backend.shared.DefaultAppResources
-import io.ktor.server.application.*
-import io.ktor.server.engine.*
-import io.ktor.server.netty.*
+import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationStopping
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.netty.Netty
 
 fun main() {
     val config = AppConfig.loadFromEnvironment()
@@ -22,41 +30,25 @@ fun main() {
         port = config.server.port,
     ) {
         val resources = DefaultAppResources.start(config)
-        configureHermesApplication(
-            config = config,
-            resources = resources,
-        )
+        configureHermesApplication(config = config, resources = resources)
     }.start(wait = true)
 }
 
 fun Application.module() {
     val config = AppConfig.loadFromEnvironment()
     val resources = DefaultAppResources.start(config)
-
-    configureHermesApplication(
-        config = config,
-        resources = resources,
-    )
+    configureHermesApplication(config = config, resources = resources)
 }
 
-private fun Application.configureHermesApplication(
-    config: AppConfig,
-    resources: AppResources,
-) {
+private fun Application.configureHermesApplication(config: AppConfig, resources: AppResources) {
     configureSerialization()
     configureStatusPages()
     configureCallLogging()
     configureCors(config)
 
-    val healthService = HealthService(
-        checks = resources.healthChecks,
-    )
+    val healthService = HealthService(checks = resources.healthChecks)
 
-    configureSystemRoutes(
-        config = config,
-        healthService = healthService,
-    )
-
+    configureSystemRoutes(config = config, healthService = healthService)
     configureAuthRoutes(
         registerOwnerUseCase = resources.authModule.registerOwnerUseCase,
         registerOwnerWorkspaceUseCase = resources.authModule.registerOwnerWorkspaceUseCase,
@@ -67,31 +59,15 @@ private fun Application.configureHermesApplication(
         activeOrganizationResolverUseCase = resources.authModule.activeOrganizationResolverUseCase,
         effectivePermissionResolverUseCase = resources.authModule.effectivePermissionResolverUseCase,
     )
-
-    configureCredentialAdminRoutes(
-        authModule = resources.authModule,
-    )
-
+    configureCredentialAdminRoutes(authModule = resources.authModule)
     configureOrganizationRoutes(
         createOrganizationUseCase = resources.authModule.createOrganizationUseCase,
         createOwnerMembershipUseCase = resources.authModule.createOwnerMembershipUseCase,
     )
+    configureMeRoutes(meUseCase = resources.authModule.meUseCase)
+    configureTaxRoutes(authModule = resources.authModule, taxModule = resources.taxModule)
+    configureTaxAdminRoutes(authModule = resources.authModule, taxModule = resources.taxModule)
+    configureCatalogRoutes(authModule = resources.authModule, catalogModule = resources.catalogModule)
 
-    configureMeRoutes(
-        meUseCase = resources.authModule.meUseCase,
-    )
-
-    configureTaxRoutes(
-        authModule = resources.authModule,
-        taxModule = resources.taxModule,
-    )
-
-    configureTaxAdminRoutes(
-        authModule = resources.authModule,
-        taxModule = resources.taxModule,
-    )
-
-    monitor.subscribe(ApplicationStopping) {
-        resources.close()
-    }
+    monitor.subscribe(ApplicationStopping) { resources.close() }
 }

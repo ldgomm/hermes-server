@@ -2,8 +2,14 @@ package com.hermes.backend.shared
 
 import com.hermes.backend.auth.AuthModule
 import com.hermes.backend.auth.AuthModuleFactory
+import com.hermes.backend.catalog.CatalogModule
+import com.hermes.backend.catalog.CatalogModuleFactory
 import com.hermes.backend.config.AppConfig
-import com.hermes.backend.health.*
+import com.hermes.backend.health.ApplicationHealthCheck
+import com.hermes.backend.health.HealthCheck
+import com.hermes.backend.health.MinioHealthCheck
+import com.hermes.backend.health.MongoHealthCheck
+import com.hermes.backend.health.RedisHealthCheck
 import com.hermes.backend.tax.TaxModule
 import com.hermes.backend.tax.TaxModuleFactory
 import com.mongodb.client.MongoClient
@@ -17,6 +23,7 @@ interface AppResources : Closeable {
     val healthChecks: List<HealthCheck>
     val authModule: AuthModule
     val taxModule: TaxModule
+    val catalogModule: CatalogModule
 }
 
 class DefaultAppResources private constructor(
@@ -26,40 +33,27 @@ class DefaultAppResources private constructor(
     override val healthChecks: List<HealthCheck>,
     override val authModule: AuthModule,
     override val taxModule: TaxModule,
+    override val catalogModule: CatalogModule,
 ) : AppResources {
     companion object {
         fun start(config: AppConfig): DefaultAppResources {
             val mongoClient = MongoClients.create(config.mongo.uri)
             val mongoDatabase = mongoClient.getDatabase(config.mongo.database)
-
             val redisClient = RedisClient.create(config.redis.uri)
             val redisConnection = redisClient.connect()
-
             val minioClient = MinioClient.builder()
                 .endpoint(config.minio.endpoint)
                 .credentials(config.minio.accessKey, config.minio.secretKey)
                 .build()
-
             val checks = listOf(
                 ApplicationHealthCheck(),
                 MongoHealthCheck(mongoDatabase),
                 RedisHealthCheck(redisConnection),
-                MinioHealthCheck(
-                    client = minioClient,
-                    bucket = config.minio.healthBucket,
-                ),
+                MinioHealthCheck(client = minioClient, bucket = config.minio.healthBucket),
             )
-
-            val authModule = AuthModuleFactory.fromMongo(
-                client = mongoClient,
-                database = mongoDatabase,
-                config = config,
-            )
-
-            val taxModule = TaxModuleFactory.fromMongo(
-                database = mongoDatabase,
-            )
-
+            val authModule = AuthModuleFactory.fromMongo(client = mongoClient, database = mongoDatabase, config = config)
+            val taxModule = TaxModuleFactory.fromMongo(database = mongoDatabase)
+            val catalogModule = CatalogModuleFactory.fromMongo(database = mongoDatabase)
             return DefaultAppResources(
                 mongoClient = mongoClient,
                 redisClient = redisClient,
@@ -67,6 +61,7 @@ class DefaultAppResources private constructor(
                 healthChecks = checks,
                 authModule = authModule,
                 taxModule = taxModule,
+                catalogModule = catalogModule,
             )
         }
     }

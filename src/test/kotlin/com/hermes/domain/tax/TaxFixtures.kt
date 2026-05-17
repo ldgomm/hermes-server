@@ -73,4 +73,42 @@ object TaxFixtures {
         createdAt = now,
         updatedAt = now,
     )
+
+    val notSubjectProfile = TaxProfile(
+        id = "taxp_not_subject",
+        code = "not_subject_to_iva",
+        name = "Not subject IVA",
+        treatment = TaxTreatment.NOT_SUBJECT_TO_IVA,
+        status = TaxProfileStatus.ACTIVE,
+        taxRate = null,
+        sriTaxCode = "2",
+        sriRateCode = "6",
+        legalBasis = "Test legal basis",
+        effectiveFrom = Instant.parse("2026-01-01T00:00:00Z"),
+        createdAt = now,
+        updatedAt = now,
+    )
+
+    val internalNoTaxProfile = TaxProfile(
+        id = "taxp_internal",
+        code = "no_tax_internal",
+        name = "No tax internal",
+        treatment = TaxTreatment.NO_TAX_INTERNAL,
+        status = TaxProfileStatus.ACTIVE,
+        taxRate = null,
+        sriTaxCode = null,
+        sriRateCode = null,
+        legalBasis = "Internal only",
+        effectiveFrom = Instant.parse("2026-01-01T00:00:00Z"),
+        createdAt = now,
+        updatedAt = now,
+    )
+
+    val allProfiles: List<TaxProfile> = listOf(
+        iva13Profile,
+        iva0Profile,
+        exemptProfile,
+        notSubjectProfile,
+        internalNoTaxProfile,
+    )
 }

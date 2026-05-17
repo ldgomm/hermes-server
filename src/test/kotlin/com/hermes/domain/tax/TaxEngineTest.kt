@@ -7,7 +7,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
-class TaxEngineTest {
+class wTaxEngineTest {
     @Test
     fun `calculates tax exclusive IVA line`() {
         val result = TaxEngine.calculateLine(
