@@ -4,6 +4,8 @@ import com.hermes.backend.auth.AuthModule
 import com.hermes.backend.auth.AuthModuleFactory
 import com.hermes.backend.config.AppConfig
 import com.hermes.backend.health.*
+import com.hermes.backend.tax.TaxModule
+import com.hermes.backend.tax.TaxModuleFactory
 import com.mongodb.client.MongoClient
 import com.mongodb.client.MongoClients
 import io.lettuce.core.RedisClient
@@ -14,6 +16,7 @@ import java.io.Closeable
 interface AppResources : Closeable {
     val healthChecks: List<HealthCheck>
     val authModule: AuthModule
+    val taxModule: TaxModule
 }
 
 class DefaultAppResources private constructor(
@@ -22,6 +25,7 @@ class DefaultAppResources private constructor(
     private val redisConnection: StatefulRedisConnection<String, String>,
     override val healthChecks: List<HealthCheck>,
     override val authModule: AuthModule,
+    override val taxModule: TaxModule,
 ) : AppResources {
     companion object {
         fun start(config: AppConfig): DefaultAppResources {
@@ -38,7 +42,7 @@ class DefaultAppResources private constructor(
 
             val checks = listOf(
                 ApplicationHealthCheck(),
-                MongoHealthCheck(mongoDatabase), // Argument type mismatch: actual type is 'com.mongodb.client.MongoDatabase!', but 'com.mongodb.kotlin.client.coroutine.MongoDatabase' was expected.
+                MongoHealthCheck(mongoDatabase),
                 RedisHealthCheck(redisConnection),
                 MinioHealthCheck(
                     client = minioClient,
@@ -52,12 +56,17 @@ class DefaultAppResources private constructor(
                 config = config,
             )
 
+            val taxModule = TaxModuleFactory.fromMongo(
+                database = mongoDatabase,
+            )
+
             return DefaultAppResources(
                 mongoClient = mongoClient,
                 redisClient = redisClient,
                 redisConnection = redisConnection,
                 healthChecks = checks,
                 authModule = authModule,
+                taxModule = taxModule,
             )
         }
     }

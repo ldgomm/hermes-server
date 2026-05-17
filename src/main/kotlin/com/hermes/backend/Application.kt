@@ -81,6 +81,16 @@ private fun Application.configureHermesApplication(
         meUseCase = resources.authModule.meUseCase,
     )
 
+    configureTaxRoutes(
+        authModule = resources.authModule,
+        taxModule = resources.taxModule,
+    )
+
+    configureTaxAdminRoutes(
+        authModule = resources.authModule,
+        taxModule = resources.taxModule,
+    )
+
     monitor.subscribe(ApplicationStopping) {
         resources.close()
     }
