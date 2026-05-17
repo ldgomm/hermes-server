@@ -57,7 +57,7 @@ class SaleEntityTest {
             rate = Percentage.zero(),
             sriTaxCode = "2",
             sriRateCode = "0",
-            treatment = TaxTreatment.IVA_ZERO,
+            treatment = TaxTreatment.IVA_ZERO, //Unresolved reference 'IVA_FULL'.
             legalBasis = "SRI vigente al momento de emisión",
             effectiveFrom = LocalDate.parse("2026-01-01"),
             source = "test_tax_configuration",

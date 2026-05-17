@@ -30,7 +30,7 @@ class SaleSnapshotRulesTest {
             rate = Percentage.of("15.00"),
             sriTaxCode = "2",
             sriRateCode = "4",
-            treatment = TaxTreatment.IVA_FULL,
+            treatment = TaxTreatment.IVA_FULL, //Unresolved reference 'IVA_FULL'.
             legalBasis = "SRI vigente al momento de emisión",
             effectiveFrom = LocalDate.parse("2026-01-01"),
             source = "admin_tax_configuration",

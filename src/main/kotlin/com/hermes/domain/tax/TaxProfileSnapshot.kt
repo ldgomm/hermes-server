@@ -2,55 +2,72 @@ package com.hermes.domain.tax
 
 import com.hermes.domain.shared.DomainRuleViolation
 import java.math.BigDecimal
-import java.time.LocalDate
+import java.math.RoundingMode
+import java.time.Instant
 
 data class TaxProfileSnapshot(
-    val taxProfileId: String,
-    val code: String,
-    val displayName: String,
-    val taxName: String,
+    val profileId: String,
+    val profileCode: String,
+    val profileName: String,
     val treatment: TaxTreatment,
-    val ratePercent: BigDecimal,
+    val taxKind: TaxKind?,
+    val rateCode: String?,
+    val rateName: String?,
+    val rate: BigDecimal,
     val sriTaxCode: String?,
     val sriRateCode: String?,
     val legalBasis: String,
-    val effectiveFrom: LocalDate?,
-    val effectiveTo: LocalDate?,
-    val source: String,
+    val effectiveFrom: Instant,
+    val effectiveTo: Instant?,
+    val source: TaxSource,
+    val capturedAt: Instant,
+    val profileVersion: Long,
+    val rateVersion: Long?,
 ) {
+    init {
+        if (profileId.isBlank()) throw DomainRuleViolation("Tax snapshot profileId cannot be blank.")
+        if (profileCode.isBlank()) throw DomainRuleViolation("Tax snapshot profileCode cannot be blank.")
+        if (profileName.isBlank()) throw DomainRuleViolation("Tax snapshot profileName cannot be blank.")
+        if (legalBasis.isBlank()) throw DomainRuleViolation("Tax snapshot legalBasis cannot be blank.")
+        if (rate.scale() != TaxRate.RATE_SCALE) throw DomainRuleViolation("Tax snapshot rate scale is invalid.")
+        if (rate < BigDecimal.ZERO) throw DomainRuleViolation("Tax snapshot rate cannot be negative.")
+        if (profileVersion < 1) throw DomainRuleViolation("Tax snapshot profileVersion must be positive.")
+        if (rateVersion != null && rateVersion < 1) throw DomainRuleViolation("Tax snapshot rateVersion must be positive.")
+    }
+
+    val isElectronicEmissionCompatible: Boolean
+        get() = treatment != TaxTreatment.NO_TAX_INTERNAL &&
+            !sriTaxCode.isNullOrBlank() &&
+            !sriRateCode.isNullOrBlank()
+
+    val isTaxedWithPositiveRate: Boolean
+        get() = treatment in setOf(TaxTreatment.IVA_FULL, TaxTreatment.IVA_REDUCED_OR_SPECIAL) &&
+            rate.signum() > 0
+
+    fun fraction(scale: Int = 8): BigDecimal =
+        rate.divide(BigDecimal("100"), scale, RoundingMode.HALF_UP)
+
     companion object {
-        fun from(
-            profile: TaxProfile,
-            date: LocalDate,
-            source: String = "admin_tax_configuration",
-        ): TaxProfileSnapshot {
-            if (profile.status != TaxProfileStatus.ACTIVE) {
-                throw DomainRuleViolation("Tax profile ${profile.code} is not active for new sales.")
-            }
-
-            val rate = profile.rate
-            if (rate != null) {
-                if (rate.status != TaxRateStatus.ACTIVE) {
-                    throw DomainRuleViolation("Tax rate ${rate.id} is not active for new sales.")
-                }
-                if (!rate.isEffectiveOn(date)) {
-                    throw DomainRuleViolation("Tax rate ${rate.id} is not effective on $date.")
-                }
-            }
-
+        fun from(profile: TaxProfile, capturedAt: Instant): TaxProfileSnapshot {
+            val rate = profile.taxRate
             return TaxProfileSnapshot(
-                taxProfileId = profile.id,
-                code = profile.code,
-                displayName = profile.displayName,
-                taxName = profile.taxName,
+                profileId = profile.id,
+                profileCode = profile.code,
+                profileName = profile.name,
                 treatment = profile.treatment,
-                ratePercent = rate?.ratePercent ?: BigDecimal.ZERO,
-                sriTaxCode = rate?.sriTaxCode,
-                sriRateCode = rate?.sriRateCode,
+                taxKind = rate?.kind,
+                rateCode = rate?.code,
+                rateName = rate?.name,
+                rate = rate?.rate ?: BigDecimal.ZERO.setScale(TaxRate.RATE_SCALE),
+                sriTaxCode = profile.sriTaxCode ?: rate?.sriTaxCode,
+                sriRateCode = profile.sriRateCode ?: rate?.sriRateCode,
                 legalBasis = profile.legalBasis,
-                effectiveFrom = rate?.effectiveFrom,
-                effectiveTo = rate?.effectiveTo,
-                source = source,
+                effectiveFrom = profile.effectiveFrom,
+                effectiveTo = profile.effectiveTo,
+                source = profile.source,
+                capturedAt = capturedAt,
+                profileVersion = profile.version,
+                rateVersion = rate?.version,
             )
         }
     }

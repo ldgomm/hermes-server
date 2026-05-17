@@ -1,70 +1,96 @@
 package com.hermes.domain.tax
 
 import com.hermes.domain.shared.DomainRuleViolation
+import java.time.Instant
 
 data class TaxProfile(
     val id: String,
     val code: String,
-    val displayName: String,
+    val name: String,
     val treatment: TaxTreatment,
-    val taxName: String,
-    val rate: TaxRate?,
+    val status: TaxProfileStatus,
+    val taxRate: TaxRate?,
+    val sriTaxCode: String?,
+    val sriRateCode: String?,
     val legalBasis: String,
-    val status: TaxProfileStatus = TaxProfileStatus.ACTIVE,
+    val effectiveFrom: Instant,
+    val effectiveTo: Instant? = null,
+    val source: TaxSource = TaxSource.SYSTEM_SEED,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+    val version: Long = 1,
+    val schemaVersion: Int = 1,
 ) {
     init {
         if (id.isBlank()) throw DomainRuleViolation("Tax profile id cannot be blank.")
-        if (code.isBlank()) throw DomainRuleViolation("Tax profile code cannot be blank.")
-        if (displayName.isBlank()) throw DomainRuleViolation("Tax profile display name cannot be blank.")
-        if (taxName.isBlank()) throw DomainRuleViolation("Tax profile tax name cannot be blank.")
+        if (!CODE_PATTERN.matches(code)) throw DomainRuleViolation("Tax profile code has invalid format: $code.")
+        if (name.isBlank()) throw DomainRuleViolation("Tax profile name cannot be blank.")
         if (legalBasis.isBlank()) throw DomainRuleViolation("Tax profile legal basis cannot be blank.")
-        if (treatment in setOf(TaxTreatment.IVA_FULL, TaxTreatment.IVA_REDUCED_OR_SPECIAL, TaxTreatment.IVA_ZERO) && rate == null) {
-            throw DomainRuleViolation("IVA tax profiles require a tax rate.")
+        if (effectiveTo != null && !effectiveFrom.isBefore(effectiveTo)) {
+            throw DomainRuleViolation("Tax profile effectiveFrom must be before effectiveTo.")
+        }
+        if (version < 1) throw DomainRuleViolation("Tax profile version must be positive.")
+        if (schemaVersion < 1) throw DomainRuleViolation("Tax profile schemaVersion must be positive.")
+
+        when (treatment) {
+            TaxTreatment.IVA_FULL,
+            TaxTreatment.IVA_REDUCED_OR_SPECIAL -> {
+                if (taxRate == null) throw DomainRuleViolation("Taxed IVA profile requires a tax rate.")
+                if (taxRate.rate.signum() <= 0) throw DomainRuleViolation("Taxed IVA profile requires a positive tax rate.")
+            }
+
+            TaxTreatment.IVA_ZERO -> {
+                if (taxRate == null) throw DomainRuleViolation("IVA zero profile requires a zero tax rate.")
+                if (taxRate.rate.signum() != 0) throw DomainRuleViolation("IVA zero profile must use a zero tax rate.")
+            }
+
+            TaxTreatment.EXEMPT_IVA,
+            TaxTreatment.NOT_SUBJECT_TO_IVA,
+            TaxTreatment.NO_TAX_INTERNAL -> {
+                if (taxRate != null && taxRate.rate.signum() != 0) {
+                    throw DomainRuleViolation("Non-taxed profiles cannot use a positive tax rate.")
+                }
+            }
         }
     }
 
-    val isTaxable: Boolean
+    val isTaxedWithPositiveRate: Boolean
         get() = treatment in setOf(TaxTreatment.IVA_FULL, TaxTreatment.IVA_REDUCED_OR_SPECIAL)
 
+    fun isEffectiveAt(moment: Instant): Boolean {
+        val starts = !moment.isBefore(effectiveFrom)
+        val notEnded = effectiveTo?.let { moment.isBefore(it) } ?: true
+        return starts && notEnded
+    }
+
+    fun assertUsableAt(moment: Instant, forEmission: Boolean = false) {
+        if (status != TaxProfileStatus.ACTIVE) {
+            throw DomainRuleViolation("Tax profile $code cannot be used from status $status.")
+        }
+        if (!isEffectiveAt(moment)) {
+            throw DomainRuleViolation("Tax profile $code is not effective at $moment.")
+        }
+        taxRate?.assertUsableAt(moment)
+
+        if (forEmission) {
+            if (treatment == TaxTreatment.NO_TAX_INTERNAL) {
+                throw DomainRuleViolation("Internal no-tax profile cannot be used for electronic emission.")
+            }
+            if (sriTaxCode.isNullOrBlank() && taxRate?.sriTaxCode.isNullOrBlank()) {
+                throw DomainRuleViolation("Tax profile $code requires SRI tax code for emission.")
+            }
+            if (sriRateCode.isNullOrBlank() && taxRate?.sriRateCode.isNullOrBlank()) {
+                throw DomainRuleViolation("Tax profile $code requires SRI rate code for emission.")
+            }
+        }
+    }
+
+    fun snapshot(moment: Instant, forEmission: Boolean = false): TaxProfileSnapshot {
+        assertUsableAt(moment, forEmission)
+        return TaxProfileSnapshot.from(this, moment)
+    }
+
     companion object {
-        fun ivaFull(rate: TaxRate = TaxRate.iva15()): TaxProfile = TaxProfile(
-            id = "taxp_iva_full_current",
-            code = "iva_current_full",
-            displayName = "IVA tarifa vigente",
-            treatment = TaxTreatment.IVA_FULL,
-            taxName = "IVA",
-            rate = rate,
-            legalBasis = "SRI vigente al momento de emisión",
-        )
-
-        fun ivaZero(rate: TaxRate = TaxRate.iva0()): TaxProfile = TaxProfile(
-            id = "taxp_iva_0",
-            code = "iva_0",
-            displayName = "IVA 0%",
-            treatment = TaxTreatment.IVA_ZERO,
-            taxName = "IVA",
-            rate = rate,
-            legalBasis = "SRI vigente al momento de emisión",
-        )
-
-        fun exemptIva(): TaxProfile = TaxProfile(
-            id = "taxp_exempt_iva",
-            code = "exempt_iva",
-            displayName = "Exento de IVA",
-            treatment = TaxTreatment.EXEMPT_IVA,
-            taxName = "IVA",
-            rate = null,
-            legalBasis = "Exento según configuración tributaria vigente",
-        )
-
-        fun notSubjectToIva(): TaxProfile = TaxProfile(
-            id = "taxp_not_subject_to_iva",
-            code = "not_subject_to_iva",
-            displayName = "No objeto de IVA",
-            treatment = TaxTreatment.NOT_SUBJECT_TO_IVA,
-            taxName = "IVA",
-            rate = null,
-            legalBasis = "No objeto según configuración tributaria vigente",
-        )
+        private val CODE_PATTERN = Regex("^[a-z][a-z0-9_]*$")
     }
 }
