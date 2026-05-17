@@ -128,6 +128,8 @@ object MongoCatalogMappers {
             reviewedByUserId = document.optionalString("reviewedByUserId"),
             reviewedAt = MongoInstantMapper.readOptional(document, "reviewedAt"),
             reviewReason = document.optionalString("reviewReason"),
+            linkedTemplateId = document.optionalString("linkedTemplateId"),
+            adminMessage = document.optionalString("adminMessage"),
             createdAt = MongoInstantMapper.readRequired(document, MongoDocumentFields.CREATED_AT),
             updatedAt = MongoInstantMapper.readRequired(document, MongoDocumentFields.UPDATED_AT),
             version = document.optionalLong(MongoDocumentFields.VERSION, 1L),

@@ -2,12 +2,14 @@ package com.hermes.infrastructure.mongo.catalog
 
 import com.hermes.application.catalog.CatalogIdentifierConflictChecker
 import com.hermes.application.catalog.CatalogItemRequestRepository
+import com.hermes.application.catalog.CatalogItemRequestSearchQuery
+import com.hermes.application.catalog.CatalogItemRequestSearchRepository
 import com.hermes.application.catalog.CatalogPriceHistoryRepository
+import com.hermes.application.catalog.CatalogTaxProfileAssignmentRecord
 import com.hermes.application.catalog.CatalogTemplateSearchQuery
 import com.hermes.application.catalog.OrganizationCatalogItemRepository
 import com.hermes.application.catalog.OrganizationCatalogSearchQuery
 import com.hermes.application.catalog.OrganizationCatalogTaxProfileRepository
-import com.hermes.application.catalog.CatalogTaxProfileAssignmentRecord
 import com.hermes.application.catalog.PlatformCatalogTemplateRepository
 import com.hermes.domain.catalog.CatalogItemRequest
 import com.hermes.domain.catalog.CatalogItemRequestStatus
@@ -34,6 +36,7 @@ class MongoCatalogStore(database: MongoDatabase) {
     val templateRepository: PlatformCatalogTemplateRepository = MongoPlatformCatalogTemplateRepository(database)
     val organizationItemRepository: OrganizationCatalogItemRepository = MongoOrganizationCatalogItemRepository(database)
     val requestRepository: CatalogItemRequestRepository = MongoCatalogItemRequestRepository(database)
+    val requestSearchRepository: CatalogItemRequestSearchRepository = MongoCatalogItemRequestRepository(database)
     val priceHistoryRepository: CatalogPriceHistoryRepository = MongoCatalogPriceHistoryRepository(database)
     val identifierConflictChecker: CatalogIdentifierConflictChecker = MongoCatalogIdentifierConflictChecker(database)
     val taxProfileRepository: OrganizationCatalogTaxProfileRepository = MongoOrganizationCatalogTaxProfileRepository(database)
@@ -106,7 +109,7 @@ private class MongoOrganizationCatalogItemRepository(database: MongoDatabase) : 
     }
 }
 
-private class MongoCatalogItemRequestRepository(database: MongoDatabase) : CatalogItemRequestRepository {
+private class MongoCatalogItemRequestRepository(database: MongoDatabase) : CatalogItemRequestRepository, CatalogItemRequestSearchRepository {
     private val collection: MongoCollection<Document> = database.getCollection(MongoCollectionNames.CATALOG_ITEM_REQUESTS)
 
     override fun create(request: CatalogItemRequest) {
@@ -123,6 +126,23 @@ private class MongoCatalogItemRequestRepository(database: MongoDatabase) : Catal
     override fun findPendingByOrganizationAndName(organizationId: String, requestedName: String): CatalogItemRequest? =
         collection.find(and(eq("organizationId", organizationId.trim()), eq("normalizedRequestedName", requestedName.trim().lowercase()), eq("status", CatalogItemRequestStatus.PENDING_REVIEW.name)))
             .firstOrNull()?.let(MongoCatalogMappers::requestFromDocument)
+
+    override fun search(query: CatalogItemRequestSearchQuery): List<CatalogItemRequest> {
+        val filters = mutableListOf<org.bson.conversions.Bson>()
+        query.organizationId?.trim()?.takeIf { it.isNotBlank() }?.let { filters += eq("organizationId", it) }
+        if (query.statuses.isNotEmpty()) filters += com.mongodb.client.model.Filters.`in`("status", query.statuses.map { it.name })
+        query.requestedType?.let { filters += eq("requestedType", it.name) }
+        query.requestedByUserId?.trim()?.takeIf { it.isNotBlank() }?.let { filters += eq("requestedByUserId", it) }
+        query.query?.trim()?.takeIf { it.isNotBlank() }?.let { text ->
+            filters += or(regex("requestedName", text, "i"), regex("normalizedRequestedName", text.lowercase(), "i"), regex("identifiers.normalizedValue", text.uppercase(), "i"))
+        }
+        val finalFilter = if (filters.isEmpty()) Document() else and(filters)
+        return collection.find(finalFilter)
+            .sort(Sorts.descending("createdAt"))
+            .limit(query.limit.coerceIn(1, 300))
+            .into(mutableListOf())
+            .map(MongoCatalogMappers::requestFromDocument)
+    }
 }
 
 private class MongoCatalogPriceHistoryRepository(database: MongoDatabase) : CatalogPriceHistoryRepository {

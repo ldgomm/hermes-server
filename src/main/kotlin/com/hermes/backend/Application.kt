@@ -7,6 +7,7 @@ import com.hermes.backend.plugins.configureCors
 import com.hermes.backend.plugins.configureSerialization
 import com.hermes.backend.plugins.configureStatusPages
 import com.hermes.backend.routes.configureAuthRoutes
+import com.hermes.backend.routes.configureCatalogRequestAdvancedRoutes
 import com.hermes.backend.routes.configureCatalogRoutes
 import com.hermes.backend.routes.configureCredentialAdminRoutes
 import com.hermes.backend.routes.configureMeRoutes
@@ -68,6 +69,7 @@ private fun Application.configureHermesApplication(config: AppConfig, resources:
     configureTaxRoutes(authModule = resources.authModule, taxModule = resources.taxModule)
     configureTaxAdminRoutes(authModule = resources.authModule, taxModule = resources.taxModule)
     configureCatalogRoutes(authModule = resources.authModule, catalogModule = resources.catalogModule)
+    configureCatalogRequestAdvancedRoutes(authModule = resources.authModule, catalogModule = resources.catalogModule)
 
     monitor.subscribe(ApplicationStopping) { resources.close() }
 }
