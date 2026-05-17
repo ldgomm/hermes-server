@@ -2,16 +2,7 @@ package com.hermes.application.catalog
 
 import com.hermes.application.tax.OrganizationTaxSettingsRepository
 import com.hermes.application.tax.TaxProfileRepository
-import com.hermes.domain.catalog.CatalogCopyRules
-import com.hermes.domain.catalog.CatalogIdentifier
-import com.hermes.domain.catalog.CatalogIdentifierType
-import com.hermes.domain.catalog.CatalogItemRequest
-import com.hermes.domain.catalog.CatalogItemRequestStatus
-import com.hermes.domain.catalog.CatalogItemStatus
-import com.hermes.domain.catalog.CatalogPriceHistory
-import com.hermes.domain.catalog.CatalogTemplateStatus
-import com.hermes.domain.catalog.OrganizationCatalogItem
-import com.hermes.domain.catalog.PlatformCatalogTemplate
+import com.hermes.domain.catalog.*
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.permission.PermissionRules
 import com.hermes.domain.shared.DomainRuleViolation
@@ -101,7 +92,10 @@ class CatalogCopyTemplateToOrganizationUseCase(
     private val clock: Clock = Clock.systemUTC(),
 ) {
     fun execute(command: CatalogCopyTemplateToOrganizationCommand): OrganizationCatalogItemResult {
-        PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.CATALOG_LOCAL_COPY_FROM_MASTER)
+        PermissionRules.assertCanPerform(
+            command.actorEffectivePermissions,
+            PermissionCatalog.CATALOG_LOCAL_COPY_FROM_MASTER
+        )
         val organizationId = command.organizationId.required("Organization id")
         val reason = command.reason.required("Catalog copy reason")
         val settings = settingsRepository.findByOrganizationId(organizationId)
@@ -112,6 +106,9 @@ class CatalogCopyTemplateToOrganizationUseCase(
             ?: throw DomainRuleViolation("Tax profile does not exist: $taxProfileCode.")
         val template = templateRepository.findById(command.templateId.required("Template id"))
             ?: throw DomainRuleViolation("Platform catalog template does not exist.")
+        if (template.status != CatalogTemplateStatus.ACTIVE) {
+            throw DomainRuleViolation("Only active platform catalog templates can be copied to an organization.")
+        }
         if (itemRepository.existsByTemplateId(organizationId, template.id)) {
             throw DomainRuleViolation("Catalog template is already copied to this organization.")
         }
@@ -172,9 +169,18 @@ class CatalogUpdateLocalItemUseCase(
     private val clock: Clock = Clock.systemUTC(),
 ) {
     fun execute(command: CatalogUpdateLocalItemCommand): OrganizationCatalogItemResult {
-        val canUpdate = PermissionRules.canPerform(command.actorEffectivePermissions, PermissionCatalog.CATALOG_LOCAL_UPDATE_LOCAL_COPY) ||
-            PermissionRules.canPerform(command.actorEffectivePermissions, PermissionCatalog.CATALOG_LOCAL_CHANGE_PRICE) ||
-            PermissionRules.canPerform(command.actorEffectivePermissions, PermissionCatalog.CATALOG_LOCAL_CHANGE_TAX_PROFILE)
+        val canUpdate = PermissionRules.canPerform(
+            command.actorEffectivePermissions,
+            PermissionCatalog.CATALOG_LOCAL_UPDATE_LOCAL_COPY
+        ) ||
+                PermissionRules.canPerform(
+                    command.actorEffectivePermissions,
+                    PermissionCatalog.CATALOG_LOCAL_CHANGE_PRICE
+                ) ||
+                PermissionRules.canPerform(
+                    command.actorEffectivePermissions,
+                    PermissionCatalog.CATALOG_LOCAL_CHANGE_TAX_PROFILE
+                )
         if (!canUpdate) throw DomainRuleViolation("Missing catalog local update permission.")
         val organizationId = command.organizationId.required("Organization id")
         val reason = command.reason.required("Catalog update reason")
@@ -221,8 +227,16 @@ class CatalogUpdateLocalItemUseCase(
                 actorUserId = command.actorUserId,
                 organizationId = organizationId,
                 targetId = current.id,
-                before = mapOf("localName" to current.localName, "price" to current.localPrice.amount.toPlainString(), "taxProfileId" to current.taxProfileId),
-                after = mapOf("localName" to updated.localName, "price" to updated.localPrice.amount.toPlainString(), "taxProfileId" to updated.taxProfileId),
+                before = mapOf(
+                    "localName" to current.localName,
+                    "price" to current.localPrice.amount.toPlainString(),
+                    "taxProfileId" to current.taxProfileId
+                ),
+                after = mapOf(
+                    "localName" to updated.localName,
+                    "price" to updated.localPrice.amount.toPlainString(),
+                    "taxProfileId" to updated.taxProfileId
+                ),
                 reason = reason,
                 createdAt = now,
             )
@@ -237,7 +251,10 @@ class CatalogDisableLocalItemUseCase(
     private val clock: Clock = Clock.systemUTC(),
 ) {
     fun execute(command: CatalogDisableLocalItemCommand): OrganizationCatalogItemResult {
-        PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.CATALOG_LOCAL_DISABLE_LOCAL_COPY)
+        PermissionRules.assertCanPerform(
+            command.actorEffectivePermissions,
+            PermissionCatalog.CATALOG_LOCAL_DISABLE_LOCAL_COPY
+        )
         val organizationId = command.organizationId.required("Organization id")
         val reason = command.reason.required("Catalog disable reason")
         val current = itemRepository.findById(organizationId, command.catalogItemId.required("Catalog item id"))
@@ -268,8 +285,14 @@ class AssignTaxProfileToCatalogItemUseCase(
     private val clock: Clock = Clock.systemUTC(),
 ) {
     fun execute(command: AssignTaxProfileToCatalogItemCommand): AssignTaxProfileToCatalogItemResult {
-        val allowed = PermissionRules.canPerform(command.actorEffectivePermissions, PermissionCatalog.TAX_PROFILES_ASSIGN_TO_ITEM) ||
-            PermissionRules.canPerform(command.actorEffectivePermissions, PermissionCatalog.CATALOG_LOCAL_CHANGE_TAX_PROFILE)
+        val allowed = PermissionRules.canPerform(
+            command.actorEffectivePermissions,
+            PermissionCatalog.TAX_PROFILES_ASSIGN_TO_ITEM
+        ) ||
+                PermissionRules.canPerform(
+                    command.actorEffectivePermissions,
+                    PermissionCatalog.CATALOG_LOCAL_CHANGE_TAX_PROFILE
+                )
         if (!allowed) throw DomainRuleViolation("Missing tax profile assignment permission.")
         val organizationId = command.organizationId.required("Organization id")
         val reason = command.reason.required("Tax profile assignment reason")
@@ -309,7 +332,10 @@ class CatalogRequestNewItemUseCase(
     private val clock: Clock = Clock.systemUTC(),
 ) {
     fun execute(command: CatalogRequestNewItemCommand): CatalogItemRequestResult {
-        PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.CATALOG_LOCAL_REQUEST_NEW_ITEM)
+        PermissionRules.assertCanPerform(
+            command.actorEffectivePermissions,
+            PermissionCatalog.CATALOG_LOCAL_REQUEST_NEW_ITEM
+        )
         val organizationId = command.organizationId.required("Organization id")
         val name = command.requestedName.required("Requested item name")
         requestRepository.findPendingByOrganizationAndName(organizationId, name)?.let {

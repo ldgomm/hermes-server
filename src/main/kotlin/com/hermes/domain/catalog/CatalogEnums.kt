@@ -1,6 +1,7 @@
 package com.hermes.domain.catalog
 
 enum class CatalogTemplateStatus { DRAFT, ACTIVE, PAUSED, ARCHIVED }
+enum class CatalogCategoryStatus { DRAFT, ACTIVE, PAUSED, ARCHIVED }
 enum class CatalogItemStatus { DRAFT, ACTIVE, PAUSED, OUT_OF_STOCK, ARCHIVED, REMOVED_FROM_ACCOUNT }
 enum class CatalogItemType { PRODUCT, SERVICE, PACKAGE, RENTAL, FEE }
 enum class PublicDiscoveryStatus { PRIVATE, PUBLIC_PENDING_REVIEW, PUBLIC, HIDDEN_TEMPORARILY, SUSPENDED_BY_PLATFORM, ARCHIVED }

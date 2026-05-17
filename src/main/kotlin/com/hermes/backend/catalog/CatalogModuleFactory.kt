@@ -1,17 +1,31 @@
 package com.hermes.backend.catalog
 
+import com.hermes.application.catalog.CatalogChangeTemplateStatusUseCase
 import com.hermes.application.catalog.CatalogCopyTemplateToOrganizationUseCase
+import com.hermes.application.catalog.CatalogCreateCategoryUseCase
+import com.hermes.application.catalog.CatalogCreateFamilyUseCase
 import com.hermes.application.catalog.CatalogCreatePlatformTemplateUseCase
 import com.hermes.application.catalog.CatalogDisableLocalItemUseCase
+import com.hermes.application.catalog.CatalogGetCategoryUseCase
+import com.hermes.application.catalog.CatalogGetOrganizationItemUseCase
+import com.hermes.application.catalog.CatalogGetFamilyUseCase
+import com.hermes.application.catalog.CatalogGetTemplateUseCase
+import com.hermes.application.catalog.CatalogLookupOrganizationItemByCodeUseCase
+import com.hermes.application.catalog.CatalogRemoveLocalItemUseCase
 import com.hermes.application.catalog.CatalogRequestNewItemUseCase
 import com.hermes.application.catalog.CatalogReviewRequestUseCase
+import com.hermes.application.catalog.CatalogSearchCategoriesUseCase
+import com.hermes.application.catalog.CatalogSearchFamiliesUseCase
 import com.hermes.application.catalog.CatalogSearchMasterTemplatesUseCase
 import com.hermes.application.catalog.CatalogSearchOrganizationItemsUseCase
+import com.hermes.application.catalog.CatalogUpdateCategoryUseCase
+import com.hermes.application.catalog.CatalogUpdateFamilyUseCase
 import com.hermes.application.catalog.CatalogUpdateLocalItemUseCase
-import com.hermes.application.catalog.AssignTaxProfileToCatalogItemUseCase
+import com.hermes.application.catalog.CatalogUpdateTemplateUseCase
 import com.hermes.application.catalog.UuidCatalogIdGenerator
 import com.hermes.infrastructure.mongo.catalog.CatalogMongoBootstrap
 import com.hermes.infrastructure.mongo.catalog.MongoCatalogAuditLogger
+import com.hermes.infrastructure.mongo.catalog.MongoCatalogCategoryFamilyStore
 import com.hermes.infrastructure.mongo.catalog.MongoCatalogStore
 import com.hermes.infrastructure.mongo.tax.MongoTaxStore
 import com.mongodb.client.MongoDatabase
@@ -25,6 +39,7 @@ object CatalogModuleFactory {
         CatalogMongoBootstrap.ensureIndexes(database)
 
         val catalogStore = MongoCatalogStore(database)
+        val categoryFamilyStore = MongoCatalogCategoryFamilyStore(database)
         val taxStore = MongoTaxStore(database)
         val idGenerator = UuidCatalogIdGenerator()
         val auditLogger = MongoCatalogAuditLogger(database)
@@ -68,7 +83,7 @@ object CatalogModuleFactory {
                 auditLogger = auditLogger,
                 clock = clock,
             ),
-            assignTaxProfileToCatalogItemUseCase = AssignTaxProfileToCatalogItemUseCase(
+            assignTaxProfileToCatalogItemUseCase = com.hermes.application.catalog.AssignTaxProfileToCatalogItemUseCase(
                 catalogRepository = catalogStore.taxProfileRepository,
                 profileRepository = taxStore.profileRepository,
                 settingsRepository = taxStore.settingsRepository,
@@ -83,6 +98,73 @@ object CatalogModuleFactory {
             ),
             reviewRequestUseCase = CatalogReviewRequestUseCase(
                 requestRepository = catalogStore.requestRepository,
+                auditLogger = auditLogger,
+                clock = clock,
+            ),
+            createCategoryUseCase = CatalogCreateCategoryUseCase(
+                categoryRepository = categoryFamilyStore.categoryRepository,
+                idGenerator = idGenerator,
+                auditLogger = auditLogger,
+                clock = clock,
+            ),
+            updateCategoryUseCase = CatalogUpdateCategoryUseCase(
+                categoryRepository = categoryFamilyStore.categoryRepository,
+                auditLogger = auditLogger,
+                clock = clock,
+            ),
+            getCategoryUseCase = CatalogGetCategoryUseCase(
+                categoryRepository = categoryFamilyStore.categoryRepository,
+                auditLogger = auditLogger,
+                clock = clock,
+            ),
+            searchCategoriesUseCase = CatalogSearchCategoriesUseCase(
+                categoryRepository = categoryFamilyStore.categoryRepository,
+            ),
+            createFamilyUseCase = CatalogCreateFamilyUseCase(
+                familyRepository = categoryFamilyStore.familyRepository,
+                categoryRepository = categoryFamilyStore.categoryRepository,
+                idGenerator = idGenerator,
+                auditLogger = auditLogger,
+                clock = clock,
+            ),
+            updateFamilyUseCase = CatalogUpdateFamilyUseCase(
+                familyRepository = categoryFamilyStore.familyRepository,
+                categoryRepository = categoryFamilyStore.categoryRepository,
+                auditLogger = auditLogger,
+                clock = clock,
+            ),
+            getFamilyUseCase = CatalogGetFamilyUseCase(
+                familyRepository = categoryFamilyStore.familyRepository,
+                auditLogger = auditLogger,
+                clock = clock,
+            ),
+            searchFamiliesUseCase = CatalogSearchFamiliesUseCase(
+                familyRepository = categoryFamilyStore.familyRepository,
+            ),
+            getTemplateUseCase = CatalogGetTemplateUseCase(
+                templateRepository = catalogStore.templateRepository,
+                auditLogger = auditLogger,
+                clock = clock,
+            ),
+            updateTemplateUseCase = CatalogUpdateTemplateUseCase(
+                templateRepository = catalogStore.templateRepository,
+                familyRepository = categoryFamilyStore.familyRepository,
+                auditLogger = auditLogger,
+                clock = clock,
+            ),
+            changeTemplateStatusUseCase = CatalogChangeTemplateStatusUseCase(
+                templateRepository = catalogStore.templateRepository,
+                auditLogger = auditLogger,
+                clock = clock,
+            ),
+            getOrganizationItemUseCase = CatalogGetOrganizationItemUseCase(
+                itemRepository = catalogStore.organizationItemRepository,
+            ),
+            lookupOrganizationItemByCodeUseCase = CatalogLookupOrganizationItemByCodeUseCase(
+                itemRepository = catalogStore.organizationItemRepository,
+            ),
+            removeLocalItemUseCase = CatalogRemoveLocalItemUseCase(
+                itemRepository = catalogStore.organizationItemRepository,
                 auditLogger = auditLogger,
                 clock = clock,
             ),
