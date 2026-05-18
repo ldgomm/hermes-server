@@ -10,14 +10,26 @@ import com.hermes.domain.money.Money
 import com.hermes.domain.percentage.Percentage
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.quantity.Quantity
-import com.hermes.domain.sale.*
+import com.hermes.domain.sale.CatalogItemSnapshot
+import com.hermes.domain.sale.CustomerSnapshot
+import com.hermes.domain.sale.Sale
+import com.hermes.domain.sale.SaleItem
+import com.hermes.domain.sale.SaleItemTax
+import com.hermes.domain.sale.SaleOperationalStatus
+import com.hermes.domain.sale.SaleType
+import com.hermes.domain.sale.SaleWorkflowMode
+import com.hermes.domain.sale.TaxProfileSnapshotForSale
 import com.hermes.domain.shared.DomainRuleViolation
 import com.hermes.domain.tax.TaxTreatment
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
-import kotlin.test.*
 
 class CommercialDocumentUseCasesTest {
     @Test
@@ -184,47 +196,25 @@ class CommercialDocumentUseCasesTest {
 
     private class InMemorySaleRepository : OperationalSaleRepository {
         private val data = linkedMapOf<String, Sale>()
-        override fun create(sale: Sale) {
-            data[sale.id] = sale
-        }
-
-        override fun update(sale: Sale) {
-            data[sale.id] = sale
-        }
-
-        override fun findById(organizationId: String, saleId: String): Sale? =
-            data[saleId]?.takeIf { it.organizationId == organizationId }
-
-        override fun search(query: SaleSearchQuery): List<Sale> =
-            data.values.filter { it.organizationId == query.organizationId }
+        override fun create(sale: Sale) { data[sale.id] = sale }
+        override fun update(sale: Sale) { data[sale.id] = sale }
+        override fun findById(organizationId: String, saleId: String): Sale? = data[saleId]?.takeIf { it.organizationId == organizationId }
+        override fun search(query: SaleSearchQuery): List<Sale> = data.values.filter { it.organizationId == query.organizationId }
     }
 
     private class InMemoryCommercialDocumentRepository : CommercialDocumentRepository {
         private val data = linkedMapOf<String, CommercialDocument>()
-        override fun create(document: CommercialDocument) {
-            data[document.id] = document
+        override fun create(document: CommercialDocument) { data[document.id] = document }
+        override fun update(document: CommercialDocument) { data[document.id] = document }
+        override fun findById(organizationId: String, documentId: String): CommercialDocument? = data[documentId]?.takeIf { it.organizationId == organizationId }
+        override fun findBySale(organizationId: String, saleId: String): List<CommercialDocument> = data.values.filter { it.organizationId == organizationId && it.saleId == saleId }
+        override fun findByDocumentNumber(organizationId: String, documentNumber: String): CommercialDocument? = data.values.firstOrNull { it.organizationId == organizationId && it.documentNumber == documentNumber }
+        override fun search(query: CommercialDocumentSearchQuery): List<CommercialDocument> = data.values.filter { document ->
+            document.organizationId == query.organizationId &&
+                (query.saleId == null || document.saleId == query.saleId) &&
+                (query.documentType == null || document.documentType == query.documentType) &&
+                (query.statuses.isEmpty() || document.status in query.statuses)
         }
-
-        override fun update(document: CommercialDocument) {
-            data[document.id] = document
-        }
-
-        override fun findById(organizationId: String, documentId: String): CommercialDocument? =
-            data[documentId]?.takeIf { it.organizationId == organizationId }
-
-        override fun findBySale(organizationId: String, saleId: String): List<CommercialDocument> =
-            data.values.filter { it.organizationId == organizationId && it.saleId == saleId }
-
-        override fun findByDocumentNumber(organizationId: String, documentNumber: String): CommercialDocument? =
-            data.values.firstOrNull { it.organizationId == organizationId && it.documentNumber == documentNumber }
-
-        override fun search(query: CommercialDocumentSearchQuery): List<CommercialDocument> =
-            data.values.filter { document ->
-                document.organizationId == query.organizationId &&
-                        (query.saleId == null || document.saleId == query.saleId) &&
-                        (query.documentType == null || document.documentType == query.documentType) &&
-                        (query.statuses.isEmpty() || document.status in query.statuses)
-            }
     }
 
     private fun confirmedSale(): Sale {
