@@ -1,5 +1,6 @@
 package com.hermes.domain.electronicinvoicing
 
+import com.hermes.domain.electronicinvoicing.SriAuthorizationStatus.*
 import com.hermes.domain.shared.DomainRuleViolation
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -16,12 +17,12 @@ class SriStatusParsingTest {
 
     @Test
     fun `parses authorization statuses from textual and compact values`() {
-        assertEquals(SriAuthorizationStatus.AUTHORIZED, SriAuthorizationStatus.fromSriValue("AUTORIZADO"))
-        assertEquals(SriAuthorizationStatus.AUTHORIZED, SriAuthorizationStatus.fromSriValue("AUT"))
-        assertEquals(SriAuthorizationStatus.NOT_AUTHORIZED, SriAuthorizationStatus.fromSriValue("RECHAZADO"))
-        assertEquals(SriAuthorizationStatus.NOT_AUTHORIZED, SriAuthorizationStatus.fromSriValue("NAT"))
-        assertEquals(SriAuthorizationStatus.PROCESSING, SriAuthorizationStatus.fromSriValue("PPR"))
-        assertEquals(SriAuthorizationStatus.PROCESSING, SriAuthorizationStatus.fromSriValue("EN PROCESAMIENTO"))
+        assertEquals(AUTHORIZED, SriAuthorizationStatus.fromSriValue("AUTORIZADO"))
+        assertEquals(AUTHORIZED, SriAuthorizationStatus.fromSriValue("AUT"))
+        assertEquals(NOT_AUTHORIZED, SriAuthorizationStatus.fromSriValue("RECHAZADO"))
+        assertEquals(NOT_AUTHORIZED, SriAuthorizationStatus.fromSriValue("NAT"))
+        assertEquals(PROCESSING, SriAuthorizationStatus.fromSriValue("PPR"))
+        assertEquals(PROCESSING, SriAuthorizationStatus.fromSriValue("EN PROCESAMIENTO"))
     }
 
     @Test
