@@ -2,40 +2,19 @@ package com.hermes.application.catalog
 
 import com.hermes.application.tax.OrganizationTaxSettingsRepository
 import com.hermes.application.tax.TaxProfileRepository
-import com.hermes.domain.catalog.CatalogIdentifier
-import com.hermes.domain.catalog.CatalogIdentifierScope
-import com.hermes.domain.catalog.CatalogIdentifierSource
-import com.hermes.domain.catalog.CatalogIdentifierStatus
-import com.hermes.domain.catalog.CatalogIdentifierType
-import com.hermes.domain.catalog.CatalogItemRequest
-import com.hermes.domain.catalog.CatalogItemRequestDecision
-import com.hermes.domain.catalog.CatalogItemStatus
-import com.hermes.domain.catalog.CatalogItemType
-import com.hermes.domain.catalog.CatalogPriceHistory
-import com.hermes.domain.catalog.CatalogTemplateStatus
-import com.hermes.domain.catalog.OrganizationCatalogItem
-import com.hermes.domain.catalog.PlatformCatalogTemplate
+import com.hermes.domain.catalog.*
 import com.hermes.domain.money.Money
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.shared.DomainRuleViolation
-import com.hermes.domain.tax.OrganizationTaxSettings
-import com.hermes.domain.tax.OrganizationTaxSettingsStatus
-import com.hermes.domain.tax.TaxKind
-import com.hermes.domain.tax.TaxProfile
-import com.hermes.domain.tax.TaxProfileStatus
-import com.hermes.domain.tax.TaxRate
-import com.hermes.domain.tax.TaxRateStatus
-import com.hermes.domain.tax.TaxRegimeCode
-import com.hermes.domain.tax.TaxSource
-import com.hermes.domain.tax.TaxTreatment
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
+import com.hermes.domain.tax.*
 import java.math.BigDecimal
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class UseCasesTest {
     private val now: Instant = Instant.parse("2026-05-17T00:00:00Z")
@@ -161,8 +140,25 @@ class UseCasesTest {
             priceHistory = priceHistory,
             audit = audit,
             createTemplate = CatalogCreatePlatformTemplateUseCase(templateRepository, idGenerator, audit, clock),
-            copyTemplate = CatalogCopyTemplateToOrganizationUseCase(templateRepository, itemRepository, profileRepository, settingsRepository, idGenerator, audit, clock),
-            updateLocalItem = CatalogUpdateLocalItemUseCase(itemRepository, profileRepository, settingsRepository, priceHistory, itemRepository, idGenerator, audit, clock),
+            copyTemplate = CatalogCopyTemplateToOrganizationUseCase(
+                templateRepository,
+                itemRepository,
+                profileRepository,
+                settingsRepository,
+                idGenerator,
+                audit,
+                clock
+            ),
+            updateLocalItem = CatalogUpdateLocalItemUseCase(
+                itemRepository,
+                profileRepository,
+                settingsRepository,
+                priceHistory,
+                itemRepository,
+                idGenerator,
+                audit,
+                clock
+            ),
             requestNewItem = CatalogRequestNewItemUseCase(requestRepository, idGenerator, audit, clock),
             reviewRequest = CatalogReviewRequestUseCase(requestRepository, audit, clock),
         )
@@ -198,15 +194,25 @@ class UseCasesTest {
 
     private class RecordingCatalogAuditLogger : CatalogAuditLogger {
         val events = mutableListOf<CatalogAuditEvent>()
-        override fun log(event: CatalogAuditEvent) { events += event }
+        override fun log(event: CatalogAuditEvent) {
+            events += event
+        }
     }
 
     private inner class InMemoryTemplateRepository : PlatformCatalogTemplateRepository {
         val items = linkedMapOf<String, PlatformCatalogTemplate>()
-        override fun create(template: PlatformCatalogTemplate) { items[template.id] = template }
-        override fun update(template: PlatformCatalogTemplate) { items[template.id] = template }
+        override fun create(template: PlatformCatalogTemplate) {
+            items[template.id] = template
+        }
+
+        override fun update(template: PlatformCatalogTemplate) {
+            items[template.id] = template
+        }
+
         override fun findById(id: String): PlatformCatalogTemplate? = items[id]
-        override fun existsByGlobalCatalogId(globalCatalogId: String): Boolean = items.values.any { it.globalCatalogId == globalCatalogId }
+        override fun existsByGlobalCatalogId(globalCatalogId: String): Boolean =
+            items.values.any { it.globalCatalogId == globalCatalogId }
+
         override fun search(query: CatalogTemplateSearchQuery): List<PlatformCatalogTemplate> = items.values.toList()
         fun seedTemplate(): PlatformCatalogTemplate = PlatformCatalogTemplate(
             id = "tpl_1",
@@ -221,14 +227,31 @@ class UseCasesTest {
 
     private inner class InMemoryItemRepository : OrganizationCatalogItemRepository, CatalogIdentifierConflictChecker {
         val items = linkedMapOf<String, OrganizationCatalogItem>()
-        override fun create(item: OrganizationCatalogItem) { items[item.id] = item }
-        override fun update(item: OrganizationCatalogItem) { items[item.id] = item }
-        override fun findById(organizationId: String, catalogItemId: String): OrganizationCatalogItem? = items[catalogItemId]?.takeIf { it.organizationId == organizationId }
-        override fun existsByTemplateId(organizationId: String, templateId: String): Boolean = items.values.any { it.organizationId == organizationId && it.templateId == templateId }
-        override fun search(query: OrganizationCatalogSearchQuery): List<OrganizationCatalogItem> = items.values.filter { it.organizationId == query.organizationId }
-        override fun existsLocalIdentifier(organizationId: String, normalizedValue: String, excludeCatalogItemId: String?): Boolean = items.values.any { item ->
+        override fun create(item: OrganizationCatalogItem) {
+            items[item.id] = item
+        }
+
+        override fun update(item: OrganizationCatalogItem) {
+            items[item.id] = item
+        }
+
+        override fun findById(organizationId: String, catalogItemId: String): OrganizationCatalogItem? =
+            items[catalogItemId]?.takeIf { it.organizationId == organizationId }
+
+        override fun existsByTemplateId(organizationId: String, templateId: String): Boolean =
+            items.values.any { it.organizationId == organizationId && it.templateId == templateId }
+
+        override fun search(query: OrganizationCatalogSearchQuery): List<OrganizationCatalogItem> =
+            items.values.filter { it.organizationId == query.organizationId }
+
+        override fun existsLocalIdentifier(
+            organizationId: String,
+            normalizedValue: String,
+            excludeCatalogItemId: String?
+        ): Boolean = items.values.any { item ->
             item.organizationId == organizationId && item.id != excludeCatalogItemId && item.identifiers.any { it.normalizedValue == normalizedValue }
         }
+
         fun seedItem(): OrganizationCatalogItem = OrganizationCatalogItem(
             id = "ocat_1",
             organizationId = "org_1",
@@ -248,15 +271,31 @@ class UseCasesTest {
 
     private class InMemoryRequestRepository : CatalogItemRequestRepository {
         val items = linkedMapOf<String, CatalogItemRequest>()
-        override fun create(request: CatalogItemRequest) { items[request.id] = request }
-        override fun update(request: CatalogItemRequest) { items[request.id] = request }
+        override fun create(request: CatalogItemRequest) {
+            items[request.id] = request
+        }
+
+        override fun update(request: CatalogItemRequest) {
+            items[request.id] = request
+        }
+
         override fun findById(requestId: String): CatalogItemRequest? = items[requestId]
-        override fun findPendingByOrganizationAndName(organizationId: String, requestedName: String): CatalogItemRequest? = items.values.firstOrNull { it.organizationId == organizationId && it.requestedName.equals(requestedName, ignoreCase = true) && it.status.name == "PENDING_REVIEW" }
+        override fun findPendingByOrganizationAndName(
+            organizationId: String,
+            requestedName: String
+        ): CatalogItemRequest? = items.values.firstOrNull {
+            it.organizationId == organizationId && it.requestedName.equals(
+                requestedName,
+                ignoreCase = true
+            ) && it.status.name == "PENDING_REVIEW"
+        }
     }
 
     private class InMemoryPriceHistoryRepository : CatalogPriceHistoryRepository {
         val items = mutableListOf<CatalogPriceHistory>()
-        override fun create(history: CatalogPriceHistory) { items += history }
+        override fun create(history: CatalogPriceHistory) {
+            items += history
+        }
     }
 
     private inner class InMemoryTaxProfileRepository : TaxProfileRepository {
@@ -295,7 +334,8 @@ class UseCasesTest {
         )
     }
 
-    private inner class InMemorySettingsRepository(private val enabledProfiles: Set<String>) : OrganizationTaxSettingsRepository {
+    private inner class InMemorySettingsRepository(private val enabledProfiles: Set<String>) :
+        OrganizationTaxSettingsRepository {
         override fun create(settings: OrganizationTaxSettings) = Unit
         override fun update(settings: OrganizationTaxSettings) = Unit
         override fun findByOrganizationId(organizationId: String): OrganizationTaxSettings? = OrganizationTaxSettings(

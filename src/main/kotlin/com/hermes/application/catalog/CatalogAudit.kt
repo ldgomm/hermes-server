@@ -30,6 +30,8 @@ enum class CatalogAuditAction {
     CATALOG_ITEM_REQUEST_REJECTED,
     CATALOG_ITEM_REQUEST_LINKED_TO_EXISTING,
     CATALOG_ITEM_REQUEST_MORE_INFO_REQUESTED,
+    CATALOG_AUDIT_VIEWED,
+    CATALOG_PRICE_HISTORY_VIEWED,
 }
 
 data class CatalogAuditEvent(
@@ -49,4 +51,41 @@ interface CatalogAuditLogger {
 
 object NoopCatalogAuditLogger : CatalogAuditLogger {
     override fun log(event: CatalogAuditEvent) = Unit
+}
+
+data class CatalogAuditQuery(
+    val organizationId: String,
+    val actions: Set<CatalogAuditAction> = emptySet(),
+    val actorUserId: String? = null,
+    val targetId: String? = null,
+    val from: Instant? = null,
+    val to: Instant? = null,
+    val limit: Int = DEFAULT_LIMIT,
+) {
+    init {
+        require(organizationId.isNotBlank()) { "Organization id is required for catalog audit query." }
+        require(limit in 1..MAX_LIMIT) { "Catalog audit query limit must be between 1 and $MAX_LIMIT." }
+        if (from != null && to != null) require(!from.isAfter(to)) { "Catalog audit query from cannot be after to." }
+    }
+
+    companion object {
+        const val DEFAULT_LIMIT = 100
+        const val MAX_LIMIT = 500
+    }
+}
+
+data class CatalogAuditRecord(
+    val id: String,
+    val action: CatalogAuditAction,
+    val actorUserId: String?,
+    val organizationId: String,
+    val targetId: String?,
+    val before: Map<String, String?> = emptyMap(),
+    val after: Map<String, String?> = emptyMap(),
+    val reason: String? = null,
+    val createdAt: Instant,
+)
+
+interface CatalogAuditQueryRepository {
+    fun search(query: CatalogAuditQuery): List<CatalogAuditRecord>
 }

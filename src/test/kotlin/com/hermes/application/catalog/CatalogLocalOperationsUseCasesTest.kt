@@ -1,14 +1,6 @@
 package com.hermes.application.catalog
 
-import com.hermes.domain.catalog.CatalogIdentifier
-import com.hermes.domain.catalog.CatalogIdentifierScope
-import com.hermes.domain.catalog.CatalogIdentifierSource
-import com.hermes.domain.catalog.CatalogIdentifierStatus
-import com.hermes.domain.catalog.CatalogIdentifierType
-import com.hermes.domain.catalog.CatalogItemStatus
-import com.hermes.domain.catalog.CatalogItemType
-import com.hermes.domain.catalog.OrganizationCatalogItem
-import com.hermes.domain.catalog.PublicDiscoveryStatus
+import com.hermes.domain.catalog.*
 import com.hermes.domain.money.Money
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.shared.DomainRuleViolation
@@ -145,14 +137,22 @@ class CatalogLocalOperationsUseCasesTest {
 
     private class RecordingCatalogAuditLogger : CatalogAuditLogger {
         val events = mutableListOf<CatalogAuditEvent>()
-        override fun log(event: CatalogAuditEvent) { events += event }
+        override fun log(event: CatalogAuditEvent) {
+            events += event
+        }
     }
 
     private class InMemoryOrganizationCatalogItemRepository : OrganizationCatalogItemRepository {
         val items = linkedMapOf<String, OrganizationCatalogItem>()
 
-        override fun create(item: OrganizationCatalogItem) { items[item.id] = item }
-        override fun update(item: OrganizationCatalogItem) { items[item.id] = item }
+        override fun create(item: OrganizationCatalogItem) {
+            items[item.id] = item
+        }
+
+        override fun update(item: OrganizationCatalogItem) {
+            items[item.id] = item
+        }
+
         override fun findById(organizationId: String, catalogItemId: String): OrganizationCatalogItem? =
             items[catalogItemId]?.takeIf { it.organizationId == organizationId }
 

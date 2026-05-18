@@ -14,7 +14,9 @@ import com.hermes.application.catalog.CatalogGetOrganizationItemUseCase
 import com.hermes.application.catalog.CatalogGetTemplateUseCase
 import com.hermes.application.catalog.CatalogLinkRequestToExistingTemplateUseCase
 import com.hermes.application.catalog.CatalogListAdminRequestsUseCase
+import com.hermes.application.catalog.CatalogListAuditEventsUseCase
 import com.hermes.application.catalog.CatalogListOrganizationRequestsUseCase
+import com.hermes.application.catalog.CatalogListPriceHistoryUseCase
 import com.hermes.application.catalog.CatalogLookupOrganizationItemByCodeUseCase
 import com.hermes.application.catalog.CatalogRejectRequestUseCase
 import com.hermes.application.catalog.CatalogRemoveLocalItemUseCase
@@ -60,4 +62,6 @@ data class CatalogModule(
     val rejectRequestUseCase: CatalogRejectRequestUseCase,
     val linkRequestToExistingTemplateUseCase: CatalogLinkRequestToExistingTemplateUseCase,
     val requestMoreInfoUseCase: CatalogRequestMoreInfoUseCase,
+    val listAuditEventsUseCase: CatalogListAuditEventsUseCase,
+    val listPriceHistoryUseCase: CatalogListPriceHistoryUseCase,
 )

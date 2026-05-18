@@ -1,11 +1,6 @@
 package com.hermes.application.catalog
 
-import com.hermes.domain.catalog.CatalogCategory
-import com.hermes.domain.catalog.CatalogCategoryStatus
-import com.hermes.domain.catalog.CatalogItemType
-import com.hermes.domain.catalog.CatalogTemplateStatus
-import com.hermes.domain.catalog.PlatformCatalogFamily
-import com.hermes.domain.catalog.PlatformCatalogTemplate
+import com.hermes.domain.catalog.*
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.shared.DomainRuleViolation
 import java.time.Clock
@@ -84,7 +79,15 @@ class CatalogCategoryFamilyLifecycleUseCasesTest {
     @Test
     fun `updates template family and archives without allowing reactivation`() {
         val fixture = fixture()
-        fixture.categories.create(CatalogCategory(id = "cat_food", code = "food", name = "Food", createdAt = now, updatedAt = now))
+        fixture.categories.create(
+            CatalogCategory(
+                id = "cat_food",
+                code = "food",
+                name = "Food",
+                createdAt = now,
+                updatedAt = now
+            )
+        )
         fixture.families.create(
             PlatformCatalogFamily(
                 id = "pfam_cuy",
@@ -186,37 +189,68 @@ class CatalogCategoryFamilyLifecycleUseCasesTest {
 
     private class InMemoryCategoryRepository : CatalogCategoryRepository {
         val items = linkedMapOf<String, CatalogCategory>()
-        override fun create(category: CatalogCategory) { items[category.id] = category }
-        override fun update(category: CatalogCategory) { items[category.id] = category }
+        override fun create(category: CatalogCategory) {
+            items[category.id] = category
+        }
+
+        override fun update(category: CatalogCategory) {
+            items[category.id] = category
+        }
+
         override fun findById(id: String): CatalogCategory? = items[id]
-        override fun findByCode(code: String): CatalogCategory? = items.values.firstOrNull { it.code == code.trim().lowercase() }
+        override fun findByCode(code: String): CatalogCategory? =
+            items.values.firstOrNull { it.code == code.trim().lowercase() }
+
         override fun existsByCode(code: String): Boolean = findByCode(code) != null
         override fun search(query: CatalogCategorySearchQuery): List<CatalogCategory> = items.values.toList()
     }
 
     private class InMemoryFamilyRepository : PlatformCatalogFamilyRepository {
         val items = linkedMapOf<String, PlatformCatalogFamily>()
-        override fun create(family: PlatformCatalogFamily) { items[family.id] = family }
-        override fun update(family: PlatformCatalogFamily) { items[family.id] = family }
+        override fun create(family: PlatformCatalogFamily) {
+            items[family.id] = family
+        }
+
+        override fun update(family: PlatformCatalogFamily) {
+            items[family.id] = family
+        }
+
         override fun findById(id: String): PlatformCatalogFamily? = items[id]
-        override fun findByGlobalFamilyId(globalFamilyId: String): PlatformCatalogFamily? = items.values.firstOrNull { it.globalFamilyId == globalFamilyId.trim().lowercase() }
-        override fun existsByGlobalFamilyId(globalFamilyId: String): Boolean = findByGlobalFamilyId(globalFamilyId) != null
-        override fun search(query: PlatformCatalogFamilySearchQuery): List<PlatformCatalogFamily> = items.values.toList()
+        override fun findByGlobalFamilyId(globalFamilyId: String): PlatformCatalogFamily? =
+            items.values.firstOrNull { it.globalFamilyId == globalFamilyId.trim().lowercase() }
+
+        override fun existsByGlobalFamilyId(globalFamilyId: String): Boolean =
+            findByGlobalFamilyId(globalFamilyId) != null
+
+        override fun search(query: PlatformCatalogFamilySearchQuery): List<PlatformCatalogFamily> =
+            items.values.toList()
     }
 
     private class InMemoryTemplateRepository : PlatformCatalogTemplateRepository {
         val items = linkedMapOf<String, PlatformCatalogTemplate>()
-        override fun create(template: PlatformCatalogTemplate) { items[template.id] = template }
-        override fun update(template: PlatformCatalogTemplate) { items[template.id] = template }
+        override fun create(template: PlatformCatalogTemplate) {
+            items[template.id] = template
+        }
+
+        override fun update(template: PlatformCatalogTemplate) {
+            items[template.id] = template
+        }
+
         override fun findById(id: String): PlatformCatalogTemplate? = items[id]
-        override fun existsByGlobalCatalogId(globalCatalogId: String): Boolean = items.values.any { it.globalCatalogId == globalCatalogId }
+        override fun existsByGlobalCatalogId(globalCatalogId: String): Boolean =
+            items.values.any { it.globalCatalogId == globalCatalogId }
+
         override fun search(query: CatalogTemplateSearchQuery): List<PlatformCatalogTemplate> = items.values.toList()
     }
 
     private class RecordingCatalogAuditLogger : CatalogAuditLogger {
         val events = mutableListOf<CatalogAuditEvent>()
-        override fun log(event: CatalogAuditEvent) { events += event }
+        override fun log(event: CatalogAuditEvent) {
+            events += event
+        }
     }
 
-    private companion object { var idSequence: Int = 1 }
+    private companion object {
+        var idSequence: Int = 1
+    }
 }

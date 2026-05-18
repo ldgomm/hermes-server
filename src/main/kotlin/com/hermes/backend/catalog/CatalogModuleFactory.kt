@@ -13,7 +13,9 @@ import com.hermes.application.catalog.CatalogGetOrganizationItemUseCase
 import com.hermes.application.catalog.CatalogGetTemplateUseCase
 import com.hermes.application.catalog.CatalogLinkRequestToExistingTemplateUseCase
 import com.hermes.application.catalog.CatalogListAdminRequestsUseCase
+import com.hermes.application.catalog.CatalogListAuditEventsUseCase
 import com.hermes.application.catalog.CatalogListOrganizationRequestsUseCase
+import com.hermes.application.catalog.CatalogListPriceHistoryUseCase
 import com.hermes.application.catalog.CatalogLookupOrganizationItemByCodeUseCase
 import com.hermes.application.catalog.CatalogRejectRequestUseCase
 import com.hermes.application.catalog.CatalogRemoveLocalItemUseCase
@@ -32,6 +34,7 @@ import com.hermes.application.catalog.UuidCatalogIdGenerator
 import com.hermes.infrastructure.mongo.catalog.CatalogMongoBootstrap
 import com.hermes.infrastructure.mongo.catalog.MongoCatalogAuditLogger
 import com.hermes.infrastructure.mongo.catalog.MongoCatalogCategoryFamilyStore
+import com.hermes.infrastructure.mongo.catalog.MongoCatalogReadStore
 import com.hermes.infrastructure.mongo.catalog.MongoCatalogStore
 import com.hermes.infrastructure.mongo.tax.MongoTaxStore
 import com.mongodb.client.MongoDatabase
@@ -46,6 +49,7 @@ object CatalogModuleFactory {
 
         val catalogStore = MongoCatalogStore(database)
         val categoryFamilyStore = MongoCatalogCategoryFamilyStore(database)
+        val readStore = MongoCatalogReadStore(database)
         val taxStore = MongoTaxStore(database)
         val idGenerator = UuidCatalogIdGenerator()
         val auditLogger = MongoCatalogAuditLogger(database)
@@ -204,6 +208,16 @@ object CatalogModuleFactory {
             ),
             requestMoreInfoUseCase = CatalogRequestMoreInfoUseCase(
                 requestRepository = catalogStore.requestRepository,
+                auditLogger = auditLogger,
+                clock = clock,
+            ),
+            listAuditEventsUseCase = CatalogListAuditEventsUseCase(
+                auditRepository = readStore.auditQueryRepository,
+                auditLogger = auditLogger,
+                clock = clock,
+            ),
+            listPriceHistoryUseCase = CatalogListPriceHistoryUseCase(
+                priceHistoryRepository = readStore.priceHistoryQueryRepository,
                 auditLogger = auditLogger,
                 clock = clock,
             ),
