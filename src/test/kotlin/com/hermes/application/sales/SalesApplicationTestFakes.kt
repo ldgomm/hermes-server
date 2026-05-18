@@ -1,37 +1,23 @@
 package com.hermes.application.sales
 
-import com.hermes.application.catalog.CatalogTemplateSearchQuery
 import com.hermes.application.catalog.OrganizationCatalogItemRepository
 import com.hermes.application.catalog.OrganizationCatalogSearchQuery
-import com.hermes.application.catalog.PlatformCatalogTemplateRepository
 import com.hermes.application.tax.OrganizationTaxSettingsRepository
 import com.hermes.application.tax.TaxProfileRepository
 import com.hermes.application.tax.TaxSaleValidationUseCase
 import com.hermes.domain.catalog.CatalogItemStatus
 import com.hermes.domain.catalog.CatalogItemType
 import com.hermes.domain.catalog.OrganizationCatalogItem
-import com.hermes.domain.catalog.PlatformCatalogTemplate
 import com.hermes.domain.catalog.PublicDiscoveryStatus
 import com.hermes.domain.money.Money
+import com.hermes.domain.percentage.Percentage
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.quantity.Quantity
 import com.hermes.domain.reservation.Reservation
 import com.hermes.domain.reservation.ReservationStatus
-import com.hermes.domain.sale.CatalogItemSnapshot
-import com.hermes.domain.sale.CustomerSnapshot
-import com.hermes.domain.sale.Sale
-import com.hermes.domain.sale.SaleItem
-import com.hermes.domain.sale.SaleItemTax
-import com.hermes.domain.sale.SaleOperationalStatus
-import com.hermes.domain.sale.SaleType
-import com.hermes.domain.sale.SaleWorkflowMode
-import com.hermes.domain.sale.TaxProfileSnapshotForSale
+import com.hermes.domain.sale.*
 import com.hermes.domain.shared.DomainRuleViolation
-import com.hermes.domain.tax.OrganizationTaxSettings
-import com.hermes.domain.tax.OrganizationTaxSettingsStatus
-import com.hermes.domain.tax.TaxFixtures
-import com.hermes.domain.tax.TaxProfile
-import com.hermes.domain.tax.TaxRegimeCode
+import com.hermes.domain.tax.*
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -205,6 +191,7 @@ internal data class SalesUseCaseFixture(
     val cancelSaleUseCase: CancelSaleUseCase,
     val closeSaleUseCase: CloseSaleUseCase,
     val createReservationUseCase: CreateReservationUseCase,
+    val getReservationUseCase: GetReservationUseCase,
     val searchReservationsUseCase: SearchReservationsUseCase,
 )
 
@@ -245,6 +232,7 @@ internal fun salesFixture(): SalesUseCaseFixture {
         auditLogger = auditLogger,
         clock = SalesTestClock,
     )
+    val schedulingGuard = ReservationSchedulingGuard(reservationRepository)
 
     return SalesUseCaseFixture(
         saleRepository = saleRepository,
@@ -287,6 +275,12 @@ internal fun salesFixture(): SalesUseCaseFixture {
             reservationRepository = reservationRepository,
             createQuickSaleUseCase = createQuickSaleUseCase,
             idGenerator = idGenerator,
+            auditLogger = auditLogger,
+            clock = SalesTestClock,
+            schedulingGuard = schedulingGuard,
+        ),
+        getReservationUseCase = GetReservationUseCase(
+            reservationRepository = reservationRepository,
             auditLogger = auditLogger,
             clock = SalesTestClock,
         ),
@@ -371,6 +365,10 @@ internal fun saleCommand(
 internal fun scheduledReservationCommand(
     linkedSaleItem: CreateSaleItemCommandLine? = null,
     permissions: Set<String> = salesPermissions(),
+    resourceId: String? = "quad_1",
+    startAt: Instant = SalesTestNow.plusSeconds(3600),
+    endAt: Instant = SalesTestNow.plusSeconds(7200),
+    partySize: Int = 2,
 ): CreateReservationCommand = CreateReservationCommand(
     organizationId = "org_1",
     branchId = "br_1",
@@ -385,10 +383,10 @@ internal fun scheduledReservationCommand(
         taxIdType = "cedula",
         email = "ana@example.com",
     ),
-    resourceId = "quad_1",
-    startAt = SalesTestNow.plusSeconds(3600),
-    endAt = SalesTestNow.plusSeconds(7200),
-    partySize = 2,
+    resourceId = resourceId,
+    startAt = startAt,
+    endAt = endAt,
+    partySize = partySize,
     notes = "Traer casco extra",
     linkedSaleItem = linkedSaleItem,
 )
@@ -419,10 +417,10 @@ internal fun basicSaleItem(
     taxProfileSnapshot = TaxProfileSnapshotForSale(
         code = "iva_current_full",
         taxName = "IVA current full",
-        rate = com.hermes.domain.percentage.Percentage.of("13.0000".toBigDecimal()),
+        rate = Percentage.of("13.0000".toBigDecimal()),
         sriTaxCode = "2",
         sriRateCode = "4",
-        treatment = com.hermes.domain.tax.TaxTreatment.IVA_FULL,
+        treatment = TaxTreatment.IVA_FULL,
         legalBasis = "Test legal basis",
         effectiveFrom = LocalDate.parse("2026-01-01"),
         source = "SYSTEM_SEED",
@@ -461,6 +459,7 @@ internal fun scheduledReservation(
     id: String = "res_1",
     status: ReservationStatus = ReservationStatus.SCHEDULED,
     activityId: String = "act_tourism",
+    resourceId: String? = "quad_1",
 ): Reservation {
     val base = Reservation.schedule(
         id = id,
@@ -469,6 +468,7 @@ internal fun scheduledReservation(
         activityId = activityId,
         customerId = "cust_1",
         customerSnapshot = CustomerSnapshot.finalConsumer(),
+        resourceId = resourceId,
         startAt = SalesTestNow.plusSeconds(3600),
         endAt = SalesTestNow.plusSeconds(7200),
         partySize = 2,
@@ -485,6 +485,7 @@ internal fun scheduledReservation(
             SalesTestNow.plusSeconds(14_400),
             SalesTestNow,
         )
+
         ReservationStatus.DRAFT -> base.copy(status = ReservationStatus.DRAFT)
         ReservationStatus.NO_SHOW -> base.copy(status = ReservationStatus.NO_SHOW)
     }

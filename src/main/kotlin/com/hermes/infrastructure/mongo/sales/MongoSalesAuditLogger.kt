@@ -8,13 +8,14 @@ import com.hermes.infrastructure.mongo.mapping.MongoInstantMapper
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
 import org.bson.Document
+import java.util.UUID
 
 class MongoSalesAuditLogger(database: MongoDatabase) : SalesAuditLogger {
     private val collection: MongoCollection<Document> = database.getCollection(MongoCollectionNames.AUDIT_LOGS)
 
     override fun log(event: SalesAuditEvent) {
         collection.insertOne(
-            Document(MongoDocumentFields.ID, "saudit_${event.createdAt.toEpochMilli()}_${event.action.name.lowercase()}")
+            Document(MongoDocumentFields.ID, event.auditId())
                 .append(MongoDocumentFields.ORGANIZATION_ID, event.organizationId)
                 .append("context", "sales")
                 .append("action", event.action.name)
@@ -30,5 +31,12 @@ class MongoSalesAuditLogger(database: MongoDatabase) : SalesAuditLogger {
                 .append(MongoDocumentFields.VERSION, 1)
                 .append(MongoDocumentFields.SCHEMA_VERSION, 1)
         )
+    }
+
+    private fun SalesAuditEvent.auditId(): String {
+        val action = action.name.lowercase()
+        val target = targetId?.replace(Regex("[^a-zA-Z0-9_-]"), "_") ?: "none"
+        val entropy = UUID.randomUUID().toString().replace("-", "").take(12)
+        return "saudit_${createdAt.toEpochMilli()}_${action}_${target}_$entropy"
     }
 }

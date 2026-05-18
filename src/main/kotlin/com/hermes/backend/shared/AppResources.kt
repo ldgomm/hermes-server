@@ -10,6 +10,10 @@ import com.hermes.backend.health.HealthCheck
 import com.hermes.backend.health.MinioHealthCheck
 import com.hermes.backend.health.MongoHealthCheck
 import com.hermes.backend.health.RedisHealthCheck
+import com.hermes.backend.sales.ReservationSchedulingModule
+import com.hermes.backend.sales.ReservationSchedulingModuleFactory
+import com.hermes.backend.sales.SalesModule
+import com.hermes.backend.sales.SalesModuleFactory
 import com.hermes.backend.tax.TaxModule
 import com.hermes.backend.tax.TaxModuleFactory
 import com.mongodb.client.MongoClient
@@ -24,6 +28,8 @@ interface AppResources : Closeable {
     val authModule: AuthModule
     val taxModule: TaxModule
     val catalogModule: CatalogModule
+    val salesModule: SalesModule
+    val reservationSchedulingModule: ReservationSchedulingModule
 }
 
 class DefaultAppResources private constructor(
@@ -34,6 +40,8 @@ class DefaultAppResources private constructor(
     override val authModule: AuthModule,
     override val taxModule: TaxModule,
     override val catalogModule: CatalogModule,
+    override val salesModule: SalesModule,
+    override val reservationSchedulingModule: ReservationSchedulingModule,
 ) : AppResources {
     companion object {
         fun start(config: AppConfig): DefaultAppResources {
@@ -54,6 +62,9 @@ class DefaultAppResources private constructor(
             val authModule = AuthModuleFactory.fromMongo(client = mongoClient, database = mongoDatabase, config = config)
             val taxModule = TaxModuleFactory.fromMongo(database = mongoDatabase)
             val catalogModule = CatalogModuleFactory.fromMongo(database = mongoDatabase)
+            val salesModule = SalesModuleFactory.fromMongo(database = mongoDatabase)
+            val reservationSchedulingModule = ReservationSchedulingModuleFactory.fromMongo(database = mongoDatabase)
+
             return DefaultAppResources(
                 mongoClient = mongoClient,
                 redisClient = redisClient,
@@ -62,6 +73,8 @@ class DefaultAppResources private constructor(
                 authModule = authModule,
                 taxModule = taxModule,
                 catalogModule = catalogModule,
+                salesModule = salesModule,
+                reservationSchedulingModule = reservationSchedulingModule,
             )
         }
     }

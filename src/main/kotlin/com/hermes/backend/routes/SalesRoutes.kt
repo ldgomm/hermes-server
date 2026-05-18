@@ -1,5 +1,9 @@
 package com.hermes.backend.routes
 
+import com.hermes.application.auth.ActiveOrganizationResolverUseCase
+import com.hermes.application.auth.AuthenticateRequestUseCase
+import com.hermes.application.auth.EffectivePermissionResolverUseCase
+import com.hermes.application.sales.GetReservationCommand
 import com.hermes.application.sales.GetSaleCommand
 import com.hermes.application.sales.SearchReservationsCommand
 import com.hermes.application.sales.SearchSalesCommand
@@ -26,7 +30,6 @@ import com.hermes.domain.shared.DomainRuleViolation
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
-import io.ktor.server.application.call
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
@@ -38,15 +41,36 @@ import io.ktor.server.routing.routing
 import java.time.Instant
 
 fun Application.configureSalesRoutes(authModule: AuthModule, salesModule: SalesModule) {
-    routing { salesRoutes(authModule, salesModule) }
-}
-
-fun Route.salesRoutes(authModule: AuthModule, salesModule: SalesModule) {
-    route("/organizations/{organizationId}") {
-        hermesAuthenticated(
+    routing {
+        salesRoutes(
             authenticateRequestUseCase = authModule.authenticateRequestUseCase,
             activeOrganizationResolverUseCase = authModule.activeOrganizationResolverUseCase,
             effectivePermissionResolverUseCase = authModule.effectivePermissionResolverUseCase,
+            salesModule = salesModule,
+        )
+    }
+}
+
+fun Route.salesRoutes(authModule: AuthModule, salesModule: SalesModule) {
+    salesRoutes(
+        authenticateRequestUseCase = authModule.authenticateRequestUseCase,
+        activeOrganizationResolverUseCase = authModule.activeOrganizationResolverUseCase,
+        effectivePermissionResolverUseCase = authModule.effectivePermissionResolverUseCase,
+        salesModule = salesModule,
+    )
+}
+
+fun Route.salesRoutes(
+    authenticateRequestUseCase: AuthenticateRequestUseCase,
+    activeOrganizationResolverUseCase: ActiveOrganizationResolverUseCase,
+    effectivePermissionResolverUseCase: EffectivePermissionResolverUseCase,
+    salesModule: SalesModule,
+) {
+    route("/organizations/{organizationId}") {
+        hermesAuthenticated(
+            authenticateRequestUseCase = authenticateRequestUseCase,
+            activeOrganizationResolverUseCase = activeOrganizationResolverUseCase,
+            effectivePermissionResolverUseCase = effectivePermissionResolverUseCase,
             requireOrganization = true,
         ) {
             route("/sales") {
@@ -142,7 +166,6 @@ fun Route.salesRoutes(authModule: AuthModule, salesModule: SalesModule) {
                         )
                         call.respond(HttpStatusCode.OK, result.toResponse())
                     }
-
                 }
 
                 hermesRequiresPermission(PermissionCatalog.SALES_CLOSE) {
@@ -203,6 +226,21 @@ fun Route.salesRoutes(authModule: AuthModule, salesModule: SalesModule) {
 
             route("/reservations") {
                 hermesRequiresPermission(PermissionCatalog.SALES_VIEW) {
+                    get("/{reservationId}") {
+                        val context = call.hermesAuthContext()
+                        val organizationId = call.requiredSalesOrganizationId()
+                        call.assertSalesOrganizationMatchesContext(organizationId)
+                        val result = salesModule.getReservationUseCase.execute(
+                            GetReservationCommand(
+                                organizationId = organizationId,
+                                reservationId = call.requiredSalesPath("reservationId"),
+                                actorUserId = context.userId,
+                                actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
+                            )
+                        )
+                        call.respond(HttpStatusCode.OK, result.toResponse())
+                    }
+
                     get {
                         val context = call.hermesAuthContext()
                         val organizationId = call.requiredSalesOrganizationId()

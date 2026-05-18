@@ -2,6 +2,8 @@ package com.hermes.infrastructure.mongo.sales
 
 import com.hermes.application.sales.ReservationSearchQuery
 import com.hermes.application.sales.SaleSearchQuery
+import com.hermes.application.sales.SalesAuditAction
+import com.hermes.application.sales.SalesAuditEvent
 import com.hermes.domain.reservation.ReservationStatus
 import com.hermes.domain.sale.SaleOperationalStatus
 import com.hermes.infrastructure.mongo.MongoCollectionNames
@@ -102,4 +104,41 @@ class MongoSalesStoreIntegrationTest {
 
         assertEquals(listOf("res_1"), result.map { it.id })
     }
+
+    @Test
+    fun `writes sales audit events for reservations with unique ids`() {
+        val database = client.getDatabase(databaseName)
+        val auditLogger = MongoSalesAuditLogger(database)
+
+        auditLogger.log(
+            SalesAuditEvent(
+                action = SalesAuditAction.RESERVATION_CREATED,
+                actorUserId = "usr_1",
+                organizationId = "org_1",
+                targetId = "res_1",
+                after = mapOf("status" to "SCHEDULED"),
+                createdAt = MongoSalesTestNow,
+            )
+        )
+        auditLogger.log(
+            SalesAuditEvent(
+                action = SalesAuditAction.RESERVATION_CREATED,
+                actorUserId = "usr_1",
+                organizationId = "org_1",
+                targetId = "res_2",
+                after = mapOf("status" to "SCHEDULED"),
+                createdAt = MongoSalesTestNow,
+            )
+        )
+
+        val auditLogs = database.getCollection(MongoCollectionNames.AUDIT_LOGS)
+            .find(Document("context", "sales"))
+            .into(mutableListOf())
+
+        assertEquals(2, auditLogs.size)
+        assertEquals(2, auditLogs.map { it.getString("_id") }.toSet().size)
+        assertTrue(auditLogs.all { it.getString("action") == SalesAuditAction.RESERVATION_CREATED.name })
+    }
+
+
 }

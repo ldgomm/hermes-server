@@ -7,6 +7,7 @@ import com.hermes.application.sales.ChangeSaleStatusUseCase
 import com.hermes.application.sales.CloseSaleUseCase
 import com.hermes.application.sales.CreateQuickSaleUseCase
 import com.hermes.application.sales.CreateReservationUseCase
+import com.hermes.application.sales.GetReservationUseCase
 import com.hermes.application.sales.GetSaleUseCase
 import com.hermes.application.sales.SearchReservationsUseCase
 import com.hermes.application.sales.SearchSalesUseCase
@@ -21,5 +22,6 @@ data class SalesModule(
     val cancelSaleUseCase: CancelSaleUseCase,
     val closeSaleUseCase: CloseSaleUseCase,
     val createReservationUseCase: CreateReservationUseCase,
+    val getReservationUseCase: GetReservationUseCase,
     val searchReservationsUseCase: SearchReservationsUseCase,
 )

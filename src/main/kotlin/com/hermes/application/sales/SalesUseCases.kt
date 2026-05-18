@@ -3,6 +3,7 @@ package com.hermes.application.sales
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.permission.PermissionRules
 import com.hermes.domain.reservation.Reservation
+import com.hermes.domain.reservation.ReservationStatus
 import com.hermes.domain.sale.Sale
 import com.hermes.domain.sale.SaleItemStatus
 import com.hermes.domain.sale.SaleOperationalStatus
@@ -307,12 +308,29 @@ class CreateReservationUseCase(
     private val idGenerator: SalesIdGenerator,
     private val auditLogger: SalesAuditLogger = NoopSalesAuditLogger,
     private val clock: Clock = Clock.systemUTC(),
+    private val schedulingGuard: ReservationSchedulingGuard = ReservationSchedulingGuard(reservationRepository),
 ) {
     fun execute(command: CreateReservationCommand): ReservationResult {
         PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.SALES_CREATE)
+
         val organizationId = command.organizationId.required("Organization id")
         val branchId = command.branchId.required("Branch id")
         val activityId = command.activityId.required("Activity id")
+        val now = Instant.now(clock)
+
+        schedulingGuard.assertCanSchedule(
+            ReservationAvailabilityCommand(
+                organizationId = organizationId,
+                branchId = branchId,
+                activityId = activityId,
+                resourceId = command.resourceId,
+                startAt = command.startAt,
+                endAt = command.endAt,
+                partySize = command.partySize,
+            ),
+            now = now,
+        )
+
         val linkedSale = command.linkedSaleItem?.let { line ->
             createQuickSaleUseCase.execute(
                 CreateQuickSaleCommand(
@@ -324,7 +342,7 @@ class CreateReservationUseCase(
                     customerId = command.customerId,
                     customerSnapshot = command.customerSnapshot,
                     cashSessionId = command.cashSessionId,
-                    occurredAt = Instant.now(clock),
+                    occurredAt = now,
                     autoConfirm = true,
                     items = listOf(line),
                 )
@@ -344,8 +362,9 @@ class CreateReservationUseCase(
             endAt = command.endAt,
             partySize = command.partySize,
             notes = command.notes,
-            createdAt = Instant.now(clock),
+            createdAt = now,
         )
+
         reservationRepository.create(reservation)
         auditLogger.log(
             SalesAuditEvent(
@@ -355,14 +374,46 @@ class CreateReservationUseCase(
                 targetId = reservation.id,
                 after = mapOf(
                     "saleId" to linkedSale?.id,
+                    "resourceId" to reservation.resourceId,
                     "startAt" to reservation.startAt.toString(),
                     "endAt" to reservation.endAt.toString(),
                     "partySize" to reservation.partySize.toString(),
+                    "status" to reservation.status.name,
                 ),
+                createdAt = now,
+            )
+        )
+
+        return ReservationResult(reservation = reservation, linkedSale = linkedSale)
+    }
+}
+
+class GetReservationUseCase(
+    private val reservationRepository: OperationalReservationRepository,
+    private val auditLogger: SalesAuditLogger = NoopSalesAuditLogger,
+    private val clock: Clock = Clock.systemUTC(),
+) {
+    fun execute(command: GetReservationCommand): ReservationResult {
+        PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.SALES_VIEW)
+
+        val organizationId = command.organizationId.required("Organization id")
+        val reservationId = command.reservationId.required("Reservation id")
+        val reservation = reservationRepository.findById(
+            organizationId = organizationId,
+            reservationId = reservationId,
+        ) ?: throw DomainRuleViolation("Reservation does not exist.")
+
+        auditLogger.log(
+            SalesAuditEvent(
+                action = SalesAuditAction.RESERVATION_VIEWED,
+                actorUserId = command.actorUserId,
+                organizationId = organizationId,
+                targetId = reservation.id,
                 createdAt = Instant.now(clock),
             )
         )
-        return ReservationResult(reservation = reservation, linkedSale = linkedSale)
+
+        return ReservationResult(reservation = reservation)
     }
 }
 

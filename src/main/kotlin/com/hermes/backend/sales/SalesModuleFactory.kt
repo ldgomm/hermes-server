@@ -7,10 +7,12 @@ import com.hermes.application.sales.ChangeSaleStatusUseCase
 import com.hermes.application.sales.CloseSaleUseCase
 import com.hermes.application.sales.CreateQuickSaleUseCase
 import com.hermes.application.sales.CreateReservationUseCase
+import com.hermes.application.sales.GetReservationUseCase
 import com.hermes.application.sales.GetSaleUseCase
-import com.hermes.application.sales.SaleItemPreparationService
+import com.hermes.application.sales.ReservationSchedulingGuard
 import com.hermes.application.sales.SearchReservationsUseCase
 import com.hermes.application.sales.SearchSalesUseCase
+import com.hermes.application.sales.SaleItemPreparationService
 import com.hermes.application.sales.UuidSalesIdGenerator
 import com.hermes.application.tax.TaxSaleValidationUseCase
 import com.hermes.infrastructure.mongo.catalog.MongoCatalogStore
@@ -32,6 +34,9 @@ object SalesModuleFactory {
         val salesAuditLogger = MongoSalesAuditLogger(database)
         val taxAuditLogger = MongoTaxAuditLogger(database)
         val idGenerator = UuidSalesIdGenerator()
+        val schedulingGuard = ReservationSchedulingGuard(
+            reservationRepository = salesStore.reservationRepository,
+        )
 
         val taxSaleValidationUseCase = TaxSaleValidationUseCase(
             profileRepository = taxStore.profileRepository,
@@ -98,6 +103,12 @@ object SalesModuleFactory {
                 reservationRepository = salesStore.reservationRepository,
                 createQuickSaleUseCase = createQuickSaleUseCase,
                 idGenerator = idGenerator,
+                auditLogger = salesAuditLogger,
+                clock = clock,
+                schedulingGuard = schedulingGuard,
+            ),
+            getReservationUseCase = GetReservationUseCase(
+                reservationRepository = salesStore.reservationRepository,
                 auditLogger = salesAuditLogger,
                 clock = clock,
             ),

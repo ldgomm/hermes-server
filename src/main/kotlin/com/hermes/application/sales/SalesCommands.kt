@@ -111,6 +111,13 @@ data class CreateReservationCommand(
     val cashSessionId: String? = null,
 )
 
+data class GetReservationCommand(
+    val organizationId: String,
+    val reservationId: String,
+    val actorUserId: String,
+    val actorEffectivePermissions: Set<String>,
+)
+
 data class SearchReservationsCommand(
     val organizationId: String,
     val actorUserId: String,
