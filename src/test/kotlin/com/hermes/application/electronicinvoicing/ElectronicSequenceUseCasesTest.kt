@@ -1,12 +1,6 @@
 package com.hermes.application.electronicinvoicing
 
-import com.hermes.domain.electronicinvoicing.ElectronicSequence
-import com.hermes.domain.electronicinvoicing.ElectronicSequenceKey
-import com.hermes.domain.electronicinvoicing.ElectronicSequenceReservation
-import com.hermes.domain.electronicinvoicing.SriDocumentType
-import com.hermes.domain.electronicinvoicing.SriEnvironment
-import com.hermes.domain.electronicinvoicing.SriNumericCode
-import com.hermes.domain.electronicinvoicing.SriSeries
+import com.hermes.domain.electronicinvoicing.*
 import java.time.Instant
 import java.time.LocalDate
 import kotlin.test.Test
@@ -130,6 +124,7 @@ class ElectronicSequenceUseCasesTest {
     }
 }
 
+//Redeclaration: class InMemoryElectronicSequenceRepository : ElectronicSequenceRepository
 private class InMemoryElectronicSequenceRepository : ElectronicSequenceRepository {
     private val sequences = linkedMapOf<ElectronicSequenceKey, ElectronicSequence>()
 
@@ -141,17 +136,18 @@ private class InMemoryElectronicSequenceRepository : ElectronicSequenceRepositor
         sequences[key]
     }
 
-    override fun nextSequential(command: NextElectronicSequentialCommand): ElectronicSequenceReservation = synchronized(this) {
-        val key = ElectronicSequenceKey(
-            organizationId = command.organizationId,
-            environment = command.environment,
-            documentType = command.documentType,
-            series = command.series,
-        )
-        val current = sequences[key] ?: error("Sequence does not exist: ${key.storageKey}")
-        val next = current.nextSequential()
-        val updated = current.markIssued(next, command.documentId, command.issuedAt)
-        sequences[key] = updated
-        ElectronicSequenceReservation(sequence = updated, sequential = next)
-    }
+    override fun nextSequential(command: NextElectronicSequentialCommand): ElectronicSequenceReservation =
+        synchronized(this) {
+            val key = ElectronicSequenceKey(
+                organizationId = command.organizationId,
+                environment = command.environment,
+                documentType = command.documentType,
+                series = command.series,
+            )
+            val current = sequences[key] ?: error("Sequence does not exist: ${key.storageKey}")
+            val next = current.nextSequential()
+            val updated = current.markIssued(next, command.documentId, command.issuedAt)
+            sequences[key] = updated
+            ElectronicSequenceReservation(sequence = updated, sequential = next)
+        }
 }
