@@ -1,5 +1,6 @@
 package com.hermes.backend.catalog
 
+import com.hermes.application.catalog.AssignTaxProfileToCatalogItemUseCase
 import com.hermes.application.catalog.CatalogApproveRequestAsTemplateUseCase
 import com.hermes.application.catalog.CatalogChangeTemplateStatusUseCase
 import com.hermes.application.catalog.CatalogCopyTemplateToOrganizationUseCase
@@ -30,6 +31,7 @@ import com.hermes.application.catalog.CatalogUpdateCategoryUseCase
 import com.hermes.application.catalog.CatalogUpdateFamilyUseCase
 import com.hermes.application.catalog.CatalogUpdateLocalItemUseCase
 import com.hermes.application.catalog.CatalogUpdateTemplateUseCase
+import com.hermes.application.catalog.SeedInitialCatalogUseCase
 import com.hermes.application.catalog.UuidCatalogIdGenerator
 import com.hermes.infrastructure.mongo.catalog.CatalogMongoBootstrap
 import com.hermes.infrastructure.mongo.catalog.MongoCatalogAuditLogger
@@ -93,7 +95,7 @@ object CatalogModuleFactory {
                 auditLogger = auditLogger,
                 clock = clock,
             ),
-            assignTaxProfileToCatalogItemUseCase = com.hermes.application.catalog.AssignTaxProfileToCatalogItemUseCase(
+            assignTaxProfileToCatalogItemUseCase = AssignTaxProfileToCatalogItemUseCase(
                 catalogRepository = catalogStore.taxProfileRepository,
                 profileRepository = taxStore.profileRepository,
                 settingsRepository = taxStore.settingsRepository,
@@ -218,6 +220,13 @@ object CatalogModuleFactory {
             ),
             listPriceHistoryUseCase = CatalogListPriceHistoryUseCase(
                 priceHistoryRepository = readStore.priceHistoryQueryRepository,
+                auditLogger = auditLogger,
+                clock = clock,
+            ),
+            seedInitialCatalogUseCase = SeedInitialCatalogUseCase(
+                categoryRepository = categoryFamilyStore.categoryRepository,
+                familyRepository = categoryFamilyStore.familyRepository,
+                templateRepository = catalogStore.templateRepository,
                 auditLogger = auditLogger,
                 clock = clock,
             ),

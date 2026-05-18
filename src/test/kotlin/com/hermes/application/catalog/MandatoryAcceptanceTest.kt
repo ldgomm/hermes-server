@@ -2,44 +2,16 @@ package com.hermes.application.catalog
 
 import com.hermes.application.tax.OrganizationTaxSettingsRepository
 import com.hermes.application.tax.TaxProfileRepository
-import com.hermes.domain.catalog.CatalogCategory
-import com.hermes.domain.catalog.CatalogIdentifier
-import com.hermes.domain.catalog.CatalogIdentifierScope
-import com.hermes.domain.catalog.CatalogIdentifierSource
-import com.hermes.domain.catalog.CatalogIdentifierStatus
-import com.hermes.domain.catalog.CatalogIdentifierType
-import com.hermes.domain.catalog.CatalogItemRequest
-import com.hermes.domain.catalog.CatalogItemRequestStatus
-import com.hermes.domain.catalog.CatalogItemStatus
-import com.hermes.domain.catalog.CatalogItemType
-import com.hermes.domain.catalog.CatalogPriceHistory
-import com.hermes.domain.catalog.CatalogTemplateStatus
-import com.hermes.domain.catalog.OrganizationCatalogItem
-import com.hermes.domain.catalog.PlatformCatalogFamily
-import com.hermes.domain.catalog.PlatformCatalogTemplate
-import com.hermes.domain.catalog.PublicDiscoveryStatus
+import com.hermes.domain.catalog.*
 import com.hermes.domain.money.Money
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.shared.DomainRuleViolation
-import com.hermes.domain.tax.OrganizationTaxSettings
-import com.hermes.domain.tax.OrganizationTaxSettingsStatus
-import com.hermes.domain.tax.TaxKind
-import com.hermes.domain.tax.TaxProfile
-import com.hermes.domain.tax.TaxProfileStatus
-import com.hermes.domain.tax.TaxRate
-import com.hermes.domain.tax.TaxRateStatus
-import com.hermes.domain.tax.TaxRegimeCode
-import com.hermes.domain.tax.TaxSource
-import com.hermes.domain.tax.TaxTreatment
+import com.hermes.domain.tax.*
 import java.math.BigDecimal
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 /**
  * Fase 7.7 — mandatory acceptance tests for the catalog engine.
@@ -419,10 +391,27 @@ class MandatoryAcceptanceTest {
             createCategory = CatalogCreateCategoryUseCase(categories, ids, audit, clock),
             createFamily = CatalogCreateFamilyUseCase(families, categories, ids, audit, clock),
             createTemplate = CatalogCreatePlatformTemplateUseCase(templates, ids, audit, clock),
-            copyTemplate = CatalogCopyTemplateToOrganizationUseCase(templates, items, profiles, settings, ids, audit, clock),
+            copyTemplate = CatalogCopyTemplateToOrganizationUseCase(
+                templates,
+                items,
+                profiles,
+                settings,
+                ids,
+                audit,
+                clock
+            ),
             getLocalItem = CatalogGetOrganizationItemUseCase(items),
             lookupByCode = CatalogLookupOrganizationItemByCodeUseCase(items),
-            updateLocalItem = CatalogUpdateLocalItemUseCase(items, profiles, settings, priceHistory, items, ids, audit, clock),
+            updateLocalItem = CatalogUpdateLocalItemUseCase(
+                items,
+                profiles,
+                settings,
+                priceHistory,
+                items,
+                ids,
+                audit,
+                clock
+            ),
             assignTaxProfile = AssignTaxProfileToCatalogItemUseCase(items, profiles, settings, audit, clock),
             removeLocalItem = CatalogRemoveLocalItemUseCase(items, audit, clock),
             requestNewItem = CatalogRequestNewItemUseCase(requests, ids, audit, clock),
@@ -496,8 +485,8 @@ class MandatoryAcceptanceTest {
                 .filter { query.statuses.isEmpty() || it.status in query.statuses }
                 .filter { category ->
                     query.query.isNullOrBlank() ||
-                        category.normalizedName.contains(query.query.trim().lowercase()) ||
-                        category.code.contains(query.query.trim().lowercase())
+                            category.normalizedName.contains(query.query.trim().lowercase()) ||
+                            category.code.contains(query.query.trim().lowercase())
                 }
                 .take(query.limit)
                 .toList()
@@ -530,8 +519,8 @@ class MandatoryAcceptanceTest {
                 .filter { query.statuses.isEmpty() || it.status in query.statuses }
                 .filter { family ->
                     query.query.isNullOrBlank() ||
-                        family.normalizedName.contains(query.query.trim().lowercase()) ||
-                        family.globalFamilyId.contains(query.query.trim().lowercase())
+                            family.normalizedName.contains(query.query.trim().lowercase()) ||
+                            family.globalFamilyId.contains(query.query.trim().lowercase())
                 }
                 .take(query.limit)
                 .toList()
@@ -563,12 +552,12 @@ class MandatoryAcceptanceTest {
                 .filter { query.type == null || it.type == query.type }
                 .filter { template ->
                     query.identifier == null ||
-                        template.identifiers.any { it.normalizedValue == query.identifier }
+                            template.identifiers.any { it.normalizedValue == query.identifier }
                 }
                 .filter { template ->
                     query.query.isNullOrBlank() ||
-                        template.normalizedName.contains(query.query.trim().lowercase()) ||
-                        template.globalCatalogId.contains(query.query.trim().lowercase())
+                            template.normalizedName.contains(query.query.trim().lowercase()) ||
+                            template.globalCatalogId.contains(query.query.trim().lowercase())
                 }
                 .take(query.limit)
                 .toList()
@@ -605,12 +594,12 @@ class MandatoryAcceptanceTest {
                 .filter { query.type == null || it.type == query.type }
                 .filter { item ->
                     query.identifier == null ||
-                        item.identifiers.any { it.normalizedValue == query.identifier }
+                            item.identifiers.any { it.normalizedValue == query.identifier }
                 }
                 .filter { item ->
                     query.query.isNullOrBlank() ||
-                        item.searchableText.contains(query.query.trim().lowercase()) ||
-                        item.localName.lowercase().contains(query.query.trim().lowercase())
+                            item.searchableText.contains(query.query.trim().lowercase()) ||
+                            item.localName.lowercase().contains(query.query.trim().lowercase())
                 }
                 .take(query.limit)
                 .toList()
@@ -622,8 +611,8 @@ class MandatoryAcceptanceTest {
         ): Boolean =
             items.values.any { item ->
                 item.organizationId == organizationId &&
-                    item.id != excludeCatalogItemId &&
-                    item.identifiers.any { it.normalizedValue == normalizedValue }
+                        item.id != excludeCatalogItemId &&
+                        item.identifiers.any { it.normalizedValue == normalizedValue }
             }
 
         override fun assignTaxProfile(
@@ -668,8 +657,8 @@ class MandatoryAcceptanceTest {
         ): CatalogItemRequest? =
             items.values.firstOrNull {
                 it.organizationId == organizationId &&
-                    it.requestedName.equals(requestedName.trim(), ignoreCase = true) &&
-                    it.status == CatalogItemRequestStatus.PENDING_REVIEW
+                        it.requestedName.equals(requestedName.trim(), ignoreCase = true) &&
+                        it.status == CatalogItemRequestStatus.PENDING_REVIEW
             }
 
         override fun search(query: CatalogItemRequestSearchQuery): List<CatalogItemRequest> =
@@ -681,7 +670,7 @@ class MandatoryAcceptanceTest {
                 .filter { query.requestedByUserId == null || it.requestedByUserId == query.requestedByUserId }
                 .filter { request ->
                     query.query.isNullOrBlank() ||
-                        request.requestedName.lowercase().contains(query.query.trim().lowercase())
+                            request.requestedName.lowercase().contains(query.query.trim().lowercase())
                 }
                 .take(query.limit)
                 .toList()

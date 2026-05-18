@@ -3,7 +3,6 @@ package com.hermes.backend.catalog
 import com.hermes.application.catalog.AssignTaxProfileToCatalogItemUseCase
 import com.hermes.application.catalog.CatalogApproveRequestAsTemplateUseCase
 import com.hermes.application.catalog.CatalogChangeTemplateStatusUseCase
-import com.hermes.application.catalog.CatalogCopyTemplateToOrganizationUseCase
 import com.hermes.application.catalog.CatalogCreateCategoryUseCase
 import com.hermes.application.catalog.CatalogCreateFamilyUseCase
 import com.hermes.application.catalog.CatalogCreatePlatformTemplateUseCase
@@ -31,11 +30,12 @@ import com.hermes.application.catalog.CatalogUpdateCategoryUseCase
 import com.hermes.application.catalog.CatalogUpdateFamilyUseCase
 import com.hermes.application.catalog.CatalogUpdateLocalItemUseCase
 import com.hermes.application.catalog.CatalogUpdateTemplateUseCase
+import com.hermes.application.catalog.SeedInitialCatalogUseCase
 
 data class CatalogModule(
     val createPlatformTemplateUseCase: CatalogCreatePlatformTemplateUseCase,
     val searchMasterTemplatesUseCase: CatalogSearchMasterTemplatesUseCase,
-    val copyTemplateToOrganizationUseCase: CatalogCopyTemplateToOrganizationUseCase,
+    val copyTemplateToOrganizationUseCase: com.hermes.application.catalog.CatalogCopyTemplateToOrganizationUseCase,
     val searchOrganizationItemsUseCase: CatalogSearchOrganizationItemsUseCase,
     val updateLocalItemUseCase: CatalogUpdateLocalItemUseCase,
     val disableLocalItemUseCase: CatalogDisableLocalItemUseCase,
@@ -64,4 +64,5 @@ data class CatalogModule(
     val requestMoreInfoUseCase: CatalogRequestMoreInfoUseCase,
     val listAuditEventsUseCase: CatalogListAuditEventsUseCase,
     val listPriceHistoryUseCase: CatalogListPriceHistoryUseCase,
+    val seedInitialCatalogUseCase: SeedInitialCatalogUseCase,
 )
