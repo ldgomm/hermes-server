@@ -9,6 +9,7 @@ import java.security.KeyStore
 import java.security.MessageDigest
 import java.security.cert.X509Certificate
 import java.time.ZoneOffset
+import java.util.Enumeration
 
 class Pkcs12CertificateInspector : SignatureCertificateInspector {
     override fun inspectPkcs12(
@@ -48,7 +49,7 @@ class Pkcs12CertificateInspector : SignatureCertificateInspector {
     }
 }
 
-private fun <T> java.util.Enumeration<T>.toList(): List<T> {
+private fun <T> Enumeration<T>.toList(): List<T> {
     val result = mutableListOf<T>()
     while (hasMoreElements()) result += nextElement()
     return result

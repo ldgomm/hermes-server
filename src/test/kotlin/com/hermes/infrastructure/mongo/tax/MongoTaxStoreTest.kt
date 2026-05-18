@@ -55,7 +55,7 @@ class MongoTaxStoreTest {
 
         val raw = database.getCollection(MongoCollectionNames.TAX_RATES)
             .find(Document("code", rate.code))
-            .first()
+            .first() ?: error("Expected persisted tax rate document.")
 
         assertTrue(raw["rate"] is Decimal128)
     }

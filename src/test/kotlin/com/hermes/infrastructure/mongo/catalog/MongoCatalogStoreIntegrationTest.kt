@@ -317,7 +317,7 @@ class MongoCatalogStoreIntegrationTest {
             .find(Document("module", "catalog"))
             .first()
         assertNotNull(rawAudit)
-        assertEquals("catalog", rawAudit!!.getString("module"))
+        assertEquals("catalog", rawAudit.getString("module"))
         assertEquals("catalog", rawAudit.getString("entityType"))
         assertEquals("ocat_1", rawAudit.getString("entityId"))
     }

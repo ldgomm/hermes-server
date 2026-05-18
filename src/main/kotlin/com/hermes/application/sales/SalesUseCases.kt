@@ -18,6 +18,7 @@ class CreateQuickSaleUseCase(
     private val idGenerator: SalesIdGenerator,
     private val auditLogger: SalesAuditLogger = NoopSalesAuditLogger,
     private val clock: Clock = Clock.systemUTC(),
+    private val persistenceGuard: SalePersistenceGuard = SalePersistenceGuard(),
 ) {
     fun execute(command: CreateQuickSaleCommand): SaleResult {
         PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.SALES_CREATE)
@@ -54,6 +55,7 @@ class CreateQuickSaleUseCase(
             sale = sale.confirm(command.occurredAt)
         }
 
+        persistenceGuard.assertReadyToPersist(sale)
         saleRepository.create(sale)
         auditLogger.log(
             SalesAuditEvent(
@@ -65,6 +67,8 @@ class CreateQuickSaleUseCase(
                     "saleNumber" to sale.saleNumber,
                     "status" to sale.operationalStatus.name,
                     "itemCount" to sale.items.size.toString(),
+                    "subtotal" to sale.totals.subtotal.amount.toPlainString(),
+                    "taxTotal" to sale.totals.taxTotal.amount.toPlainString(),
                     "grandTotal" to sale.total.amount.toPlainString(),
                 ),
                 createdAt = Instant.now(clock),
@@ -79,6 +83,7 @@ class AddSaleItemUseCase(
     private val saleItemPreparationService: SaleItemPreparationService,
     private val auditLogger: SalesAuditLogger = NoopSalesAuditLogger,
     private val clock: Clock = Clock.systemUTC(),
+    private val persistenceGuard: SalePersistenceGuard = SalePersistenceGuard(),
 ) {
     fun execute(command: AddSaleItemCommand): SaleResult {
         PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.SALES_CREATE)
@@ -95,6 +100,7 @@ class AddSaleItemUseCase(
             lines = listOf(command.item),
         ).single()
         val updated = sale.addItem(item, Instant.now(clock))
+        persistenceGuard.assertReadyToPersist(updated)
         saleRepository.update(updated)
         auditLogger.log(
             SalesAuditEvent(
@@ -102,7 +108,11 @@ class AddSaleItemUseCase(
                 actorUserId = command.actorUserId,
                 organizationId = command.organizationId,
                 targetId = sale.id,
-                after = mapOf("saleItemId" to item.id, "catalogItemId" to item.catalogItemId),
+                after = mapOf(
+                    "saleItemId" to item.id,
+                    "catalogItemId" to item.catalogItemId,
+                    "grandTotal" to updated.total.amount.toPlainString(),
+                ),
                 createdAt = Instant.now(clock),
             )
         )
@@ -132,7 +142,7 @@ class GetSaleUseCase(
     }
 }
 
-class SearchSalesUseCase( //Redeclaration: class SearchSalesUseCase : Any
+class SearchSalesUseCase(
     private val saleRepository: OperationalSaleRepository,
     private val auditLogger: SalesAuditLogger = NoopSalesAuditLogger,
     private val clock: Clock = Clock.systemUTC(),
@@ -167,6 +177,7 @@ class ChangeSaleStatusUseCase(
     private val saleRepository: OperationalSaleRepository,
     private val auditLogger: SalesAuditLogger = NoopSalesAuditLogger,
     private val clock: Clock = Clock.systemUTC(),
+    private val persistenceGuard: SalePersistenceGuard = SalePersistenceGuard(),
 ) {
     fun execute(command: ChangeSaleStatusCommand): SaleResult {
         val permission = if (command.targetStatus == SaleOperationalStatus.CLOSED) {
@@ -184,6 +195,7 @@ class ChangeSaleStatusUseCase(
         } else {
             sale.transitionTo(command.targetStatus, Instant.now(clock))
         }
+        persistenceGuard.assertReadyToPersist(updated)
         saleRepository.update(updated)
         auditLogger.log(
             SalesAuditEvent(
@@ -205,6 +217,7 @@ class ChangeSaleItemStatusUseCase(
     private val saleRepository: OperationalSaleRepository,
     private val auditLogger: SalesAuditLogger = NoopSalesAuditLogger,
     private val clock: Clock = Clock.systemUTC(),
+    private val persistenceGuard: SalePersistenceGuard = SalePersistenceGuard(),
 ) {
     fun execute(command: ChangeSaleItemStatusCommand): SaleResult {
         PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.SALES_ITEMS_CHANGE_STATUS)
@@ -219,6 +232,7 @@ class ChangeSaleItemStatusUseCase(
             updatedAt = Instant.now(clock),
         )
         val updatedItem = updated.items.first { it.id == command.saleItemId }
+        persistenceGuard.assertReadyToPersist(updated)
         saleRepository.update(updated)
         auditLogger.log(
             SalesAuditEvent(
@@ -240,6 +254,7 @@ class CancelSaleUseCase(
     private val saleRepository: OperationalSaleRepository,
     private val auditLogger: SalesAuditLogger = NoopSalesAuditLogger,
     private val clock: Clock = Clock.systemUTC(),
+    private val persistenceGuard: SalePersistenceGuard = SalePersistenceGuard(),
 ) {
     fun execute(command: CancelSaleCommand): SaleResult {
         val sale = saleRepository.findById(command.organizationId, command.saleId)
@@ -252,6 +267,7 @@ class CancelSaleUseCase(
         PermissionRules.assertCanPerform(command.actorEffectivePermissions, permission)
         val reason = command.reason.required("Sale cancellation reason")
         val updated = sale.transitionTo(SaleOperationalStatus.CANCELED, Instant.now(clock))
+        persistenceGuard.assertReadyToPersist(updated)
         saleRepository.update(updated)
         auditLogger.log(
             SalesAuditEvent(
