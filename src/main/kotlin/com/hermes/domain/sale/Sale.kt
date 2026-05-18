@@ -91,6 +91,24 @@ data class Sale private constructor(
         )
     }
 
+    fun changeItemStatus(itemId: String, targetStatus: SaleItemStatus, updatedAt: Instant): Sale {
+        val item = items.firstOrNull { it.id == itemId }
+            ?: throw DomainRuleViolation("Sale item does not exist.")
+
+        val updatedItem = when (targetStatus) {
+            SaleItemStatus.PENDING -> throw DomainRuleViolation("Sale item cannot return to pending status.")
+            SaleItemStatus.IN_PROGRESS -> item.start()
+            SaleItemStatus.READY -> item.markReady()
+            SaleItemStatus.DELIVERED -> item.deliver()
+            SaleItemStatus.CANCELED -> item.cancel()
+        }
+
+        return copy(
+            items = items.map { if (it.id == itemId) updatedItem else it },
+            updatedAt = updatedAt,
+        )
+    }
+
     fun confirm(updatedAt: Instant): Sale {
         if (activeItems.isEmpty()) {
             throw DomainRuleViolation("Cannot confirm a sale without active items.")
@@ -179,5 +197,41 @@ data class Sale private constructor(
                 updatedAt = createdAt,
             )
         }
+
+        fun restore(
+            id: String,
+            organizationId: String,
+            branchId: String,
+            activityId: String,
+            saleNumber: String?,
+            saleType: SaleType,
+            workflowMode: SaleWorkflowMode,
+            customerId: String?,
+            customerSnapshot: CustomerSnapshot,
+            items: List<SaleItem>,
+            payments: List<Payment> = emptyList(),
+            operationalStatus: SaleOperationalStatus,
+            dueAt: Instant?,
+            cashSessionId: String?,
+            createdAt: Instant,
+            updatedAt: Instant,
+        ): Sale = Sale(
+            id = id,
+            organizationId = organizationId,
+            branchId = branchId,
+            activityId = activityId,
+            saleNumber = saleNumber?.trim()?.takeIf { it.isNotBlank() },
+            saleType = saleType,
+            workflowMode = workflowMode,
+            customerId = customerId?.trim()?.takeIf { it.isNotBlank() },
+            customerSnapshot = customerSnapshot,
+            items = items,
+            payments = payments,
+            operationalStatus = operationalStatus,
+            dueAt = dueAt,
+            cashSessionId = cashSessionId?.trim()?.takeIf { it.isNotBlank() },
+            createdAt = createdAt,
+            updatedAt = updatedAt,
+        )
     }
 }
