@@ -189,7 +189,6 @@ class ReservationSchedulingGuard(
                 violations = emptyList(),
             )
         }
-
         val sameResourceReservations = candidates.filter { it.resourceId == resourceId }
         reservedPartySize = sameResourceReservations.sumOf { it.partySize }
 
@@ -205,20 +204,22 @@ class ReservationSchedulingGuard(
             )
         }
 
-        // Para recursos específicos, el conflicto real del recurso manda.
-        // No agregamos el conflicto sintético "capacity" cuando ya sabemos qué reserva bloquea el recurso.
-        val remainingCapacity = capacityLimit - reservedPartySize
-        if (conflicts.isEmpty() && requestedPartySize > remainingCapacity) {
-            conflicts += ReservationScheduleConflict(
-                reservationId = "capacity",
-                resourceId = resourceId,
-                startAt = command.startAt,
-                endAt = command.endAt,
-                partySize = requestedPartySize,
-                status = ReservationStatus.SCHEDULED,
-                reason = "Requested party size exceeds remaining resource capacity. Limit=$capacityLimit, reserved=$reservedPartySize, requested=$requestedPartySize.",
-            )
-        }
+        /**
+         * Important:
+         *
+         * For a specific resource, defaultResourceCapacity means:
+         * "how many simultaneous reservations can use this resource",
+         * not "how many people can be inside the reservation".
+         *
+         * Example:
+         * - quad_1 can have only one reservation at 11:00.
+         * - that reservation can still have partySize = 2.
+         *
+         * Passenger/person capacity must be modeled later as resource metadata,
+         * not inferred from defaultResourceCapacity.
+         */
+        val reservedResourceSlots = sameResourceReservations.size
+        val remainingCapacity = (capacityLimit - reservedResourceSlots).coerceAtLeast(0)
 
         return ReservationAvailabilityResult(
             available = conflicts.isEmpty(),
@@ -231,7 +232,7 @@ class ReservationSchedulingGuard(
             requestedPartySize = requestedPartySize,
             capacityLimit = capacityLimit,
             reservedPartySize = reservedPartySize,
-            remainingCapacity = remainingCapacity.coerceAtLeast(0),
+            remainingCapacity = remainingCapacity,
             conflicts = conflicts,
             violations = emptyList(),
         )
