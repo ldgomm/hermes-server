@@ -6,13 +6,6 @@ import com.hermes.domain.shared.DomainRuleViolation
 import java.time.Duration
 import java.time.Instant
 
-/**
- * Fase 8.5 — agenda/capacidad básica para reservas y servicios.
- *
- * Esta capa no intenta ser un motor avanzado de calendarios. Es una compuerta
- * operacional mínima para impedir reservas en pasado, rangos inválidos,
- * solapamientos de recursos y sobrecapacidad básica por actividad.
- */
 data class ReservationSchedulingRules(
     val maxDaysAhead: Long = 365,
     val maxReservationDuration: Duration = Duration.ofHours(12),
@@ -29,7 +22,7 @@ data class ReservationSchedulingRules(
         require(!minReservationDuration.isZero && !minReservationDuration.isNegative) {
             "minReservationDuration must be positive."
         }
-        require(!minReservationDuration.minus(maxReservationDuration).isPositive()) {
+        require(minReservationDuration <= maxReservationDuration) {
             "minReservationDuration cannot be greater than maxReservationDuration."
         }
         require(defaultActivityCapacity >= 1) { "defaultActivityCapacity must be at least 1." }
@@ -66,8 +59,12 @@ data class ReservationAvailabilityResult(
 ) {
     fun assertAvailable() {
         if (!available) {
-            val details = (violations + conflicts.map { it.reason }).distinct().joinToString("; ")
-            throw DomainRuleViolation("Reservation slot is not available${if (details.isBlank()) "." else ": $details."}")
+            val details = (violations + conflicts.map { it.reason })
+                .distinct()
+                .joinToString("; ")
+            throw DomainRuleViolation(
+                "Reservation slot is not available${if (details.isBlank()) "." else ": $details."}"
+            )
         }
     }
 }
@@ -93,6 +90,7 @@ class ReservationSchedulingGuard(
         val activityId = command.activityId.requiredScheduling("Reservation activity id")
         val resourceId = command.resourceId?.trim()?.takeIf { it.isNotBlank() }
         val excludeReservationId = command.excludeReservationId?.trim()?.takeIf { it.isNotBlank() }
+        val requestedPartySize = command.partySize.coerceAtLeast(0)
 
         if (!command.endAt.isAfter(command.startAt)) {
             violations += "Reservation end must be after start."
@@ -126,7 +124,7 @@ class ReservationSchedulingGuard(
                 resourceId = resourceId,
                 startAt = command.startAt,
                 endAt = command.endAt,
-                requestedPartySize = command.partySize,
+                requestedPartySize = requestedPartySize,
                 capacityLimit = capacityLimit(resourceId),
                 reservedPartySize = 0,
                 remainingCapacity = 0,
@@ -154,18 +152,48 @@ class ReservationSchedulingGuard(
             .filter { it.overlaps(command.startAt, command.endAt) }
             .toList()
 
-        val resourceConflicts = if (resourceId == null) {
-            emptyList()
-        } else {
-            candidates.filter { it.resourceId == resourceId }
+        val capacityLimit = capacityLimit(resourceId)
+
+        val conflicts = mutableListOf<ReservationScheduleConflict>()
+        val reservedPartySize: Int
+
+        if (resourceId == null) {
+            reservedPartySize = candidates.sumOf { it.partySize }
+            val remainingCapacity = capacityLimit - reservedPartySize
+
+            if (requestedPartySize > remainingCapacity) {
+                conflicts += ReservationScheduleConflict(
+                    reservationId = "capacity",
+                    resourceId = null,
+                    startAt = command.startAt,
+                    endAt = command.endAt,
+                    partySize = requestedPartySize,
+                    status = ReservationStatus.SCHEDULED,
+                    reason = "Requested party size exceeds remaining capacity. Limit=$capacityLimit, reserved=$reservedPartySize, requested=$requestedPartySize.",
+                )
+            }
+
+            return ReservationAvailabilityResult(
+                available = conflicts.isEmpty(),
+                organizationId = organizationId,
+                branchId = branchId,
+                activityId = activityId,
+                resourceId = null,
+                startAt = command.startAt,
+                endAt = command.endAt,
+                requestedPartySize = requestedPartySize,
+                capacityLimit = capacityLimit,
+                reservedPartySize = reservedPartySize,
+                remainingCapacity = remainingCapacity.coerceAtLeast(0),
+                conflicts = conflicts,
+                violations = emptyList(),
+            )
         }
 
-        val capacityLimit = capacityLimit(resourceId)
-        val reservedPartySize = candidates.sumOf { it.partySize }
-        val requestedPartySize = command.partySize.coerceAtLeast(0)
-        val remainingCapacity = capacityLimit - reservedPartySize
+        val sameResourceReservations = candidates.filter { it.resourceId == resourceId }
+        reservedPartySize = sameResourceReservations.sumOf { it.partySize }
 
-        val conflicts = resourceConflicts.map {
+        conflicts += sameResourceReservations.map {
             ReservationScheduleConflict(
                 reservationId = it.id,
                 resourceId = it.resourceId,
@@ -175,9 +203,12 @@ class ReservationSchedulingGuard(
                 status = it.status,
                 reason = "Resource is already reserved in the requested time range.",
             )
-        }.toMutableList()
+        }
 
-        if (requestedPartySize > remainingCapacity) {
+        // Para recursos específicos, el conflicto real del recurso manda.
+        // No agregamos el conflicto sintético "capacity" cuando ya sabemos qué reserva bloquea el recurso.
+        val remainingCapacity = capacityLimit - reservedPartySize
+        if (conflicts.isEmpty() && requestedPartySize > remainingCapacity) {
             conflicts += ReservationScheduleConflict(
                 reservationId = "capacity",
                 resourceId = resourceId,
@@ -185,12 +216,12 @@ class ReservationSchedulingGuard(
                 endAt = command.endAt,
                 partySize = requestedPartySize,
                 status = ReservationStatus.SCHEDULED,
-                reason = "Requested party size exceeds remaining capacity. Limit=$capacityLimit, reserved=$reservedPartySize, requested=$requestedPartySize.",
+                reason = "Requested party size exceeds remaining resource capacity. Limit=$capacityLimit, reserved=$reservedPartySize, requested=$requestedPartySize.",
             )
         }
 
         return ReservationAvailabilityResult(
-            available = violations.isEmpty() && conflicts.isEmpty(),
+            available = conflicts.isEmpty(),
             organizationId = organizationId,
             branchId = branchId,
             activityId = activityId,
@@ -202,7 +233,7 @@ class ReservationSchedulingGuard(
             reservedPartySize = reservedPartySize,
             remainingCapacity = remainingCapacity.coerceAtLeast(0),
             conflicts = conflicts,
-            violations = violations,
+            violations = emptyList(),
         )
     }
 
@@ -228,5 +259,3 @@ private fun Reservation.overlaps(startAt: Instant, endAt: Instant): Boolean =
 
 private fun String.requiredScheduling(label: String): String =
     trim().takeIf { it.isNotBlank() } ?: throw DomainRuleViolation("$label cannot be blank.")
-
-private fun Duration.isPositive(): Boolean = !isZero && !isNegative

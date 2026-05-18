@@ -4,6 +4,7 @@ import com.hermes.domain.money.Money
 import com.hermes.domain.shared.DomainRuleViolation
 import java.time.Instant
 
+@ConsistentCopyVisibility
 data class CashMovement private constructor(
     val id: String,
     val cashSessionId: String,

@@ -3,6 +3,7 @@ package com.hermes.domain.signature
 import com.hermes.domain.shared.DomainRuleViolation
 import java.time.Instant
 
+@ConsistentCopyVisibility
 data class ElectronicSignature private constructor(
     val id: String,
     val organizationId: String,

@@ -5,11 +5,7 @@ import com.hermes.domain.reservation.Reservation
 import com.hermes.domain.reservation.ReservationStatus
 import com.hermes.domain.sale.CustomerSnapshot
 import com.hermes.domain.shared.DomainRuleViolation
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 class ReservationSchedulingGuardTest {
     @Test
@@ -121,10 +117,27 @@ class ReservationSchedulingUseCasesTest {
     }
 
     @Test
-    fun `reschedule rejects overlapping resource`() {
+    fun `reschedule rejects overlapping same resource`() {
         val repository = InMemoryOperationalReservationRepository()
-        repository.create(existingReservation(id = "res_1", resourceId = "quad_1"))
-        repository.create(existingReservation(id = "res_2", resourceId = "quad_2", startOffsetSeconds = 7_200, endOffsetSeconds = 10_800))
+
+        repository.create(
+            existingReservation(
+                id = "res_1",
+                resourceId = "quad_1",
+                startOffsetSeconds = 3_600,
+                endOffsetSeconds = 5_400,
+            )
+        )
+
+        repository.create(
+            existingReservation(
+                id = "res_2",
+                resourceId = "quad_1",
+                startOffsetSeconds = 7_200,
+                endOffsetSeconds = 10_800,
+            )
+        )
+
         val guard = ReservationSchedulingGuard(repository)
         val useCase = RescheduleReservationUseCase(
             reservationRepository = repository,
@@ -132,7 +145,7 @@ class ReservationSchedulingUseCasesTest {
             clock = SalesTestClock,
         )
 
-        assertFailsWith<DomainRuleViolation> {
+        val error = assertFailsWith<DomainRuleViolation> {
             useCase.execute(
                 RescheduleReservationCommand(
                     organizationId = "org_1",
@@ -145,6 +158,8 @@ class ReservationSchedulingUseCasesTest {
                 )
             )
         }
+
+        assertTrue(error.message.orEmpty().contains("not available"))
     }
 }
 

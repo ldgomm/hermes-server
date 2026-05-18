@@ -93,7 +93,6 @@ class ChangeReservationStatusUseCase(
             ReservationStatus.IN_PROGRESS -> reservation.start(now)
             ReservationStatus.COMPLETED -> reservation.complete(now)
             ReservationStatus.CANCELED -> reservation.cancel(now)
-            else -> throw DomainRuleViolation("Reservation status transition is not supported by this use case: ${command.targetStatus}.")
         }
 
         reservationRepository.update(updated)
