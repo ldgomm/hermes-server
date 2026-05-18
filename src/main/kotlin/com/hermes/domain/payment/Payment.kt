@@ -4,6 +4,9 @@ import com.hermes.domain.money.Money
 import com.hermes.domain.shared.DomainRuleViolation
 import java.time.Instant
 
+/**
+ * One payment event. It is not the aggregate payment status of a Sale.
+ */
 data class Payment private constructor(
     val id: String,
     val organizationId: String,
@@ -33,7 +36,6 @@ data class Payment private constructor(
         if (status != PaymentLifecycleStatus.CONFIRMED) {
             throw DomainRuleViolation("Only a confirmed payment can be allocated.")
         }
-
         return copy(status = PaymentLifecycleStatus.ALLOCATED)
     }
 
@@ -41,11 +43,9 @@ data class Payment private constructor(
         if (status in setOf(PaymentLifecycleStatus.ALLOCATED, PaymentLifecycleStatus.REVERSED)) {
             throw DomainRuleViolation("Allocated or reversed payments cannot be voided.")
         }
-
         if (status == PaymentLifecycleStatus.VOIDED) {
             throw DomainRuleViolation("Payment is already voided.")
         }
-
         return copy(status = PaymentLifecycleStatus.VOIDED)
     }
 
@@ -53,7 +53,6 @@ data class Payment private constructor(
         if (status !in setOf(PaymentLifecycleStatus.CONFIRMED, PaymentLifecycleStatus.ALLOCATED)) {
             throw DomainRuleViolation("Only confirmed or allocated payments can be reversed.")
         }
-
         return copy(status = PaymentLifecycleStatus.REVERSED)
     }
 
@@ -67,18 +66,38 @@ data class Payment private constructor(
             paidAt: Instant,
             reference: String? = null,
             notes: String? = null,
-        ): Payment {
-            return Payment(
-                id = id.trim(),
-                organizationId = organizationId.trim(),
-                saleId = saleId.trim(),
-                amount = amount,
-                method = method,
-                status = PaymentLifecycleStatus.CONFIRMED,
-                paidAt = paidAt,
-                reference = reference?.trim()?.takeIf { it.isNotBlank() },
-                notes = notes?.trim()?.takeIf { it.isNotBlank() },
-            )
-        }
+        ): Payment = Payment(
+            id = id.trim(),
+            organizationId = organizationId.trim(),
+            saleId = saleId.trim(),
+            amount = amount,
+            method = method,
+            status = PaymentLifecycleStatus.CONFIRMED,
+            paidAt = paidAt,
+            reference = reference?.trim()?.takeIf { it.isNotBlank() },
+            notes = notes?.trim()?.takeIf { it.isNotBlank() },
+        )
+
+        fun restore(
+            id: String,
+            organizationId: String,
+            saleId: String,
+            amount: Money,
+            method: PaymentMethod,
+            status: PaymentLifecycleStatus,
+            paidAt: Instant,
+            reference: String? = null,
+            notes: String? = null,
+        ): Payment = Payment(
+            id = id.trim(),
+            organizationId = organizationId.trim(),
+            saleId = saleId.trim(),
+            amount = amount,
+            method = method,
+            status = status,
+            paidAt = paidAt,
+            reference = reference?.trim()?.takeIf { it.isNotBlank() },
+            notes = notes?.trim()?.takeIf { it.isNotBlank() },
+        )
     }
 }

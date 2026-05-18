@@ -10,6 +10,8 @@ import com.hermes.backend.health.HealthCheck
 import com.hermes.backend.health.MinioHealthCheck
 import com.hermes.backend.health.MongoHealthCheck
 import com.hermes.backend.health.RedisHealthCheck
+import com.hermes.backend.payments.PaymentsModule
+import com.hermes.backend.payments.PaymentsModuleFactory
 import com.hermes.backend.sales.ReservationSchedulingModule
 import com.hermes.backend.sales.ReservationSchedulingModuleFactory
 import com.hermes.backend.sales.SalesModule
@@ -30,6 +32,7 @@ interface AppResources : Closeable {
     val catalogModule: CatalogModule
     val salesModule: SalesModule
     val reservationSchedulingModule: ReservationSchedulingModule
+    val paymentsModule: PaymentsModule
 }
 
 class DefaultAppResources private constructor(
@@ -42,6 +45,7 @@ class DefaultAppResources private constructor(
     override val catalogModule: CatalogModule,
     override val salesModule: SalesModule,
     override val reservationSchedulingModule: ReservationSchedulingModule,
+    override val paymentsModule: PaymentsModule,
 ) : AppResources {
     companion object {
         fun start(config: AppConfig): DefaultAppResources {
@@ -64,6 +68,7 @@ class DefaultAppResources private constructor(
             val catalogModule = CatalogModuleFactory.fromMongo(database = mongoDatabase)
             val salesModule = SalesModuleFactory.fromMongo(database = mongoDatabase)
             val reservationSchedulingModule = ReservationSchedulingModuleFactory.fromMongo(database = mongoDatabase)
+            val paymentsModule = PaymentsModuleFactory.fromMongo(client = mongoClient, database = mongoDatabase)
 
             return DefaultAppResources(
                 mongoClient = mongoClient,
@@ -75,6 +80,7 @@ class DefaultAppResources private constructor(
                 catalogModule = catalogModule,
                 salesModule = salesModule,
                 reservationSchedulingModule = reservationSchedulingModule,
+                paymentsModule = paymentsModule,
             )
         }
     }

@@ -4,8 +4,12 @@ import java.time.Instant
 
 enum class PaymentAuditAction {
     PAYMENT_REGISTERED,
+    CASH_SESSION_OPENED,
+    CASH_SESSION_CLOSING_STARTED,
+    CASH_SESSION_CLOSED,
     CASH_MOVEMENT_CREATED,
     RECEIVABLE_CREATED,
+    RECEIVABLE_COLLECTION_REGISTERED,
 }
 
 data class PaymentAuditEvent(
@@ -16,6 +20,7 @@ data class PaymentAuditEvent(
     val saleId: String?,
     val before: Map<String, String?> = emptyMap(),
     val after: Map<String, String?> = emptyMap(),
+    val reason: String? = null,
     val createdAt: Instant,
 )
 

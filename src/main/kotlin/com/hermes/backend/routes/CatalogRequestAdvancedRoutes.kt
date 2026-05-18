@@ -2,33 +2,17 @@ package com.hermes.backend.routes
 
 import com.hermes.application.catalog.CatalogListAdminRequestsCommand
 import com.hermes.application.catalog.CatalogListOrganizationRequestsCommand
-import com.hermes.backend.auth.AuthModule
-import com.hermes.backend.auth.hermesAuthContext
-import com.hermes.backend.auth.hermesAuthenticated
-import com.hermes.backend.auth.hermesRequiresAnyPermission
-import com.hermes.backend.auth.hermesRequiresPermission
-import com.hermes.backend.catalog.CatalogApproveRequestAsTemplateRequest
-import com.hermes.backend.catalog.CatalogLinkRequestToExistingTemplateRequest
-import com.hermes.backend.catalog.CatalogModule
-import com.hermes.backend.catalog.CatalogRejectRequestRequest
-import com.hermes.backend.catalog.CatalogRequestMoreInfoRequest
-import com.hermes.backend.catalog.toAdvancedResponse
-import com.hermes.backend.catalog.toCommand
-import com.hermes.backend.catalog.toResponse
+import com.hermes.backend.auth.*
+import com.hermes.backend.catalog.*
 import com.hermes.domain.catalog.CatalogItemRequestStatus
 import com.hermes.domain.catalog.CatalogItemType
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.shared.DomainRuleViolation
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationCall
-import io.ktor.server.request.receive
-import io.ktor.server.response.respond
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
-import io.ktor.server.routing.route
-import io.ktor.server.routing.routing
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 
 fun Application.configureCatalogRequestAdvancedRoutes(authModule: AuthModule, catalogModule: CatalogModule) {
     routing { catalogRequestAdvancedRoutes(authModule, catalogModule) }
@@ -51,7 +35,11 @@ fun Route.catalogRequestAdvancedRoutes(authModule: AuthModule, catalogModule: Ca
                             actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
                             organizationId = call.request.queryParameters["organizationId"],
                             statuses = call.catalogRequestStatuses(),
-                            requestedType = call.request.queryParameters["type"]?.let { enumValueOf<CatalogItemType>(it.trim().uppercase()) },
+                            requestedType = call.request.queryParameters["type"]?.let {
+                                enumValueOf<CatalogItemType>(
+                                    it.trim().uppercase()
+                                )
+                            },
                             query = call.request.queryParameters["query"],
                             limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 100,
                         )
@@ -121,7 +109,12 @@ fun Route.catalogRequestAdvancedRoutes(authModule: AuthModule, catalogModule: Ca
             effectivePermissionResolverUseCase = authModule.effectivePermissionResolverUseCase,
             requireOrganization = true,
         ) {
-            hermesRequiresAnyPermission(setOf(PermissionCatalog.CATALOG_LOCAL_VIEW, PermissionCatalog.CATALOG_LOCAL_REQUEST_NEW_ITEM)) {
+            hermesRequiresAnyPermission(
+                setOf(
+                    PermissionCatalog.CATALOG_LOCAL_VIEW,
+                    PermissionCatalog.CATALOG_LOCAL_REQUEST_NEW_ITEM
+                )
+            ) {
                 get {
                     val context = call.hermesAuthContext()
                     val organizationId = call.requiredCatalogRequestOrganizationId()
@@ -132,7 +125,11 @@ fun Route.catalogRequestAdvancedRoutes(authModule: AuthModule, catalogModule: Ca
                             actorUserId = context.userId,
                             actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
                             statuses = call.catalogRequestStatuses(),
-                            requestedType = call.request.queryParameters["type"]?.let { enumValueOf<CatalogItemType>(it.trim().uppercase()) },
+                            requestedType = call.request.queryParameters["type"]?.let {
+                                enumValueOf<CatalogItemType>(
+                                    it.trim().uppercase()
+                                )
+                            },
                             limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 100,
                         )
                     )
@@ -152,7 +149,8 @@ private fun ApplicationCall.catalogRequestStatuses(): Set<CatalogItemRequestStat
         ?.toSet()
         .orEmpty()
 
-private fun ApplicationCall.requiredCatalogRequestOrganizationId(): String = requiredCatalogRequestPath("organizationId")
+private fun ApplicationCall.requiredCatalogRequestOrganizationId(): String =
+    requiredCatalogRequestPath("organizationId")
 
 private fun ApplicationCall.requiredCatalogRequestPath(name: String): String =
     parameters[name]?.trim()?.takeIf { it.isNotBlank() }

@@ -1,51 +1,17 @@
 package com.hermes.backend.routes
 
-import com.hermes.application.catalog.AssignTaxProfileToCatalogItemCommand
-import com.hermes.application.catalog.CatalogChangeTemplateStatusCommand
-import com.hermes.application.catalog.CatalogDisableLocalItemCommand
-import com.hermes.application.catalog.CatalogGetCategoryCommand
-import com.hermes.application.catalog.CatalogGetFamilyCommand
-import com.hermes.application.catalog.CatalogGetOrganizationItemCommand
-import com.hermes.application.catalog.CatalogGetTemplateCommand
-import com.hermes.application.catalog.CatalogLookupOrganizationItemByCodeCommand
-import com.hermes.application.catalog.CatalogRemoveLocalItemCommand
-import com.hermes.application.catalog.CatalogSearchMasterTemplatesCommand
-import com.hermes.application.catalog.CatalogSearchOrganizationItemsCommand
-import com.hermes.backend.auth.AuthModule
-import com.hermes.backend.auth.hermesAuthContext
-import com.hermes.backend.auth.hermesAuthenticated
-import com.hermes.backend.auth.hermesRequiresAnyPermission
-import com.hermes.backend.auth.hermesRequiresPermission
-import com.hermes.backend.catalog.CatalogAssignTaxProfileRequest
-import com.hermes.backend.catalog.CatalogChangeTemplateStatusRequest
-import com.hermes.backend.catalog.CatalogCreateCategoryRequest
-import com.hermes.backend.catalog.CatalogCreateFamilyRequest
-import com.hermes.backend.catalog.CatalogCreatePlatformTemplateRequest
-import com.hermes.backend.catalog.CatalogCopyFromTemplateRequest
-import com.hermes.backend.catalog.CatalogDisableLocalItemRequest
-import com.hermes.backend.catalog.CatalogModule
-import com.hermes.backend.catalog.CatalogRemoveLocalItemRequest
-import com.hermes.backend.catalog.CatalogRequestNewItemRequest
-import com.hermes.backend.catalog.CatalogReviewRequestRequest
-import com.hermes.backend.catalog.CatalogUpdateCategoryRequest
-import com.hermes.backend.catalog.CatalogUpdateFamilyRequest
-import com.hermes.backend.catalog.CatalogUpdateLocalItemRequest
-import com.hermes.backend.catalog.CatalogUpdateTemplateRequest
-import com.hermes.backend.catalog.categorySearchCommand
-import com.hermes.backend.catalog.familySearchCommand
-import com.hermes.backend.catalog.toCommand
-import com.hermes.backend.catalog.toResponse
+import com.hermes.application.catalog.*
+import com.hermes.backend.auth.*
+import com.hermes.backend.catalog.*
 import com.hermes.domain.catalog.CatalogItemStatus
 import com.hermes.domain.catalog.CatalogItemType
 import com.hermes.domain.catalog.CatalogTemplateStatus
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.shared.DomainRuleViolation
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationCall
-import io.ktor.server.application.call
-import io.ktor.server.request.receive
-import io.ktor.server.response.respond
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
 fun Application.configureCatalogRoutes(authModule: AuthModule, catalogModule: CatalogModule) {
@@ -60,7 +26,12 @@ fun Route.catalogRoutes(authModule: AuthModule, catalogModule: CatalogModule) {
             effectivePermissionResolverUseCase = authModule.effectivePermissionResolverUseCase,
             requireOrganization = true,
         ) {
-            hermesRequiresAnyPermission(setOf(PermissionCatalog.CATALOG_MANAGE_MASTER, PermissionCatalog.CATALOG_LOCAL_VIEW)) {
+            hermesRequiresAnyPermission(
+                setOf(
+                    PermissionCatalog.CATALOG_MANAGE_MASTER,
+                    PermissionCatalog.CATALOG_LOCAL_VIEW
+                )
+            ) {
                 get("/categories") {
                     val context = call.hermesAuthContext()
                     val result = catalogModule.searchCategoriesUseCase.execute(
@@ -204,7 +175,10 @@ fun Route.catalogRoutes(authModule: AuthModule, catalogModule: CatalogModule) {
                             actorUserId = context.userId,
                             actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
                             templateId = call.requiredCatalogPath("templateId"),
-                            status = enumValueOf<CatalogTemplateStatus>((request.status ?: throw DomainRuleViolation("Template status is required.")).trim().uppercase()),
+                            status = enumValueOf<CatalogTemplateStatus>(
+                                (request.status ?: throw DomainRuleViolation("Template status is required.")).trim()
+                                    .uppercase()
+                            ),
                             reason = request.reason,
                         )
                     )
@@ -215,7 +189,13 @@ fun Route.catalogRoutes(authModule: AuthModule, catalogModule: CatalogModule) {
                     val context = call.hermesAuthContext()
                     val request = call.receive<CatalogChangeTemplateStatusRequest>()
                     val result = catalogModule.changeTemplateStatusUseCase.execute(
-                        CatalogChangeTemplateStatusCommand(context.userId, context.effectivePermissions?.permissions.orEmpty(), call.requiredCatalogPath("templateId"), CatalogTemplateStatus.ACTIVE, request.reason)
+                        CatalogChangeTemplateStatusCommand(
+                            context.userId,
+                            context.effectivePermissions?.permissions.orEmpty(),
+                            call.requiredCatalogPath("templateId"),
+                            CatalogTemplateStatus.ACTIVE,
+                            request.reason
+                        )
                     )
                     call.respond(HttpStatusCode.OK, result.template.toResponse())
                 }
@@ -224,7 +204,13 @@ fun Route.catalogRoutes(authModule: AuthModule, catalogModule: CatalogModule) {
                     val context = call.hermesAuthContext()
                     val request = call.receive<CatalogChangeTemplateStatusRequest>()
                     val result = catalogModule.changeTemplateStatusUseCase.execute(
-                        CatalogChangeTemplateStatusCommand(context.userId, context.effectivePermissions?.permissions.orEmpty(), call.requiredCatalogPath("templateId"), CatalogTemplateStatus.PAUSED, request.reason)
+                        CatalogChangeTemplateStatusCommand(
+                            context.userId,
+                            context.effectivePermissions?.permissions.orEmpty(),
+                            call.requiredCatalogPath("templateId"),
+                            CatalogTemplateStatus.PAUSED,
+                            request.reason
+                        )
                     )
                     call.respond(HttpStatusCode.OK, result.template.toResponse())
                 }
@@ -233,7 +219,13 @@ fun Route.catalogRoutes(authModule: AuthModule, catalogModule: CatalogModule) {
                     val context = call.hermesAuthContext()
                     val request = call.receive<CatalogChangeTemplateStatusRequest>()
                     val result = catalogModule.changeTemplateStatusUseCase.execute(
-                        CatalogChangeTemplateStatusCommand(context.userId, context.effectivePermissions?.permissions.orEmpty(), call.requiredCatalogPath("templateId"), CatalogTemplateStatus.ARCHIVED, request.reason)
+                        CatalogChangeTemplateStatusCommand(
+                            context.userId,
+                            context.effectivePermissions?.permissions.orEmpty(),
+                            call.requiredCatalogPath("templateId"),
+                            CatalogTemplateStatus.ARCHIVED,
+                            request.reason
+                        )
                     )
                     call.respond(HttpStatusCode.OK, result.template.toResponse())
                 }
@@ -318,7 +310,8 @@ fun Route.catalogRoutes(authModule: AuthModule, catalogModule: CatalogModule) {
                             actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
                             code = call.request.queryParameters["code"]
                                 ?: throw DomainRuleViolation("code query parameter is required."),
-                            includeInactive = call.request.queryParameters["includeInactive"]?.toBooleanStrictOrNull() ?: false,
+                            includeInactive = call.request.queryParameters["includeInactive"]?.toBooleanStrictOrNull()
+                                ?: false,
                         )
                     )
                     call.respond(HttpStatusCode.OK, result.toResponse())
@@ -347,7 +340,11 @@ fun Route.catalogRoutes(authModule: AuthModule, catalogModule: CatalogModule) {
                     call.assertCatalogOrganizationMatchesContext(organizationId)
                     val request = call.receive<CatalogCopyFromTemplateRequest>()
                     val result = catalogModule.copyTemplateToOrganizationUseCase.execute(
-                        request.toCommand(organizationId, context.userId, context.effectivePermissions?.permissions.orEmpty())
+                        request.toCommand(
+                            organizationId,
+                            context.userId,
+                            context.effectivePermissions?.permissions.orEmpty()
+                        )
                     )
                     call.respond(HttpStatusCode.Created, result.toResponse())
                 }
@@ -416,7 +413,12 @@ fun Route.catalogRoutes(authModule: AuthModule, catalogModule: CatalogModule) {
                 }
             }
 
-            hermesRequiresAnyPermission(setOf(PermissionCatalog.CATALOG_LOCAL_CHANGE_TAX_PROFILE, PermissionCatalog.TAX_PROFILES_ASSIGN_TO_ITEM)) {
+            hermesRequiresAnyPermission(
+                setOf(
+                    PermissionCatalog.CATALOG_LOCAL_CHANGE_TAX_PROFILE,
+                    PermissionCatalog.TAX_PROFILES_ASSIGN_TO_ITEM
+                )
+            ) {
                 post("/items/{catalogItemId}/tax-profile") {
                     val context = call.hermesAuthContext()
                     val organizationId = call.requiredCatalogOrganizationId()
@@ -443,7 +445,11 @@ fun Route.catalogRoutes(authModule: AuthModule, catalogModule: CatalogModule) {
                     call.assertCatalogOrganizationMatchesContext(organizationId)
                     val request = call.receive<CatalogRequestNewItemRequest>()
                     val result = catalogModule.requestNewItemUseCase.execute(
-                        request.toCommand(organizationId, context.userId, context.effectivePermissions?.permissions.orEmpty())
+                        request.toCommand(
+                            organizationId,
+                            context.userId,
+                            context.effectivePermissions?.permissions.orEmpty()
+                        )
                     )
                     call.respond(HttpStatusCode.Created, result.toResponse())
                 }

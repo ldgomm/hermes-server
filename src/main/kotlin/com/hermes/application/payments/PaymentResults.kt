@@ -13,3 +13,30 @@ data class RegisterPaymentResult(
     val cashMovement: CashMovement?,
     val receivable: Receivable?,
 )
+
+data class CashSessionResult(
+    val cashSession: CashSession,
+    val openingMovement: CashMovement? = null,
+)
+
+data class CashMovementResult(
+    val cashSession: CashSession,
+    val cashMovement: CashMovement,
+)
+
+data class CloseCashSessionResult(
+    val cashSession: CashSession,
+)
+
+data class ReceivableResult(
+    val receivable: Receivable,
+    val sale: Sale,
+)
+
+data class RegisterReceivableCollectionResult(
+    val receivable: Receivable,
+    val payment: Payment,
+    val sale: Sale,
+    val cashSession: CashSession?,
+    val cashMovement: CashMovement?,
+)

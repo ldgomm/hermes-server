@@ -7,37 +7,16 @@ import com.hermes.application.sales.GetReservationCommand
 import com.hermes.application.sales.GetSaleCommand
 import com.hermes.application.sales.SearchReservationsCommand
 import com.hermes.application.sales.SearchSalesCommand
-import com.hermes.backend.auth.AuthModule
-import com.hermes.backend.auth.hermesAuthContext
-import com.hermes.backend.auth.hermesAuthenticated
-import com.hermes.backend.auth.hermesRequiresAnyPermission
-import com.hermes.backend.auth.hermesRequiresPermission
-import com.hermes.backend.sales.ChangeSaleItemStatusRequest
-import com.hermes.backend.sales.ChangeSaleStatusRequest
-import com.hermes.backend.sales.CreateQuickSaleRequest
-import com.hermes.backend.sales.CreateReservationRequest
-import com.hermes.backend.sales.CreateSaleItemLineRequest
-import com.hermes.backend.sales.SaleReasonRequest
-import com.hermes.backend.sales.SalesModule
-import com.hermes.backend.sales.toAddCommand
-import com.hermes.backend.sales.toCancelCommand
-import com.hermes.backend.sales.toCloseCommand
-import com.hermes.backend.sales.toCommand
-import com.hermes.backend.sales.toResponse
+import com.hermes.backend.auth.*
+import com.hermes.backend.sales.*
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.sale.SaleOperationalStatus
 import com.hermes.domain.shared.DomainRuleViolation
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationCall
-import io.ktor.server.request.receive
-import io.ktor.server.response.respond
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.get
-import io.ktor.server.routing.patch
-import io.ktor.server.routing.post
-import io.ktor.server.routing.route
-import io.ktor.server.routing.routing
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import java.time.Instant
 
 fun Application.configureSalesRoutes(authModule: AuthModule, salesModule: SalesModule) {
@@ -205,7 +184,12 @@ fun Route.salesRoutes(
                     }
                 }
 
-                hermesRequiresAnyPermission(setOf(PermissionCatalog.SALES_CANCEL, PermissionCatalog.SALES_CANCEL_AFTER_PAYMENT)) {
+                hermesRequiresAnyPermission(
+                    setOf(
+                        PermissionCatalog.SALES_CANCEL,
+                        PermissionCatalog.SALES_CANCEL_AFTER_PAYMENT
+                    )
+                ) {
                     post("/{saleId}/cancel") {
                         val context = call.hermesAuthContext()
                         val organizationId = call.requiredSalesOrganizationId()

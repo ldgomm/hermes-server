@@ -1,29 +1,14 @@
 package com.hermes.backend.routes
 
-import com.hermes.backend.auth.AuthModule
-import com.hermes.backend.auth.hermesAuthContext
-import com.hermes.backend.auth.hermesAuthenticated
-import com.hermes.backend.auth.hermesRequiresAnyPermission
-import com.hermes.backend.auth.hermesRequiresPermission
-import com.hermes.backend.sales.ChangeReservationStatusRequest
-import com.hermes.backend.sales.CheckReservationAvailabilityRequest
-import com.hermes.backend.sales.RescheduleReservationRequest
-import com.hermes.backend.sales.ReservationSchedulingModule
-import com.hermes.backend.sales.toCommand
-import com.hermes.backend.sales.toResponse
+import com.hermes.backend.auth.*
+import com.hermes.backend.sales.*
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.shared.DomainRuleViolation
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationCall
-import io.ktor.server.application.call
-import io.ktor.server.request.receive
-import io.ktor.server.response.respond
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.patch
-import io.ktor.server.routing.post
-import io.ktor.server.routing.route
-import io.ktor.server.routing.routing
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 
 fun Application.configureReservationSchedulingRoutes(
     authModule: AuthModule,

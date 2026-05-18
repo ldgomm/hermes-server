@@ -150,9 +150,5 @@ fun Route.authRoutes(
 }
 
 private fun ApplicationCall.clientIpAddress(): String? =
-    request.header("X-Forwarded-For")
-        ?.split(',')
-        ?.firstOrNull()
-        ?.trim()
-        ?.takeIf { it.isNotBlank() }
+    request.header("X-Forwarded-For")?.split(',')?.firstOrNull()?.trim()?.takeIf { it.isNotBlank() }
         ?: request.header("X-Real-IP")?.trim()?.takeIf { it.isNotBlank() }

@@ -3,10 +3,14 @@ package com.hermes.infrastructure.mongo.sales
 import com.hermes.domain.document.DocumentStatus
 import com.hermes.domain.money.CurrencyCode
 import com.hermes.domain.money.Money
+import com.hermes.domain.payment.Payment
+import com.hermes.domain.payment.PaymentLifecycleStatus
+import com.hermes.domain.payment.PaymentMethod
 import com.hermes.domain.percentage.Percentage
 import com.hermes.domain.quantity.Quantity
 import com.hermes.domain.reservation.Reservation
 import com.hermes.domain.reservation.ReservationStatus
+import com.hermes.domain.reservation.ReservationStatus.*
 import com.hermes.domain.sale.*
 import com.hermes.infrastructure.mongo.MongoDocumentFields
 import com.hermes.infrastructure.mongo.mapping.MongoDecimalMapper
@@ -32,7 +36,8 @@ object MongoSalesMappers {
             .append("items", sale.items.map(::saleItemToDocument))
             .append("totals", saleTotalsToDocument(sale))
             .append("taxSummary", taxSummaryToDocument(sale))
-            .append("paymentRefs", emptyList<String>())
+            .append("payments", sale.payments.map(::paymentToDocument))
+            .append("paymentRefs", sale.payments.map { it.id })
             .append("documentRefs", emptyList<String>())
             .append("reservationRef", null)
             .append("cashSessionId", sale.cashSessionId)
@@ -56,6 +61,7 @@ object MongoSalesMappers {
             customerId = document.optionalString("customerId"),
             customerSnapshot = customerSnapshotFromDocument(document.optionalDocument("customerSnapshot")),
             items = document.documentList("items").map(::saleItemFromDocument),
+            payments = document.documentList("payments").map(::paymentFromDocument),
             operationalStatus = enumFromStorage(document.requiredString("operationalStatus")),
             dueAt = MongoInstantMapper.readOptional(document, "dueAt"),
             cashSessionId = document.optionalString("cashSessionId"),
@@ -139,6 +145,31 @@ object MongoSalesMappers {
                 SaleItemStatus.CANCELED -> item.cancel()
             }
         }
+
+
+    private fun paymentToDocument(payment: Payment): Document =
+        Document("id", payment.id)
+            .append("saleId", payment.saleId)
+            .append("organizationId", payment.organizationId)
+            .append("amount", moneyToDocument(payment.amount))
+            .append("method", payment.method.name.lowercase())
+            .append("status", payment.status.name.lowercase())
+            .append("paidAt", MongoInstantMapper.toDate(payment.paidAt))
+            .append("reference", payment.reference)
+            .append("notes", payment.notes)
+
+    private fun paymentFromDocument(document: Document): Payment =
+        Payment.restore(
+            id = document.requiredString("id"),
+            organizationId = document.requiredString("organizationId"),
+            saleId = document.requiredString("saleId"),
+            amount = moneyFromDocument(document.requiredDocument("amount")),
+            method = enumFromStorage<PaymentMethod>(document.requiredString("method")),
+            status = enumFromStorage<PaymentLifecycleStatus>(document.requiredString("status")),
+            paidAt = MongoInstantMapper.readRequired(document, "paidAt"),
+            reference = document.optionalString("reference"),
+            notes = document.optionalString("notes"),
+        )
 
     private fun customerSnapshotToDocument(snapshot: CustomerSnapshot): Document =
         Document("customerId", snapshot.customerId)
@@ -278,26 +309,26 @@ object MongoSalesMappers {
     }
 
     private fun reservationStatusToStorage(status: ReservationStatus): String = when (status) {
-        ReservationStatus.DRAFT -> "draft"
-        ReservationStatus.SCHEDULED -> "pending"
-        ReservationStatus.CONFIRMED -> "confirmed"
-        ReservationStatus.IN_PROGRESS -> "in_progress"
-        ReservationStatus.RESCHEDULED -> "pending"
-        ReservationStatus.COMPLETED -> "completed"
-        ReservationStatus.NO_SHOW -> "no_show"
-        ReservationStatus.CANCELED -> "canceled"
+        DRAFT -> "draft"
+        SCHEDULED -> "pending"
+        CONFIRMED -> "confirmed"
+        IN_PROGRESS -> "in_progress"
+        RESCHEDULED -> "pending"
+        COMPLETED -> "completed"
+        NO_SHOW -> "no_show"
+        CANCELED -> "canceled"
     }
 
     private fun reservationStatusFromStorage(raw: String): ReservationStatus = when (raw.trim().lowercase()) {
-        "draft" -> ReservationStatus.DRAFT
-        "pending", "scheduled" -> ReservationStatus.SCHEDULED
-        "confirmed" -> ReservationStatus.CONFIRMED
-        "in_progress" -> ReservationStatus.IN_PROGRESS
-        "rescheduled" -> ReservationStatus.RESCHEDULED
-        "completed" -> ReservationStatus.COMPLETED
-        "no_show" -> ReservationStatus.NO_SHOW
-        "canceled", "expired" -> ReservationStatus.CANCELED
-        else -> ReservationStatus.SCHEDULED
+        "draft" -> DRAFT
+        "pending", "scheduled" -> SCHEDULED
+        "confirmed" -> CONFIRMED
+        "in_progress" -> IN_PROGRESS
+        "rescheduled" -> RESCHEDULED
+        "completed" -> COMPLETED
+        "no_show" -> NO_SHOW
+        "canceled", "expired" -> CANCELED
+        else -> SCHEDULED
     }
 }
 

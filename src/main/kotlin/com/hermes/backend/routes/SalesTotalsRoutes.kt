@@ -10,16 +10,11 @@ import com.hermes.backend.sales.toCommand
 import com.hermes.backend.sales.toResponse
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.shared.DomainRuleViolation
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationCall
-import io.ktor.server.application.call
-import io.ktor.server.request.receive
-import io.ktor.server.response.respond
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.post
-import io.ktor.server.routing.route
-import io.ktor.server.routing.routing
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 
 fun Application.configureSalesTotalsRoutes(authModule: AuthModule, salesTotalsModule: SalesTotalsModule) {
     routing { salesTotalsRoutes(authModule, salesTotalsModule) }
