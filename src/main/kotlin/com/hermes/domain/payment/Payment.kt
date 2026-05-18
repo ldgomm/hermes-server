@@ -10,25 +10,30 @@ data class Payment private constructor(
     val saleId: String,
     val amount: Money,
     val method: PaymentMethod,
-    val status: PaymentLifecycleStatus, //Unresolved reference 'PaymentLifecycleStatus'.
+    val status: PaymentLifecycleStatus,
     val paidAt: Instant,
     val reference: String?,
     val notes: String?,
 ) {
     val isEffective: Boolean
-        get() = status.isEffective //Unresolved reference 'isEffective'.
+        get() = status.isEffective
 
     init {
         if (id.isBlank()) throw DomainRuleViolation("Payment id cannot be blank.")
         if (organizationId.isBlank()) throw DomainRuleViolation("Payment organization id cannot be blank.")
         if (saleId.isBlank()) throw DomainRuleViolation("Payment sale id cannot be blank.")
         if (amount.amount.signum() <= 0) throw DomainRuleViolation("Payment amount must be greater than zero.")
+
+        if (method.requiresExternalReference && reference.isNullOrBlank()) {
+            throw DomainRuleViolation("Payment method $method requires an external reference.")
+        }
     }
 
     fun allocate(): Payment {
-        if (status != PaymentLifecycleStatus.CONFIRMED) { //Unresolved reference 'PaymentLifecycleStatus'.
+        if (status != PaymentLifecycleStatus.CONFIRMED) {
             throw DomainRuleViolation("Only a confirmed payment can be allocated.")
         }
+
         return copy(status = PaymentLifecycleStatus.ALLOCATED)
     }
 
@@ -36,9 +41,11 @@ data class Payment private constructor(
         if (status in setOf(PaymentLifecycleStatus.ALLOCATED, PaymentLifecycleStatus.REVERSED)) {
             throw DomainRuleViolation("Allocated or reversed payments cannot be voided.")
         }
+
         if (status == PaymentLifecycleStatus.VOIDED) {
             throw DomainRuleViolation("Payment is already voided.")
         }
+
         return copy(status = PaymentLifecycleStatus.VOIDED)
     }
 
@@ -46,6 +53,7 @@ data class Payment private constructor(
         if (status !in setOf(PaymentLifecycleStatus.CONFIRMED, PaymentLifecycleStatus.ALLOCATED)) {
             throw DomainRuleViolation("Only confirmed or allocated payments can be reversed.")
         }
+
         return copy(status = PaymentLifecycleStatus.REVERSED)
     }
 
@@ -61,9 +69,9 @@ data class Payment private constructor(
             notes: String? = null,
         ): Payment {
             return Payment(
-                id = id,
-                organizationId = organizationId,
-                saleId = saleId,
+                id = id.trim(),
+                organizationId = organizationId.trim(),
+                saleId = saleId.trim(),
                 amount = amount,
                 method = method,
                 status = PaymentLifecycleStatus.CONFIRMED,

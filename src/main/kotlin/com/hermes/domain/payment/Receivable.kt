@@ -15,8 +15,10 @@ data class Receivable private constructor(
     val isVoided: Boolean,
     val isWrittenOff: Boolean,
     val createdAt: Instant,
-    val updatedAt: Instant
+    val updatedAt: Instant,
 ) {
+    val balanceDue: Money
+        get() = totalDue - paidAmount
 
     init {
         if (id.isBlank()) {
@@ -29,6 +31,14 @@ data class Receivable private constructor(
 
         if (saleId.isBlank()) {
             throw DomainRuleViolation("Receivable sale id cannot be blank.")
+        }
+
+        if (totalDue.amount.signum() <= 0) {
+            throw DomainRuleViolation("Receivable total due must be greater than zero.")
+        }
+
+        if (paidAmount.currency != totalDue.currency) {
+            throw DomainRuleViolation("Receivable paid amount currency must match total due currency.")
         }
 
         if (paidAmount > totalDue) {
@@ -47,13 +57,13 @@ data class Receivable private constructor(
             dueAt = dueAt,
             now = now,
             isVoided = isVoided,
-            isWrittenOff = isWrittenOff
+            isWrittenOff = isWrittenOff,
         )
     }
 
     fun registerCollection(
         amount: Money,
-        collectedAt: Instant
+        collectedAt: Instant,
     ): Receivable {
         if (isVoided) {
             throw DomainRuleViolation("Cannot collect a voided receivable.")
@@ -67,6 +77,10 @@ data class Receivable private constructor(
             throw DomainRuleViolation("Collection amount must be greater than zero.")
         }
 
+        if (amount.currency != totalDue.currency) {
+            throw DomainRuleViolation("Collection currency must match receivable currency.")
+        }
+
         val newPaidAmount = paidAmount + amount
 
         if (newPaidAmount > totalDue) {
@@ -75,7 +89,7 @@ data class Receivable private constructor(
 
         return copy(
             paidAmount = newPaidAmount,
-            updatedAt = collectedAt
+            updatedAt = collectedAt,
         )
     }
 
@@ -94,7 +108,7 @@ data class Receivable private constructor(
 
         return copy(
             isWrittenOff = true,
-            updatedAt = writtenOffAt
+            updatedAt = writtenOffAt,
         )
     }
 
@@ -113,7 +127,7 @@ data class Receivable private constructor(
 
         return copy(
             isVoided = true,
-            updatedAt = voidedAt
+            updatedAt = voidedAt,
         )
     }
 
@@ -125,12 +139,12 @@ data class Receivable private constructor(
             customerId: String?,
             totalDue: Money,
             dueAt: Instant?,
-            createdAt: Instant
+            createdAt: Instant,
         ): Receivable {
             return Receivable(
-                id = id,
-                organizationId = organizationId,
-                saleId = saleId,
+                id = id.trim(),
+                organizationId = organizationId.trim(),
+                saleId = saleId.trim(),
                 customerId = customerId?.trim()?.takeIf { it.isNotBlank() },
                 totalDue = totalDue,
                 paidAmount = Money.zero(totalDue.currency),
@@ -138,7 +152,7 @@ data class Receivable private constructor(
                 isVoided = false,
                 isWrittenOff = false,
                 createdAt = createdAt,
-                updatedAt = createdAt
+                updatedAt = createdAt,
             )
         }
     }
