@@ -45,7 +45,7 @@ class MongoSalesStoreIntegrationTest {
 
         val persisted = store.saleRepository.findById("org_1", "sale_1")
         assertNotNull(persisted)
-        assertEquals(sale.id, persisted!!.id)
+        assertEquals(sale.id, persisted.id)
         assertEquals(SaleOperationalStatus.CONFIRMED, persisted.operationalStatus)
         assertEquals(sale.totals.grandTotal, persisted.totals.grandTotal)
 
@@ -53,8 +53,8 @@ class MongoSalesStoreIntegrationTest {
             .find(Document("_id", "sale_1"))
             .first()
         assertNotNull(raw)
-        val totals = raw!!.get("totals") as Document
-        val grandTotal = totals.get("grandTotal") as Document
+        val totals = raw["totals"] as Document
+        val grandTotal = totals["grandTotal"] as Document
         assertTrue(grandTotal["amount"] is Decimal128)
     }
 
@@ -87,7 +87,7 @@ class MongoSalesStoreIntegrationTest {
 
         val persisted = store.reservationRepository.findById("org_1", "res_1")
         assertNotNull(persisted)
-        assertEquals(ReservationStatus.SCHEDULED, persisted!!.status)
+        assertEquals(ReservationStatus.SCHEDULED, persisted.status)
         assertEquals("sale_1", persisted.saleId)
 
         val result = store.reservationRepository.search(

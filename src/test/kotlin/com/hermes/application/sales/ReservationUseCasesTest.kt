@@ -40,7 +40,7 @@ class ReservationUseCasesTest {
         )
 
         assertNotNull(result.linkedSale)
-        assertEquals("sale_1", result.linkedSale!!.id)
+        assertEquals("sale_1", result.linkedSale.id)
         assertEquals("sale_1", result.reservation.saleId)
         assertEquals("res_1", result.reservation.id)
         assertEquals(2, fixture.auditLogger.events.size)

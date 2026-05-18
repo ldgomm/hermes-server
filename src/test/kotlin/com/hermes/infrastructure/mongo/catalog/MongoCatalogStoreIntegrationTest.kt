@@ -119,7 +119,7 @@ class MongoCatalogStoreIntegrationTest {
 
         val persisted = store.templateRepository.findById("tpl_cola")
         assertNotNull(persisted)
-        assertEquals("global_coca_500", persisted!!.globalCatalogId)
+        assertEquals("global_coca_500", persisted.globalCatalogId)
         assertTrue(store.templateRepository.existsByGlobalCatalogId("global_coca_500"))
 
         val byText = store.templateRepository.search(
@@ -258,11 +258,11 @@ class MongoCatalogStoreIntegrationTest {
 
         val byId = store.requestRepository.findById(request.id)
         assertNotNull(byId)
-        assertEquals("Cuy entero", byId!!.requestedName)
+        assertEquals("Cuy entero", byId.requestedName)
 
         val pending = store.requestRepository.findPendingByOrganizationAndName("org_1", "cuy entero")
         assertNotNull(pending)
-        assertEquals(request.id, pending!!.id)
+        assertEquals(request.id, pending.id)
 
         val reviewed = request.review(
             decision = com.hermes.domain.catalog.CatalogItemRequestDecision.APPROVE,
@@ -298,7 +298,7 @@ class MongoCatalogStoreIntegrationTest {
             .find(Document("_id", "cph_1"))
             .first()
         assertNotNull(rawPriceHistory)
-        assertEquals("org_1", rawPriceHistory!!.getString("organizationId"))
+        assertEquals("org_1", rawPriceHistory.getString("organizationId"))
 
         MongoCatalogAuditLogger(database).log(
             CatalogAuditEvent(

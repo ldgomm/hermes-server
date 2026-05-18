@@ -132,7 +132,7 @@ class GetSaleUseCase(
     }
 }
 
-class SearchSalesUseCase(
+class SearchSalesUseCase( //Redeclaration: class SearchSalesUseCase : Any
     private val saleRepository: OperationalSaleRepository,
     private val auditLogger: SalesAuditLogger = NoopSalesAuditLogger,
     private val clock: Clock = Clock.systemUTC(),

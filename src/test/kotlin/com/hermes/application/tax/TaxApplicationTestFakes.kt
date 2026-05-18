@@ -1,10 +1,6 @@
 package com.hermes.application.tax
 
-import com.hermes.domain.tax.OrganizationTaxSettings
-import com.hermes.domain.tax.TaxProfile
-import com.hermes.domain.tax.TaxProfileStatus
-import com.hermes.domain.tax.TaxRate
-import com.hermes.domain.tax.TaxRateStatus
+import com.hermes.domain.tax.*
 
 class InMemoryTaxRateRepository : TaxRateRepository {
     private val rates = linkedMapOf<String, TaxRate>()
