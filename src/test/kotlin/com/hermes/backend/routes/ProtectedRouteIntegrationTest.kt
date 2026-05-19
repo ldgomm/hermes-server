@@ -1,10 +1,6 @@
 package com.hermes.backend.routes
 
-import com.hermes.application.auth.ActiveOrganizationResolverUseCase
-import com.hermes.application.auth.AuthenticateRequestUseCase
-import com.hermes.application.auth.EffectivePermissionResolverUseCase
-import com.hermes.application.auth.FakeAuthContextRepository
-import com.hermes.application.auth.HmacJwtTokenService
+import com.hermes.application.auth.*
 import com.hermes.backend.auth.hermesAuthenticated
 import com.hermes.backend.auth.hermesRequiresPermission
 import com.hermes.backend.plugins.configureSerialization
@@ -15,19 +11,16 @@ import com.hermes.domain.role.RoleSeed
 import com.hermes.domain.role.SystemRoleCode
 import com.hermes.domain.session.UserSession
 import com.hermes.domain.user.User
-import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.response.respond
-import io.ktor.server.routing.get
-import io.ktor.server.routing.routing
-import io.ktor.server.testing.testApplication
-import kotlin.test.Test
-import kotlin.test.assertEquals
+import io.ktor.client.request.*
+import io.ktor.http.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
+import io.ktor.server.testing.*
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class ProtectedRouteIntegrationTest {
     @Test

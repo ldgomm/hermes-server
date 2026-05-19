@@ -4,6 +4,7 @@ object ElectronicInvoicingMongoCollectionNames {
     const val ELECTRONIC_SEQUENCES: String = "electronic_sequences"
     const val ELECTRONIC_INVOICE_ISSUES: String = "electronic_invoice_issues"
     const val ELECTRONIC_DOCUMENT_ARTIFACTS: String = "electronic_document_artifacts"
+    const val ORGANIZATION_SRI_SETTINGS: String = "organization_sri_settings"
 }
 
 object ElectronicSequenceMongoCollectionNames {

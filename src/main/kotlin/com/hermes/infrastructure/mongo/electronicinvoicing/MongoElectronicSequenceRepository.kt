@@ -1,6 +1,8 @@
 package com.hermes.infrastructure.mongo.electronicinvoicing
 
+import com.hermes.application.electronicinvoicing.ElectronicSequenceQueryRepository
 import com.hermes.application.electronicinvoicing.ElectronicSequenceRepository
+import com.hermes.application.electronicinvoicing.ElectronicSequenceSearchQuery
 import com.hermes.application.electronicinvoicing.NextElectronicSequentialCommand
 import com.hermes.domain.electronicinvoicing.ElectronicSequence
 import com.hermes.domain.electronicinvoicing.ElectronicSequenceKey
@@ -9,18 +11,16 @@ import com.hermes.domain.electronicinvoicing.SriSequential
 import com.hermes.infrastructure.mongo.MongoDocumentFields
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
-import com.mongodb.client.model.Filters
-import com.mongodb.client.model.FindOneAndUpdateOptions
-import com.mongodb.client.model.ReturnDocument
-import com.mongodb.client.model.UpdateOptions
-import com.mongodb.client.model.Updates
+import com.mongodb.client.model.*
+import com.mongodb.client.model.Filters.and
+import com.mongodb.client.model.Filters.eq
 import org.bson.Document
 import org.bson.conversions.Bson
-import java.util.Date
+import java.util.*
 
 class MongoElectronicSequenceRepository(
     database: MongoDatabase,
-) : ElectronicSequenceRepository {
+) : ElectronicSequenceRepository, ElectronicSequenceQueryRepository {
     private val collection: MongoCollection<Document> =
         database.getCollection(ElectronicSequenceMongoCollectionNames.ELECTRONIC_SEQUENCES)
 
@@ -36,6 +36,26 @@ class MongoElectronicSequenceRepository(
 
     override fun findByKey(key: ElectronicSequenceKey): ElectronicSequence? =
         collection.find(key.filter()).firstOrNull()?.let(MongoElectronicSequenceMappers::fromDocument)
+
+    override fun findById(organizationId: String, sequenceId: String): ElectronicSequence? =
+        collection.find(
+            and(
+                eq(MongoDocumentFields.ORGANIZATION_ID, organizationId.trim()),
+                eq(MongoDocumentFields.ID, sequenceId.trim()),
+            )
+        ).firstOrNull()?.let(MongoElectronicSequenceMappers::fromDocument)
+
+    override fun search(query: ElectronicSequenceSearchQuery): List<ElectronicSequence> {
+        val filters = mutableListOf<Bson>(eq(MongoDocumentFields.ORGANIZATION_ID, query.organizationId.trim()))
+        query.environment?.let { filters += eq("environment", it.storageValue) }
+        query.documentType?.let { filters += eq("documentType", it.storageValue) }
+        query.status?.let { filters += eq("status", it.storageValue) }
+        return collection.find(and(filters))
+            .sort(Sorts.ascending("environment", "documentType", "establishmentCode", "emissionPointCode"))
+            .limit(query.limit.coerceIn(1, 200))
+            .map(MongoElectronicSequenceMappers::fromDocument)
+            .toList()
+    }
 
     override fun nextSequential(command: NextElectronicSequentialCommand): ElectronicSequenceReservation {
         val key = ElectronicSequenceKey(
