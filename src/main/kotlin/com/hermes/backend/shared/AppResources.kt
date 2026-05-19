@@ -5,6 +5,8 @@ import com.hermes.backend.auth.AuthModuleFactory
 import com.hermes.backend.catalog.CatalogModule
 import com.hermes.backend.catalog.CatalogModuleFactory
 import com.hermes.backend.config.AppConfig
+import com.hermes.backend.electronicinvoicing.ElectronicInvoicingModule
+import com.hermes.backend.electronicinvoicing.ElectronicInvoicingModuleFactory
 import com.hermes.backend.health.ApplicationHealthCheck
 import com.hermes.backend.health.HealthCheck
 import com.hermes.backend.health.MinioHealthCheck
@@ -33,6 +35,7 @@ interface AppResources : Closeable {
     val salesModule: SalesModule
     val reservationSchedulingModule: ReservationSchedulingModule
     val paymentsModule: PaymentsModule
+    val electronicInvoicingModule: ElectronicInvoicingModule
 }
 
 class DefaultAppResources private constructor(
@@ -46,6 +49,7 @@ class DefaultAppResources private constructor(
     override val salesModule: SalesModule,
     override val reservationSchedulingModule: ReservationSchedulingModule,
     override val paymentsModule: PaymentsModule,
+    override val electronicInvoicingModule: ElectronicInvoicingModule,
 ) : AppResources {
     companion object {
         fun start(config: AppConfig): DefaultAppResources {
@@ -69,6 +73,7 @@ class DefaultAppResources private constructor(
             val salesModule = SalesModuleFactory.fromMongo(database = mongoDatabase)
             val reservationSchedulingModule = ReservationSchedulingModuleFactory.fromMongo(database = mongoDatabase)
             val paymentsModule = PaymentsModuleFactory.fromMongo(client = mongoClient, database = mongoDatabase)
+            val electronicInvoicingModule = ElectronicInvoicingModuleFactory.fromMongo(database = mongoDatabase)
 
             return DefaultAppResources(
                 mongoClient = mongoClient,
@@ -81,6 +86,7 @@ class DefaultAppResources private constructor(
                 salesModule = salesModule,
                 reservationSchedulingModule = reservationSchedulingModule,
                 paymentsModule = paymentsModule,
+                electronicInvoicingModule = electronicInvoicingModule,
             )
         }
     }

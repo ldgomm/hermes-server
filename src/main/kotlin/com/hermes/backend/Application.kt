@@ -1,31 +1,17 @@
 package com.hermes.backend
 
 import com.hermes.backend.config.AppConfig
-import com.hermes.backend.routes.configureAuthRoutes
-import com.hermes.backend.routes.configureCatalogObservabilityRoutes
-import com.hermes.backend.routes.configureCatalogRequestAdvancedRoutes
-import com.hermes.backend.routes.configureCatalogRoutes
-import com.hermes.backend.routes.configureCatalogSeedRoutes
-import com.hermes.backend.routes.configureCredentialAdminRoutes
-import com.hermes.backend.routes.configureMeRoutes
-import com.hermes.backend.routes.configureOrganizationRoutes
-import com.hermes.backend.routes.configurePaymentsRoutes
-import com.hermes.backend.routes.configureReservationSchedulingRoutes
-import com.hermes.backend.routes.configureSalesRoutes
-import com.hermes.backend.routes.configureSystemRoutes
-import com.hermes.backend.routes.configureTaxAdminRoutes
-import com.hermes.backend.routes.configureTaxRoutes
+import com.hermes.backend.health.HealthService
 import com.hermes.backend.plugins.configureCallLogging
 import com.hermes.backend.plugins.configureCors
 import com.hermes.backend.plugins.configureSerialization
 import com.hermes.backend.plugins.configureStatusPages
+import com.hermes.backend.routes.*
 import com.hermes.backend.shared.AppResources
 import com.hermes.backend.shared.DefaultAppResources
-import com.hermes.backend.health.HealthService
-import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationStopping
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.netty.Netty
+import io.ktor.server.application.*
+import io.ktor.server.engine.*
+import io.ktor.server.netty.*
 
 fun main() {
     val config = AppConfig.loadFromEnvironment()
@@ -83,6 +69,10 @@ private fun Application.configureHermesApplication(config: AppConfig, resources:
         reservationSchedulingModule = resources.reservationSchedulingModule,
     )
     configurePaymentsRoutes(authModule = resources.authModule, paymentsModule = resources.paymentsModule)
+    configureElectronicInvoiceRoutes(
+        authModule = resources.authModule,
+        electronicInvoicingModule = resources.electronicInvoicingModule,
+    )
 
     monitor.subscribe(ApplicationStopping) { resources.close() }
 }

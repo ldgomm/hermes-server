@@ -114,6 +114,18 @@ object PermissionCatalog {
     const val DOCUMENTS_INVOICE_DOWNLOAD_XML = "documents.invoice.download_xml"
     const val DOCUMENTS_INVOICE_DOWNLOAD_RIDE = "documents.invoice.download_ride"
     const val DOCUMENTS_INVOICE_REQUEST_CANCELLATION = "documents.invoice.request_cancellation"
+    const val DOCUMENTS_ELECTRONIC_INVOICE_VIEW = "documents.electronic_invoice.view"
+    const val DOCUMENTS_ELECTRONIC_INVOICE_LIST = "documents.electronic_invoice.list"
+    const val DOCUMENTS_ELECTRONIC_INVOICE_ISSUE = "documents.electronic_invoice.issue"
+    const val DOCUMENTS_ELECTRONIC_INVOICE_RETRY = "documents.electronic_invoice.retry"
+    const val DOCUMENTS_ELECTRONIC_INVOICE_DOWNLOAD_XML = "documents.electronic_invoice.download_xml"
+    const val DOCUMENTS_ELECTRONIC_INVOICE_DOWNLOAD_RIDE = "documents.electronic_invoice.download_ride"
+    const val DOCUMENTS_ELECTRONIC_INVOICE_EMAIL = "documents.electronic_invoice.email"
+    const val DOCUMENTS_ELECTRONIC_INVOICE_VIEW_ERRORS = "documents.electronic_invoice.view_errors"
+    const val DOCUMENTS_ELECTRONIC_INVOICE_VIEW_AUDIT = "documents.electronic_invoice.view_audit"
+    const val DOCUMENTS_ELECTRONIC_INVOICE_HOMOLOGATE = "documents.electronic_invoice.homologate"
+    const val DOCUMENTS_ELECTRONIC_INVOICE_ENABLE_PRODUCTION = "documents.electronic_invoice.enable_production"
+    const val DOCUMENTS_ELECTRONIC_INVOICE_MANAGE_SETTINGS = "documents.electronic_invoice.manage_settings"
 
     // Tax.
     const val TAX_SETTINGS_VIEW = "tax.settings.view"
@@ -795,6 +807,105 @@ object PermissionCatalog {
             DOCUMENTS_INVOICE_REQUEST_CANCELLATION,
             "Request invoice cancellation",
             "Request electronic invoice cancellation.",
+            PermissionCategory.DOCUMENTS,
+            PermissionRiskLevel.CRITICAL,
+            requiresAudit = true,
+            requiresReason = true,
+            requiresStepUp = true
+        ),
+        active(
+            DOCUMENTS_ELECTRONIC_INVOICE_VIEW,
+            "View electronic invoice",
+            "View electronic invoice detail without downloading protected artifacts.",
+            PermissionCategory.DOCUMENTS,
+            PermissionRiskLevel.LOW
+        ),
+        active(
+            DOCUMENTS_ELECTRONIC_INVOICE_LIST,
+            "List electronic invoices",
+            "List electronic invoices for an organization.",
+            PermissionCategory.DOCUMENTS,
+            PermissionRiskLevel.LOW
+        ),
+        active(
+            DOCUMENTS_ELECTRONIC_INVOICE_ISSUE,
+            "Issue electronic invoice",
+            "Issue electronic invoices through the SRI backend flow.",
+            PermissionCategory.DOCUMENTS,
+            PermissionRiskLevel.CRITICAL,
+            requiresAudit = true,
+            requiresReason = true,
+            requiresStepUp = true
+        ),
+        active(
+            DOCUMENTS_ELECTRONIC_INVOICE_RETRY,
+            "Retry electronic invoice authorization",
+            "Retry controlled SRI authorization for an electronic invoice.",
+            PermissionCategory.DOCUMENTS,
+            PermissionRiskLevel.HIGH,
+            requiresAudit = true
+        ),
+        active(
+            DOCUMENTS_ELECTRONIC_INVOICE_DOWNLOAD_XML,
+            "Download electronic invoice XML",
+            "Download signed or authorized XML for an electronic invoice.",
+            PermissionCategory.DOCUMENTS,
+            PermissionRiskLevel.MEDIUM,
+            requiresAudit = true
+        ),
+        active(
+            DOCUMENTS_ELECTRONIC_INVOICE_DOWNLOAD_RIDE,
+            "Download electronic invoice RIDE",
+            "Download electronic invoice RIDE PDF.",
+            PermissionCategory.DOCUMENTS,
+            PermissionRiskLevel.LOW,
+            requiresAudit = true
+        ),
+        active(
+            DOCUMENTS_ELECTRONIC_INVOICE_EMAIL,
+            "Email electronic invoice",
+            "Send or resend electronic invoice artifacts by email.",
+            PermissionCategory.DOCUMENTS,
+            PermissionRiskLevel.MEDIUM,
+            requiresAudit = true
+        ),
+        active(
+            DOCUMENTS_ELECTRONIC_INVOICE_VIEW_ERRORS,
+            "View electronic invoice errors",
+            "View SRI and delivery error details for electronic invoices.",
+            PermissionCategory.DOCUMENTS,
+            PermissionRiskLevel.MEDIUM
+        ),
+        active(
+            DOCUMENTS_ELECTRONIC_INVOICE_VIEW_AUDIT,
+            "View electronic invoice audit",
+            "View operational timeline and audit events for electronic invoices.",
+            PermissionCategory.DOCUMENTS,
+            PermissionRiskLevel.MEDIUM
+        ),
+        active(
+            DOCUMENTS_ELECTRONIC_INVOICE_HOMOLOGATE,
+            "Run SRI homologation",
+            "Run SRI homologation checks from Admin API.",
+            PermissionCategory.DOCUMENTS,
+            PermissionRiskLevel.HIGH,
+            requiresAudit = true,
+            requiresReason = true
+        ),
+        active(
+            DOCUMENTS_ELECTRONIC_INVOICE_ENABLE_PRODUCTION,
+            "Enable electronic invoice production",
+            "Enable production environment for electronic invoicing after readiness gates pass.",
+            PermissionCategory.DOCUMENTS,
+            PermissionRiskLevel.CRITICAL,
+            requiresAudit = true,
+            requiresReason = true,
+            requiresStepUp = true
+        ),
+        active(
+            DOCUMENTS_ELECTRONIC_INVOICE_MANAGE_SETTINGS,
+            "Manage SRI electronic invoice settings",
+            "Manage SRI settings, signature activation and electronic sequences.",
             PermissionCategory.DOCUMENTS,
             PermissionRiskLevel.CRITICAL,
             requiresAudit = true,
