@@ -4,7 +4,9 @@ import com.hermes.application.auth.InvitationDelivery
 import com.hermes.application.auth.NoopInvitationDelivery
 import com.hermes.application.auth.SecureTokenGenerator
 import com.hermes.application.auth.TokenHasher
+import com.hermes.domain.invitation.Invitation
 import com.hermes.domain.invitation.InvitationStatus
+import com.hermes.domain.organization.MembershipStatus
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.permission.PermissionRules
 import com.hermes.domain.role.RoleDefinition
@@ -48,6 +50,7 @@ class GetAdminUserUseCase(
 class UpdateAdminUserUseCase(
     private val repository: AdminAccessRepository,
     private val clock: Clock = Clock.systemUTC(),
+    private val auditLogger: AdminAccessAuditLogger = NoopAdminAccessAuditLogger,
 ) {
     fun execute(command: UpdateAdminUserCommand): AdminUserResult {
         PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.CREDENTIALS_USERS_CREATE)
@@ -55,8 +58,8 @@ class UpdateAdminUserUseCase(
         val now = Instant.now(clock)
         val organizationId = command.organizationId.required("Organization id")
         val userId = command.userId.required("User id")
-        command.actorUserId.required("Actor user id")
-        command.reason.required("User update reason")
+        val actorUserId = command.actorUserId.required("Actor user id")
+        val reason = command.reason.required("User update reason")
 
         if (command.phone != null && command.clearPhone) {
             throw DomainRuleViolation("User phone cannot be set and cleared at the same time.")
@@ -64,6 +67,7 @@ class UpdateAdminUserUseCase(
 
         val record = repository.findUserAccess(organizationId, userId)
             ?: throw DomainRuleViolation("Admin user does not exist in this organization.")
+        val before = record.toAuditMap()
 
         var userChanged = false
         val nextDisplayName = command.displayName?.required("Display name") ?: record.user.displayName
@@ -130,6 +134,19 @@ class UpdateAdminUserUseCase(
 
         val updated = repository.findUserAccess(organizationId, userId)
             ?: throw DomainRuleViolation("Updated admin user does not exist.")
+        auditLogger.log(
+            AdminAccessAuditEvent(
+                action = AdminAccessAuditAction.USER_ACCESS_UPDATED,
+                organizationId = organizationId,
+                actorUserId = actorUserId,
+                targetId = userId,
+                targetType = "user_access",
+                before = before,
+                after = updated.toAuditMap(),
+                reason = reason,
+                createdAt = now,
+            )
+        )
         return AdminUserResult(updated.toDetail())
     }
 }
@@ -168,23 +185,39 @@ class GetAdminInvitationUseCase(
 class RevokeAdminInvitationUseCase(
     private val repository: AdminAccessRepository,
     private val clock: Clock = Clock.systemUTC(),
+    private val auditLogger: AdminAccessAuditLogger = NoopAdminAccessAuditLogger,
 ) {
     fun execute(command: RevokeAdminInvitationCommand): AdminInvitationResult {
         PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.CREDENTIALS_USERS_INVITE)
-        command.actorUserId.required("Actor user id")
-        command.reason.required("Invitation revoke reason")
+        val actorUserId = command.actorUserId.required("Actor user id")
+        val reason = command.reason.required("Invitation revoke reason")
+        val organizationId = command.organizationId.required("Organization id")
         val invitation = repository.findInvitation(
-            organizationId = command.organizationId.required("Organization id"),
+            organizationId = organizationId,
             invitationId = command.invitationId.required("Invitation id"),
         ) ?: throw DomainRuleViolation("Invitation does not exist.")
 
-        val revoked = invitation.revoke(Instant.now(clock))
+        val now = Instant.now(clock)
+        val revoked = invitation.revoke(now)
         repository.updateInvitation(revoked)
+
+        auditLogger.log(
+            AdminAccessAuditEvent(
+                action = AdminAccessAuditAction.INVITATION_REVOKED,
+                organizationId = organizationId,
+                actorUserId = actorUserId,
+                targetId = revoked.id,
+                targetType = "invitation",
+                before = invitation.toAuditMap(),
+                after = revoked.toAuditMap(),
+                reason = reason,
+                createdAt = now,
+            )
+        )
 
         return AdminInvitationResult(revoked.toSummary(repository.findRolesByIds(revoked.roleIds)))
     }
 }
-
 
 class ResendAdminInvitationUseCase(
     private val repository: AdminAccessRepository,
@@ -192,15 +225,17 @@ class ResendAdminInvitationUseCase(
     private val delivery: InvitationDelivery = NoopInvitationDelivery,
     private val resendTtl: java.time.Duration = java.time.Duration.ofDays(7),
     private val clock: Clock = Clock.systemUTC(),
+    private val auditLogger: AdminAccessAuditLogger = NoopAdminAccessAuditLogger,
 ) {
     fun execute(command: ResendAdminInvitationCommand): AdminInvitationResendResult {
         PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.CREDENTIALS_USERS_INVITE)
-        command.actorUserId.required("Actor user id")
-        command.reason.required("Invitation resend reason")
+        val actorUserId = command.actorUserId.required("Actor user id")
+        val reason = command.reason.required("Invitation resend reason")
 
         val now = Instant.now(clock)
+        val organizationId = command.organizationId.required("Organization id")
         val invitation = repository.findInvitation(
-            organizationId = command.organizationId.required("Organization id"),
+            organizationId = organizationId,
             invitationId = command.invitationId.required("Invitation id"),
         ) ?: throw DomainRuleViolation("Invitation does not exist.")
 
@@ -219,6 +254,20 @@ class ResendAdminInvitationUseCase(
         val invitationUrl = delivery.buildInvitationUrl(rawToken)
         delivery.deliverInvitation(refreshed.email, rawToken, invitationUrl)
 
+        auditLogger.log(
+            AdminAccessAuditEvent(
+                action = AdminAccessAuditAction.INVITATION_RESENT,
+                organizationId = organizationId,
+                actorUserId = actorUserId,
+                targetId = refreshed.id,
+                targetType = "invitation",
+                before = invitation.toAuditMap(maskToken = true),
+                after = refreshed.toAuditMap(maskToken = true),
+                reason = reason,
+                createdAt = now,
+            )
+        )
+
         return AdminInvitationResendResult(
             invitation = refreshed.toSummary(repository.findRolesByIds(refreshed.roleIds)),
             rawInvitationToken = rawToken,
@@ -226,7 +275,6 @@ class ResendAdminInvitationUseCase(
         )
     }
 }
-
 
 class ListAdminRolesUseCase(
     private val repository: AdminAccessRepository,
@@ -236,9 +284,9 @@ class ListAdminRolesUseCase(
         val organizationId = command.organizationId.required("Organization id")
         return AdminRolesResult(
             repository.listRoles(
-            organizationId = organizationId,
-            includeSystemTemplates = command.includeSystemTemplates,
-        ).sortedWith(compareBy({ it.type.name }, { it.name })).map { it.toSummary() })
+                organizationId = organizationId,
+                includeSystemTemplates = command.includeSystemTemplates,
+            ).sortedWith(compareBy({ it.type.name }, { it.name })).map { it.toSummary() })
     }
 }
 
@@ -258,12 +306,15 @@ class GetAdminRoleUseCase(
 class CreateAdminRoleUseCase(
     private val repository: AdminAccessRepository,
     private val idGenerator: AdminAccessIdGenerator = UuidAdminAccessIdGenerator(),
+    private val auditLogger: AdminAccessAuditLogger = NoopAdminAccessAuditLogger,
+    private val clock: Clock = Clock.systemUTC(),
 ) {
     fun execute(command: CreateAdminRoleCommand): AdminRoleResult {
         PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.CREDENTIALS_ROLES_MANAGE)
         val organizationId = command.organizationId.required("Organization id")
-        command.actorUserId.required("Actor user id")
-        command.reason.required("Role creation reason")
+        val actorUserId = command.actorUserId.required("Actor user id")
+        val reason = command.reason.required("Role creation reason")
+        val now = Instant.now(clock)
 
         val code = command.code.normalizedRoleCode()
         if (repository.existsRoleCode(organizationId, code)) {
@@ -287,24 +338,43 @@ class CreateAdminRoleUseCase(
         )
 
         repository.createRole(role)
+        auditLogger.log(
+            AdminAccessAuditEvent(
+                action = AdminAccessAuditAction.ROLE_CREATED,
+                organizationId = organizationId,
+                actorUserId = actorUserId,
+                targetId = role.id,
+                targetType = "role",
+                after = role.toAuditMap(),
+                reason = reason,
+                createdAt = now,
+            )
+        )
         return AdminRoleResult(role.toSummary())
     }
 }
 
 class UpdateAdminRoleUseCase(
     private val repository: AdminAccessRepository,
+    private val auditLogger: AdminAccessAuditLogger = NoopAdminAccessAuditLogger,
+    private val clock: Clock = Clock.systemUTC(),
 ) {
     fun execute(command: UpdateAdminRoleCommand): AdminRoleResult {
         PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.CREDENTIALS_ROLES_MANAGE)
         val organizationId = command.organizationId.required("Organization id")
-        command.actorUserId.required("Actor user id")
-        command.reason.required("Role update reason")
+        val actorUserId = command.actorUserId.required("Actor user id")
+        val reason = command.reason.required("Role update reason")
+        val now = Instant.now(clock)
 
         val current = repository.findRole(organizationId, command.roleId.required("Role id"))
             ?: throw DomainRuleViolation("Role does not exist.")
         current.assertEditableCustomRole(organizationId)
 
         val nextPermissionKeys = command.permissionKeys?.normalizedPermissionKeys() ?: current.permissionKeys
+        if (current.status == RoleStatus.ACTIVE && current.grantsAdminAccess() && !nextPermissionKeys.grantsAdminAccess()) {
+            ensureRoleChangeDoesNotRemoveLastAdmin(repository, organizationId, current)
+        }
+
         val next = current.copy(
             name = command.name?.required("Role name") ?: current.name,
             description = command.description?.required("Role description") ?: current.description,
@@ -317,24 +387,40 @@ class UpdateAdminRoleUseCase(
         }
 
         repository.updateRole(next)
+        auditLogger.log(
+            AdminAccessAuditEvent(
+                action = AdminAccessAuditAction.ROLE_UPDATED,
+                organizationId = organizationId,
+                actorUserId = actorUserId,
+                targetId = next.id,
+                targetType = "role",
+                before = current.toAuditMap(),
+                after = next.toAuditMap(),
+                reason = reason,
+                createdAt = now,
+            )
+        )
         return AdminRoleResult(next.toSummary())
     }
 }
 
 class ChangeAdminRoleStatusUseCase(
     private val repository: AdminAccessRepository,
+    private val auditLogger: AdminAccessAuditLogger = NoopAdminAccessAuditLogger,
+    private val clock: Clock = Clock.systemUTC(),
 ) {
     fun activate(command: ChangeAdminRoleStatusCommand): AdminRoleResult =
-        change(command.copy(targetStatus = RoleStatus.ACTIVE.name))
+        change(command.copy(targetStatus = RoleStatus.ACTIVE.name), AdminAccessAuditAction.ROLE_ACTIVATED)
 
     fun deactivate(command: ChangeAdminRoleStatusCommand): AdminRoleResult =
-        change(command.copy(targetStatus = RoleStatus.INACTIVE.name))
+        change(command.copy(targetStatus = RoleStatus.INACTIVE.name), AdminAccessAuditAction.ROLE_DEACTIVATED)
 
-    private fun change(command: ChangeAdminRoleStatusCommand): AdminRoleResult {
+    private fun change(command: ChangeAdminRoleStatusCommand, action: AdminAccessAuditAction): AdminRoleResult {
         PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.CREDENTIALS_ROLES_MANAGE)
         val organizationId = command.organizationId.required("Organization id")
-        command.actorUserId.required("Actor user id")
-        command.reason.required("Role status change reason")
+        val actorUserId = command.actorUserId.required("Actor user id")
+        val reason = command.reason.required("Role status change reason")
+        val now = Instant.now(clock)
 
         val current = repository.findRole(organizationId, command.roleId.required("Role id"))
             ?: throw DomainRuleViolation("Role does not exist.")
@@ -345,8 +431,25 @@ class ChangeAdminRoleStatusUseCase(
             throw DomainRuleViolation("Role is already ${targetStatus.name}.")
         }
 
+        if (targetStatus == RoleStatus.INACTIVE && current.status == RoleStatus.ACTIVE && current.grantsAdminAccess()) {
+            ensureRoleChangeDoesNotRemoveLastAdmin(repository, organizationId, current)
+        }
+
         val next = current.copy(status = targetStatus, schemaVersion = current.schemaVersion + 1)
         repository.updateRole(next)
+        auditLogger.log(
+            AdminAccessAuditEvent(
+                action = action,
+                organizationId = organizationId,
+                actorUserId = actorUserId,
+                targetId = next.id,
+                targetType = "role",
+                before = current.toAuditMap(),
+                after = next.toAuditMap(),
+                reason = reason,
+                createdAt = now,
+            )
+        )
         return AdminRoleResult(next.toSummary())
     }
 }
@@ -359,7 +462,7 @@ class ListAdminPermissionsUseCase(
         command.organizationId.required("Organization id")
         return AdminPermissionsResult(
             repository.listPermissionDefinitions(command.includeReserved)
-            .sortedWith(compareBy({ it.category.name }, { it.code })).map { it.toSummary() })
+                .sortedWith(compareBy({ it.category.name }, { it.code })).map { it.toSummary() })
     }
 }
 
@@ -423,8 +526,8 @@ private fun ensureNotRemovingLastAdmin(
     nextRoles: List<RoleDefinition>,
 ) {
     val currentRoles = repository.findRolesByIds(currentRoleIds)
-    val currentlyAdmin = currentRoles.any { role -> role.permissionKeys.any { it in adminPermissionKeys } }
-    val nextAdmin = nextRoles.any { role -> role.permissionKeys.any { it in adminPermissionKeys } }
+    val currentlyAdmin = currentRoles.any { it.grantsAdminAccess() }
+    val nextAdmin = nextRoles.any { it.grantsAdminAccess() }
 
     if (currentlyAdmin && !nextAdmin) {
         val remainingAdmins = repository.countActiveAdminMemberships(
@@ -437,3 +540,72 @@ private fun ensureNotRemovingLastAdmin(
         }
     }
 }
+
+private fun ensureRoleChangeDoesNotRemoveLastAdmin(
+    repository: AdminAccessRepository,
+    organizationId: String,
+    roleBeingChanged: RoleDefinition,
+) {
+    val remainingAdminUsers = repository.listUserAccess(
+        organizationId = organizationId,
+        status = MembershipStatus.ACTIVE.name,
+        limit = 250,
+    ).count { record ->
+        record.membership.status == MembershipStatus.ACTIVE && record.roles.filterNot { it.id == roleBeingChanged.id }
+            .any { it.status == RoleStatus.ACTIVE && it.grantsAdminAccess() }
+    }
+
+    if (remainingAdminUsers == 0) {
+        throw DomainRuleViolation("Cannot change this role because it would remove the last active administrator from the organization.")
+    }
+}
+
+private fun RoleDefinition.grantsAdminAccess(): Boolean =
+    permissionKeys.grantsAdminAccess() && status == RoleStatus.ACTIVE
+
+private fun Set<String>.grantsAdminAccess(): Boolean = any { it in adminPermissionKeys }
+
+private fun AdminUserAccessRecord.toAuditMap(): Map<String, String?> = mapOf(
+    "userId" to user.id,
+    "email" to user.email,
+    "displayName" to user.displayName,
+    "phone" to user.phone,
+    "userStatus" to user.status.name,
+    "membershipId" to membership.id,
+    "membershipStatus" to membership.status.name,
+    "roleIds" to membership.roleIds.sorted().joinToString(","),
+    "roleNames" to roles.map { it.name }.sorted().joinToString(","),
+    "activeSessionCount" to activeSessionCount.toString(),
+    "version" to user.version.toString(),
+)
+
+private fun Invitation.toAuditMap(maskToken: Boolean = false): Map<String, String?> = mapOf(
+    "id" to id,
+    "organizationId" to organizationId,
+    "email" to email,
+    "invitedByUserId" to invitedByUserId,
+    "roleIds" to roleIds.sorted().joinToString(","),
+    "status" to status.name,
+    "tokenHash" to if (maskToken) "***" else tokenHash,
+    "expiresAt" to expiresAt.toString(),
+    "acceptedAt" to acceptedAt?.toString(),
+    "revokedAt" to revokedAt?.toString(),
+    "acceptedUserId" to acceptedUserId,
+    "version" to version.toString(),
+)
+
+private fun RoleDefinition.toAuditMap(): Map<String, String?> = mapOf(
+    "id" to id,
+    "code" to code,
+    "organizationId" to organizationId,
+    "scope" to scope.name,
+    "type" to type.name,
+    "name" to name,
+    "description" to description,
+    "permissionKeys" to permissionKeys.sorted().joinToString(","),
+    "systemRole" to systemRole.toString(),
+    "critical" to critical.toString(),
+    "editable" to editable.toString(),
+    "status" to status.name,
+    "schemaVersion" to schemaVersion.toString(),
+)

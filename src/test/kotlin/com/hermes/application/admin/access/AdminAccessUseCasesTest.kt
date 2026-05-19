@@ -48,6 +48,37 @@ class AdminAccessUseCasesTest {
     }
 
     @Test
+    fun `logs audit when creating organization custom role`() {
+        val repository = InMemoryAdminAccessRepository13B()
+        val auditLogger = RecordingAdminAccessAuditLogger13B()
+        val useCase = CreateAdminRoleUseCase(
+            repository = repository,
+            idGenerator = AdminAccessIdGenerator { "role_custom_audited" },
+            auditLogger = auditLogger,
+        )
+
+        useCase.execute(
+            CreateAdminRoleCommand(
+                organizationId = "org_1",
+                actorUserId = "usr_owner",
+                actorEffectivePermissions = setOf(PermissionCatalog.CREDENTIALS_ROLES_MANAGE),
+                code = "Audited",
+                name = "Audited Role",
+                description = "Audited role",
+                permissionKeys = setOf(PermissionCatalog.SALES_VIEW),
+                reason = "Audit coverage",
+            )
+        )
+
+        assertEquals(1, auditLogger.events.size)
+        assertEquals(AdminAccessAuditAction.ROLE_CREATED, auditLogger.events.single().action)
+        assertEquals("org_1", auditLogger.events.single().organizationId)
+        assertEquals("usr_owner", auditLogger.events.single().actorUserId)
+        assertEquals("role_custom_audited", auditLogger.events.single().targetId)
+        assertEquals("Audit coverage", auditLogger.events.single().reason)
+    }
+
+    @Test
     fun `rejects duplicate role code when creating role`() {
         val repository = InMemoryAdminAccessRepository13B()
         val useCase = CreateAdminRoleUseCase(repository)
@@ -103,6 +134,73 @@ class AdminAccessUseCasesTest {
                     userId = "usr_owner",
                     roleIds = setOf("role_cashier"),
                     reason = "No debe quedar sin admin",
+                )
+            )
+        }
+    }
+
+    @Test
+    fun `rejects deactivating role that would remove last administrator`() {
+        val repository = InMemoryAdminAccessRepository13B()
+        val useCase = ChangeAdminRoleStatusUseCase(repository)
+
+        assertFailsWith<DomainRuleViolation> {
+            useCase.deactivate(
+                ChangeAdminRoleStatusCommand(
+                    organizationId = "org_1",
+                    actorUserId = "usr_owner",
+                    actorEffectivePermissions = setOf(PermissionCatalog.CREDENTIALS_ROLES_MANAGE),
+                    roleId = "role_owner",
+                    targetStatus = "INACTIVE",
+                    reason = "No debe quedar sin admin",
+                )
+            )
+        }
+    }
+
+    @Test
+    fun `allows deactivating admin role when another active admin role remains`() {
+        val repository = InMemoryAdminAccessRepository13B()
+        repository.roles += adminRole13B(
+            id = "role_admin_backup",
+            code = "admin_backup",
+            name = "Admin Backup",
+        )
+        repository.memberships.replaceAll {
+            if (it.userId == "usr_owner") it.copy(roleIds = setOf("role_owner", "role_admin_backup")) else it
+        }
+        val auditLogger = RecordingAdminAccessAuditLogger13B()
+        val useCase = ChangeAdminRoleStatusUseCase(repository, auditLogger = auditLogger)
+
+        val result = useCase.deactivate(
+            ChangeAdminRoleStatusCommand(
+                organizationId = "org_1",
+                actorUserId = "usr_owner",
+                actorEffectivePermissions = setOf(PermissionCatalog.CREDENTIALS_ROLES_MANAGE),
+                roleId = "role_owner",
+                targetStatus = "INACTIVE",
+                reason = "Rotar rol admin",
+            )
+        )
+
+        assertEquals("INACTIVE", result.role.status)
+        assertEquals(AdminAccessAuditAction.ROLE_DEACTIVATED, auditLogger.events.single().action)
+    }
+
+    @Test
+    fun `rejects updating role permissions when it would remove last administrator`() {
+        val repository = InMemoryAdminAccessRepository13B()
+        val useCase = UpdateAdminRoleUseCase(repository)
+
+        assertFailsWith<DomainRuleViolation> {
+            useCase.execute(
+                UpdateAdminRoleCommand(
+                    organizationId = "org_1",
+                    actorUserId = "usr_owner",
+                    actorEffectivePermissions = setOf(PermissionCatalog.CREDENTIALS_ROLES_MANAGE),
+                    roleId = "role_owner",
+                    permissionKeys = setOf(PermissionCatalog.SALES_VIEW),
+                    reason = "No debe perder permisos admin",
                 )
             )
         }
@@ -166,21 +264,11 @@ private class InMemoryAdminAccessRepository13B : AdminAccessRepository {
     )
 
     val roles = mutableListOf(
-        RoleDefinition(
+        adminRole13B(
             id = "role_owner",
             code = "owner",
-            organizationId = "org_1",
-            scope = RoleScope.ORGANIZATION,
-            type = RoleType.CUSTOM,
             name = "Owner",
             description = "Admin owner role",
-            permissionKeys = setOf(
-                PermissionCatalog.CREDENTIALS_ROLES_MANAGE, PermissionCatalog.CREDENTIALS_USERS_CREATE
-            ),
-            systemRole = false,
-            critical = false,
-            editable = true,
-            status = RoleStatus.ACTIVE,
         ),
         RoleDefinition(
             id = "role_cashier",
@@ -203,8 +291,10 @@ private class InMemoryAdminAccessRepository13B : AdminAccessRepository {
         query: String?,
         status: String?,
         limit: Int,
-    ): List<AdminUserAccessRecord> =
-        memberships.filter { it.organizationId == organizationId }.mapNotNull { membership ->
+    ): List<AdminUserAccessRecord> = memberships
+        .filter { it.organizationId == organizationId }
+        .filter { membership -> status == null || membership.status.name.equals(status, ignoreCase = true) }
+        .mapNotNull { membership ->
             val user = users.firstOrNull { it.id == membership.userId } ?: return@mapNotNull null
             AdminUserAccessRecord(
                 user = user,
@@ -213,6 +303,7 @@ private class InMemoryAdminAccessRepository13B : AdminAccessRepository {
                 activeSessionCount = 1,
             )
         }
+        .take(limit)
 
     override fun findUserAccess(organizationId: String, userId: String): AdminUserAccessRecord? =
         listUserAccess(organizationId, null, null, 100).firstOrNull { it.user.id == userId }
@@ -230,7 +321,8 @@ private class InMemoryAdminAccessRepository13B : AdminAccessRepository {
         memberships.replaceAll { if (it.id == membership.id) membership else it }
     }
 
-    override fun findRolesByIds(roleIds: Set<String>): List<RoleDefinition> = roles.filter { it.id in roleIds }
+    override fun findRolesByIds(roleIds: Set<String>): List<RoleDefinition> =
+        roles.filter { it.id in roleIds }
 
     override fun listRoles(organizationId: String, includeSystemTemplates: Boolean): List<RoleDefinition> =
         roles.filter { it.organizationId == organizationId }
@@ -264,11 +356,42 @@ private class InMemoryAdminAccessRepository13B : AdminAccessRepository {
         organizationId: String,
         excludingUserId: String?,
         adminPermissionKeys: Set<String>,
-    ): Int =
-        memberships.filter { it.organizationId == organizationId && it.status == MembershipStatus.ACTIVE && it.userId != excludingUserId }
-            .count { membership ->
-                findRolesByIds(membership.roleIds).any { role ->
-                    role.permissionKeys.any { it in adminPermissionKeys }
-                }
+    ): Int = memberships
+        .filter { it.organizationId == organizationId && it.status == MembershipStatus.ACTIVE && it.userId != excludingUserId }
+        .count { membership ->
+            findRolesByIds(membership.roleIds).any { role ->
+                role.status == RoleStatus.ACTIVE && role.permissionKeys.any { it in adminPermissionKeys }
             }
+        }
 }
+
+private class RecordingAdminAccessAuditLogger13B : AdminAccessAuditLogger {
+    val events = mutableListOf<AdminAccessAuditEvent>()
+
+    override fun log(event: AdminAccessAuditEvent) {
+        events += event
+    }
+}
+
+private fun adminRole13B(
+    id: String,
+    code: String,
+    name: String,
+    description: String = "Admin role",
+): RoleDefinition = RoleDefinition(
+    id = id,
+    code = code,
+    organizationId = "org_1",
+    scope = RoleScope.ORGANIZATION,
+    type = RoleType.CUSTOM,
+    name = name,
+    description = description,
+    permissionKeys = setOf(
+        PermissionCatalog.CREDENTIALS_ROLES_MANAGE,
+        PermissionCatalog.CREDENTIALS_USERS_CREATE,
+    ),
+    systemRole = false,
+    critical = false,
+    editable = true,
+    status = RoleStatus.ACTIVE,
+)
