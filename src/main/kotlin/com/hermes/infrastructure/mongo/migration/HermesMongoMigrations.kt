@@ -33,5 +33,6 @@ object HermesMongoMigrations {
         M027CreateCatalogImportJobsFutureMigration,
         M028CreateReturnAndWarrantyPoliciesFutureMigration,
         M021CreateElectronicSequencesMigration,
+        M029CreateElectronicInvoicingPersistenceMigration,
     )
 }
