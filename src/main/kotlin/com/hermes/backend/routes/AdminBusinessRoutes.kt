@@ -1,5 +1,6 @@
 package com.hermes.backend.routes
 
+import com.hermes.application.admin.business.GetAdminActivityCommand
 import com.hermes.application.admin.business.GetAdminBusinessCommand
 import com.hermes.application.admin.business.GetAdminBusinessReadinessCommand
 import com.hermes.application.admin.business.ListAdminActivitiesCommand
@@ -22,6 +23,7 @@ import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
+import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
@@ -117,6 +119,99 @@ fun Route.adminBusinessRoutes(
                             organizationId = organizationId,
                             actorUserId = context.userId,
                             actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
+                        ),
+                    )
+                    call.respond(HttpStatusCode.OK, result.toResponse())
+                }
+
+                get("/activities/{activityId}") {
+                    val context = call.hermesAuthContext()
+                    val organizationId = context.requireActiveOrganization().organization.id
+                    val activityId = call.parameters["activityId"] ?: throw DomainRuleViolation("Activity id is required.")
+                    val useCase = adminBusinessModule.getActivityUseCase
+                        ?: throw DomainRuleViolation("Admin activity detail module is not configured.")
+                    val result = useCase.execute(
+                        GetAdminActivityCommand(
+                            organizationId = organizationId,
+                            actorUserId = context.userId,
+                            actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
+                            activityId = activityId,
+                        ),
+                    )
+                    call.respond(HttpStatusCode.OK, result.toResponse())
+                }
+            }
+
+            hermesRequiresAnyPermission(setOf(PermissionCatalog.ACTIVITIES_CREATE)) {
+                post("/activities") {
+                    val context = call.hermesAuthContext()
+                    val organizationId = context.requireActiveOrganization().organization.id
+                    val request = call.receive<CreateAdminActivityRequest>()
+                    val useCase = adminBusinessModule.createActivityUseCase
+                        ?: throw DomainRuleViolation("Admin activity creation module is not configured.")
+                    val result = useCase.execute(
+                        request.toCommand(
+                            organizationId = organizationId,
+                            actorUserId = context.userId,
+                            actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
+                        ),
+                    )
+                    call.respond(HttpStatusCode.Created, result.toResponse())
+                }
+            }
+
+            hermesRequiresAnyPermission(setOf(PermissionCatalog.ACTIVITIES_UPDATE)) {
+                put("/activities/{activityId}") {
+                    val context = call.hermesAuthContext()
+                    val organizationId = context.requireActiveOrganization().organization.id
+                    val activityId = call.parameters["activityId"] ?: throw DomainRuleViolation("Activity id is required.")
+                    val request = call.receive<UpdateAdminActivityRequest>()
+                    val useCase = adminBusinessModule.updateActivityUseCase
+                        ?: throw DomainRuleViolation("Admin activity update module is not configured.")
+                    val result = useCase.execute(
+                        request.toCommand(
+                            organizationId = organizationId,
+                            actorUserId = context.userId,
+                            actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
+                            activityId = activityId,
+                        ),
+                    )
+                    call.respond(HttpStatusCode.OK, result.toResponse())
+                }
+
+                post("/activities/{activityId}/activate") {
+                    val context = call.hermesAuthContext()
+                    val organizationId = context.requireActiveOrganization().organization.id
+                    val activityId = call.parameters["activityId"] ?: throw DomainRuleViolation("Activity id is required.")
+                    val request = call.receive<ChangeAdminActivityStatusRequest>()
+                    val useCase = adminBusinessModule.changeActivityStatusUseCase
+                        ?: throw DomainRuleViolation("Admin activity status module is not configured.")
+                    val result = useCase.activate(
+                        request.toCommand(
+                            organizationId = organizationId,
+                            actorUserId = context.userId,
+                            actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
+                            activityId = activityId,
+                            targetStatus = "active",
+                        ),
+                    )
+                    call.respond(HttpStatusCode.OK, result.toResponse())
+                }
+
+                post("/activities/{activityId}/deactivate") {
+                    val context = call.hermesAuthContext()
+                    val organizationId = context.requireActiveOrganization().organization.id
+                    val activityId = call.parameters["activityId"] ?: throw DomainRuleViolation("Activity id is required.")
+                    val request = call.receive<ChangeAdminActivityStatusRequest>()
+                    val useCase = adminBusinessModule.changeActivityStatusUseCase
+                        ?: throw DomainRuleViolation("Admin activity status module is not configured.")
+                    val result = useCase.deactivate(
+                        request.toCommand(
+                            organizationId = organizationId,
+                            actorUserId = context.userId,
+                            actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
+                            activityId = activityId,
+                            targetStatus = "paused",
                         ),
                     )
                     call.respond(HttpStatusCode.OK, result.toResponse())

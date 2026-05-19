@@ -10,6 +10,10 @@ data class AdminBusinessActivitiesResult(
     val activities: List<AdminBusinessActivitySummary>,
 )
 
+data class AdminBusinessActivityResult(
+    val activity: AdminBusinessActivitySummary,
+)
+
 data class AdminBusinessBranchesResult(
     val branches: List<AdminBusinessBranchSummary>,
 )
@@ -61,6 +65,7 @@ data class AdminBusinessActivitySummary(
     val updatedAt: Instant? = null,
 ) {
     val active: Boolean get() = status.equals("active", ignoreCase = true)
+    val archived: Boolean get() = status.equals("archived", ignoreCase = true)
 }
 
 data class AdminBusinessBranchSummary(

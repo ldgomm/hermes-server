@@ -3,6 +3,20 @@ package com.hermes.domain.permission
 object PermissionCatalog {
     const val ALL = "*"
 
+    // Admin General / Business Foundation.
+    const val ADMIN_BUSINESS_VIEW = "admin.business.view"
+    const val ADMIN_BUSINESS_UPDATE = "admin.business.update"
+    const val ADMIN_BUSINESS_READINESS_VIEW = "admin.business.readiness.view"
+
+    const val ADMIN_ACTIVITIES_VIEW = "admin.activities.view"
+    const val ADMIN_ACTIVITIES_MANAGE = "admin.activities.manage"
+
+    const val ADMIN_BRANCHES_VIEW = "admin.branches.view"
+    const val ADMIN_BRANCHES_MANAGE = "admin.branches.manage"
+
+    const val ADMIN_EMISSION_POINTS_VIEW = "admin.emission_points.view"
+    const val ADMIN_EMISSION_POINTS_MANAGE = "admin.emission_points.manage"
+
     // Existing constants kept for backward compatibility with Fase 3/4 code and tests.
     const val SALES_VIEW = "sales.view"
     const val SALES_CREATE = "sales.create"

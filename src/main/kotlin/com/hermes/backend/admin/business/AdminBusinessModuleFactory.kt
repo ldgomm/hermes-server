@@ -1,11 +1,16 @@
 package com.hermes.backend.admin.business
 
+import com.hermes.application.admin.business.ChangeAdminActivityStatusUseCase
+import com.hermes.application.admin.business.CreateAdminActivityUseCase
+import com.hermes.application.admin.business.GetAdminActivityUseCase
 import com.hermes.application.admin.business.GetAdminBusinessReadinessUseCase
 import com.hermes.application.admin.business.GetAdminBusinessUseCase
 import com.hermes.application.admin.business.ListAdminActivitiesUseCase
 import com.hermes.application.admin.business.ListAdminBranchesUseCase
 import com.hermes.application.admin.business.ListAdminEmissionPointsUseCase
+import com.hermes.application.admin.business.UpdateAdminActivityUseCase
 import com.hermes.application.admin.business.UpdateAdminBusinessUseCase
+import com.hermes.application.admin.business.UuidAdminBusinessIdGenerator
 import com.hermes.infrastructure.mongo.admin.business.MongoAdminBusinessRepository
 import com.mongodb.client.MongoDatabase
 import java.time.Clock
@@ -16,6 +21,7 @@ object AdminBusinessModuleFactory {
         clock: Clock = Clock.systemUTC(),
     ): AdminBusinessModule {
         val repository = MongoAdminBusinessRepository(database)
+        val idGenerator = UuidAdminBusinessIdGenerator()
         return AdminBusinessModule(
             getBusinessUseCase = GetAdminBusinessUseCase(repository),
             getReadinessUseCase = GetAdminBusinessReadinessUseCase(repository, clock),
@@ -25,6 +31,20 @@ object AdminBusinessModuleFactory {
             updateBusinessUseCase = UpdateAdminBusinessUseCase(
                 readRepository = repository,
                 mutationRepository = repository,
+                clock = clock,
+            ),
+            getActivityUseCase = GetAdminActivityUseCase(repository),
+            createActivityUseCase = CreateAdminActivityUseCase(
+                repository = repository,
+                idGenerator = idGenerator,
+                clock = clock,
+            ),
+            updateActivityUseCase = UpdateAdminActivityUseCase(
+                repository = repository,
+                clock = clock,
+            ),
+            changeActivityStatusUseCase = ChangeAdminActivityStatusUseCase(
+                repository = repository,
                 clock = clock,
             ),
         )

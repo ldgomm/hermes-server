@@ -2,6 +2,7 @@ package com.hermes.backend.routes
 
 import com.hermes.application.admin.business.AdminBranchLocation
 import com.hermes.application.admin.business.AdminBusinessActivitiesResult
+import com.hermes.application.admin.business.AdminBusinessActivityResult
 import com.hermes.application.admin.business.AdminBusinessActivitySummary
 import com.hermes.application.admin.business.AdminBusinessBranchesResult
 import com.hermes.application.admin.business.AdminBusinessBranchSummary
@@ -11,6 +12,9 @@ import com.hermes.application.admin.business.AdminBusinessProfile
 import com.hermes.application.admin.business.AdminBusinessReadinessCheck
 import com.hermes.application.admin.business.AdminBusinessReadinessResult
 import com.hermes.application.admin.business.AdminBusinessResult
+import com.hermes.application.admin.business.ChangeAdminActivityStatusCommand
+import com.hermes.application.admin.business.CreateAdminActivityCommand
+import com.hermes.application.admin.business.UpdateAdminActivityCommand
 import com.hermes.application.admin.business.UpdateAdminBusinessCommand
 import kotlinx.serialization.Serializable
 
@@ -65,8 +69,48 @@ data class AdminActivityResponse(
 )
 
 @Serializable
+data class AdminActivityEnvelope(
+    val activity: AdminActivityResponse,
+)
+
+@Serializable
 data class AdminActivitiesResponse(
     val activities: List<AdminActivityResponse>,
+)
+
+@Serializable
+data class CreateAdminActivityRequest(
+    val code: String,
+    val name: String,
+    val description: String? = null,
+    val activityType: String,
+    val workflowMode: String,
+    val status: String = "active",
+    val requiresScheduling: Boolean = false,
+    val tracksInventory: Boolean = false,
+    val allowsReceivables: Boolean = true,
+    val sortOrder: Int = 0,
+    val reason: String,
+)
+
+@Serializable
+data class UpdateAdminActivityRequest(
+    val code: String? = null,
+    val name: String? = null,
+    val description: String? = null,
+    val clearDescription: Boolean = false,
+    val activityType: String? = null,
+    val workflowMode: String? = null,
+    val requiresScheduling: Boolean? = null,
+    val tracksInventory: Boolean? = null,
+    val allowsReceivables: Boolean? = null,
+    val sortOrder: Int? = null,
+    val reason: String,
+)
+
+@Serializable
+data class ChangeAdminActivityStatusRequest(
+    val reason: String,
 )
 
 @Serializable
@@ -154,7 +198,68 @@ fun UpdateAdminBusinessRequest.toCommand(
     reason = reason,
 )
 
+fun CreateAdminActivityRequest.toCommand(
+    organizationId: String,
+    actorUserId: String,
+    actorEffectivePermissions: Set<String>,
+): CreateAdminActivityCommand = CreateAdminActivityCommand(
+    organizationId = organizationId,
+    actorUserId = actorUserId,
+    actorEffectivePermissions = actorEffectivePermissions,
+    code = code,
+    name = name,
+    description = description,
+    activityType = activityType,
+    workflowMode = workflowMode,
+    status = status,
+    requiresScheduling = requiresScheduling,
+    tracksInventory = tracksInventory,
+    allowsReceivables = allowsReceivables,
+    sortOrder = sortOrder,
+    reason = reason,
+)
+
+fun UpdateAdminActivityRequest.toCommand(
+    organizationId: String,
+    actorUserId: String,
+    actorEffectivePermissions: Set<String>,
+    activityId: String,
+): UpdateAdminActivityCommand = UpdateAdminActivityCommand(
+    organizationId = organizationId,
+    actorUserId = actorUserId,
+    actorEffectivePermissions = actorEffectivePermissions,
+    activityId = activityId,
+    code = code,
+    name = name,
+    description = description,
+    clearDescription = clearDescription,
+    activityType = activityType,
+    workflowMode = workflowMode,
+    requiresScheduling = requiresScheduling,
+    tracksInventory = tracksInventory,
+    allowsReceivables = allowsReceivables,
+    sortOrder = sortOrder,
+    reason = reason,
+)
+
+fun ChangeAdminActivityStatusRequest.toCommand(
+    organizationId: String,
+    actorUserId: String,
+    actorEffectivePermissions: Set<String>,
+    activityId: String,
+    targetStatus: String,
+): ChangeAdminActivityStatusCommand = ChangeAdminActivityStatusCommand(
+    organizationId = organizationId,
+    actorUserId = actorUserId,
+    actorEffectivePermissions = actorEffectivePermissions,
+    activityId = activityId,
+    targetStatus = targetStatus,
+    reason = reason,
+)
+
 fun AdminBusinessResult.toResponse(): AdminBusinessEnvelope = AdminBusinessEnvelope(business.toResponse())
+
+fun AdminBusinessActivityResult.toResponse(): AdminActivityEnvelope = AdminActivityEnvelope(activity.toResponse())
 
 fun AdminBusinessActivitiesResult.toResponse(): AdminActivitiesResponse =
     AdminActivitiesResponse(activities.map { it.toResponse() })

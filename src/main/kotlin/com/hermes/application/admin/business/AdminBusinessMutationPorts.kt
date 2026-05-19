@@ -1,9 +1,10 @@
 package com.hermes.application.admin.business
 
 import java.time.Instant
+import java.util.UUID
 
 /**
- * Write-side port separated from AdminBusinessRepository so 13A.1 read tests/fakes
+ * Write-side ports are separated from AdminBusinessRepository so read tests/fakes
  * do not need to change unless they exercise mutations.
  */
 interface AdminBusinessMutationRepository {
@@ -28,8 +29,79 @@ data class AdminBusinessUpdatePatch(
     val updatedAt: Instant,
 )
 
+interface AdminActivityMutationRepository {
+    fun findActivity(organizationId: String, activityId: String): AdminBusinessActivitySummary?
+
+    fun existsActivityCode(
+        organizationId: String,
+        code: String,
+        excludeActivityId: String? = null,
+    ): Boolean
+
+    fun createActivity(draft: AdminActivityCreateDraft): AdminBusinessActivitySummary
+    fun updateActivity(patch: AdminActivityUpdatePatch): AdminBusinessActivitySummary
+    fun updateActivityStatus(patch: AdminActivityStatusPatch): AdminBusinessActivitySummary
+}
+
+data class AdminActivityCreateDraft(
+    val id: String,
+    val organizationId: String,
+    val code: String,
+    val name: String,
+    val description: String? = null,
+    val activityType: String,
+    val workflowMode: String,
+    val status: String,
+    val requiresScheduling: Boolean,
+    val tracksInventory: Boolean,
+    val allowsReceivables: Boolean,
+    val sortOrder: Int,
+    val createdBy: String,
+    val createdAt: Instant,
+)
+
+data class AdminActivityUpdatePatch(
+    val organizationId: String,
+    val activityId: String,
+    val code: String? = null,
+    val name: String? = null,
+    val description: String? = null,
+    val changeDescription: Boolean = false,
+    val activityType: String? = null,
+    val workflowMode: String? = null,
+    val requiresScheduling: Boolean? = null,
+    val tracksInventory: Boolean? = null,
+    val allowsReceivables: Boolean? = null,
+    val sortOrder: Int? = null,
+    val updatedBy: String,
+    val updatedAt: Instant,
+) {
+    fun hasChanges(): Boolean = listOf(
+        code,
+        name,
+        activityType,
+        workflowMode,
+        requiresScheduling,
+        tracksInventory,
+        allowsReceivables,
+        sortOrder,
+    ).any { it != null } || changeDescription
+}
+
+data class AdminActivityStatusPatch(
+    val organizationId: String,
+    val activityId: String,
+    val status: String,
+    val updatedBy: String,
+    val updatedAt: Instant,
+)
+
 enum class AdminBusinessAuditAction {
     BUSINESS_SETTINGS_UPDATED,
+    ACTIVITY_CREATED,
+    ACTIVITY_UPDATED,
+    ACTIVITY_ACTIVATED,
+    ACTIVITY_DEACTIVATED,
 }
 
 data class AdminBusinessAuditEvent(
@@ -49,4 +121,13 @@ interface AdminBusinessAuditLogger {
 
 object NoopAdminBusinessAuditLogger : AdminBusinessAuditLogger {
     override fun log(event: AdminBusinessAuditEvent) = Unit
+}
+
+fun interface AdminBusinessIdGenerator {
+    fun newId(prefix: String): String
+}
+
+class UuidAdminBusinessIdGenerator : AdminBusinessIdGenerator {
+    override fun newId(prefix: String): String =
+        prefix.trim().lowercase() + "_" + UUID.randomUUID().toString().replace("-", "")
 }

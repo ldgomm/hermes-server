@@ -35,6 +35,57 @@ data class ListAdminActivitiesCommand(
     val actorEffectivePermissions: Set<String>,
 )
 
+data class GetAdminActivityCommand(
+    val organizationId: String,
+    val actorUserId: String,
+    val actorEffectivePermissions: Set<String>,
+    val activityId: String,
+)
+
+data class CreateAdminActivityCommand(
+    val organizationId: String,
+    val actorUserId: String,
+    val actorEffectivePermissions: Set<String>,
+    val code: String,
+    val name: String,
+    val description: String? = null,
+    val activityType: String,
+    val workflowMode: String,
+    val status: String = "active",
+    val requiresScheduling: Boolean = false,
+    val tracksInventory: Boolean = false,
+    val allowsReceivables: Boolean = true,
+    val sortOrder: Int = 0,
+    val reason: String,
+)
+
+data class UpdateAdminActivityCommand(
+    val organizationId: String,
+    val actorUserId: String,
+    val actorEffectivePermissions: Set<String>,
+    val activityId: String,
+    val code: String? = null,
+    val name: String? = null,
+    val description: String? = null,
+    val clearDescription: Boolean = false,
+    val activityType: String? = null,
+    val workflowMode: String? = null,
+    val requiresScheduling: Boolean? = null,
+    val tracksInventory: Boolean? = null,
+    val allowsReceivables: Boolean? = null,
+    val sortOrder: Int? = null,
+    val reason: String,
+)
+
+data class ChangeAdminActivityStatusCommand(
+    val organizationId: String,
+    val actorUserId: String,
+    val actorEffectivePermissions: Set<String>,
+    val activityId: String,
+    val targetStatus: String,
+    val reason: String,
+)
+
 data class ListAdminBranchesCommand(
     val organizationId: String,
     val actorUserId: String,
