@@ -1,7 +1,22 @@
 package com.hermes.backend.electronicinvoicing
 
-import com.hermes.application.electronicinvoicing.*
-import com.hermes.application.signature.*
+import com.hermes.application.electronicinvoicing.CheckOrganizationSriReadinessUseCase
+import com.hermes.application.electronicinvoicing.EnsureElectronicSequenceAdminUseCase
+import com.hermes.application.electronicinvoicing.GetElectronicInvoiceUseCase
+import com.hermes.application.electronicinvoicing.GetElectronicSequenceUseCase
+import com.hermes.application.electronicinvoicing.GetOrganizationSriSettingsUseCase
+import com.hermes.application.electronicinvoicing.GetElectronicInvoiceErrorsUseCase
+import com.hermes.application.electronicinvoicing.IssueElectronicInvoiceFromSaleUseCase
+import com.hermes.application.electronicinvoicing.ListElectronicInvoicesUseCase
+import com.hermes.application.electronicinvoicing.ListElectronicSequencesUseCase
+import com.hermes.application.electronicinvoicing.RetryElectronicInvoiceAuthorizationUseCase
+import com.hermes.application.electronicinvoicing.UpsertOrganizationSriSettingsUseCase
+import com.hermes.application.signature.ActivateElectronicSignatureUseCase
+import com.hermes.application.signature.GetElectronicSignatureUseCase
+import com.hermes.application.signature.ListElectronicSignaturesUseCase
+import com.hermes.application.signature.RevokeElectronicSignatureUseCase
+import com.hermes.application.signature.UploadElectronicSignatureUseCase
+import com.hermes.application.signature.ValidateElectronicSignatureUseCase
 
 /**
  * Keeps 12A read-only construction compatible while allowing 12B Admin/SRI routes
@@ -22,4 +37,7 @@ data class ElectronicInvoicingModule(
     val ensureElectronicSequenceAdminUseCase: EnsureElectronicSequenceAdminUseCase? = null,
     val listElectronicSequencesUseCase: ListElectronicSequencesUseCase? = null,
     val getElectronicSequenceUseCase: GetElectronicSequenceUseCase? = null,
+    val issueElectronicInvoiceFromSaleUseCase: IssueElectronicInvoiceFromSaleUseCase? = null,
+    val retryElectronicInvoiceAuthorizationUseCase: RetryElectronicInvoiceAuthorizationUseCase? = null,
+    val getElectronicInvoiceErrorsUseCase: GetElectronicInvoiceErrorsUseCase? = null,
 )

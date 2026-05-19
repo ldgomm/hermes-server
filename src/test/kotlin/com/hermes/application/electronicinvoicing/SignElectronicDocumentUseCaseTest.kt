@@ -2,20 +2,18 @@ package com.hermes.application.electronicinvoicing
 
 import com.hermes.application.signature.ElectronicSignatureRepository
 import com.hermes.domain.signature.ElectronicSignature
+import java.math.BigInteger
 import java.security.KeyPairGenerator
-import java.security.PrivateKey
 import java.security.Principal
 import java.security.PublicKey
 import java.security.cert.X509Certificate
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
-import java.util.Date
-import java.math.BigInteger
+import java.util.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 
 class SignElectronicDocumentUseCaseTest {
     private val now = Instant.parse("2026-05-18T10:00:00Z")
@@ -68,10 +66,14 @@ private class InMemorySignatureRepository(
 ) : ElectronicSignatureRepository {
     var updated: ElectronicSignature? = null
     override fun create(signature: ElectronicSignature) = Unit
-    override fun update(signature: ElectronicSignature) { updated = signature }
+    override fun update(signature: ElectronicSignature) {
+        updated = signature
+    }
+
     override fun findById(id: String): ElectronicSignature? = if (id == signature.id) signature else null
     override fun findActiveByOrganizationId(organizationId: String): ElectronicSignature? =
         if (organizationId == signature.organizationId) signature else null
+
     override fun findByOrganizationId(organizationId: String): List<ElectronicSignature> =
         if (organizationId == signature.organizationId) listOf(signature) else emptyList()
 }
@@ -82,6 +84,7 @@ private class FakeSignatureVault(
     private val material = testMaterial()
     override fun loadActiveForSigning(organizationId: String, now: Instant): ElectronicSignatureSigningMaterial =
         ElectronicSignatureSigningMaterial(signature, material)
+
     override fun loadForSigning(
         organizationId: String,
         signatureId: String,
@@ -105,7 +108,9 @@ private class FakeXmlSigner : XmlSigner {
 
 private class RecordingSignatureAuditLogger : ElectronicSignatureUsageAuditLogger {
     val events = mutableListOf<ElectronicSignatureUsageAuditEvent>()
-    override fun log(event: ElectronicSignatureUsageAuditEvent) { events += event }
+    override fun log(event: ElectronicSignatureUsageAuditEvent) {
+        events += event
+    }
 }
 
 private fun testMaterial(): XmlSigningKeyMaterial {

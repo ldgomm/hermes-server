@@ -10,6 +10,9 @@ import com.hermes.backend.auth.hermesAuthContext
 import com.hermes.backend.auth.hermesAuthenticated
 import com.hermes.backend.auth.hermesRequiresPermission
 import com.hermes.backend.electronicinvoicing.ElectronicInvoicingModule
+import com.hermes.backend.electronicinvoicing.IssueElectronicInvoiceRequest
+import com.hermes.backend.electronicinvoicing.electronicInvoiceErrorsCommand
+import com.hermes.backend.electronicinvoicing.retryAuthorizationCommand
 import com.hermes.backend.electronicinvoicing.electronicInvoiceSearchCommand
 import com.hermes.backend.electronicinvoicing.toDetailResponse
 import com.hermes.backend.electronicinvoicing.toResponse
@@ -88,6 +91,54 @@ fun Route.electronicInvoiceRoutes(
                             from = call.request.queryParameters["from"],
                             to = call.request.queryParameters["to"],
                             limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 100,
+                        )
+                    )
+                    call.respond(HttpStatusCode.OK, result.toResponse())
+                }
+            }
+
+            hermesRequiresPermission(PermissionCatalog.DOCUMENTS_ELECTRONIC_INVOICE_ISSUE) {
+                post {
+                    val context = call.hermesAuthContext()
+                    val organizationId = call.requiredElectronicInvoiceOrganizationId()
+                    val request = call.receive<IssueElectronicInvoiceRequest>()
+                    val result = electronicInvoicingModule.issueElectronicInvoiceFromSaleUseCase!!.execute(
+                        request.toCommand(
+                            organizationId = organizationId,
+                            actorUserId = context.userId,
+                            permissions = context.effectivePermissions?.permissions.orEmpty(),
+                        )
+                    )
+                    call.respond(HttpStatusCode.Created, result.toResponse())
+                }
+            }
+
+            hermesRequiresPermission(PermissionCatalog.DOCUMENTS_ELECTRONIC_INVOICE_RETRY) {
+                post("/{documentId}/retry-authorization") {
+                    val context = call.hermesAuthContext()
+                    val organizationId = call.requiredElectronicInvoiceOrganizationId()
+                    val result = electronicInvoicingModule.retryElectronicInvoiceAuthorizationUseCase!!.execute(
+                        retryAuthorizationCommand(
+                            organizationId = organizationId,
+                            documentId = call.requiredElectronicInvoicePath("documentId"),
+                            actorUserId = context.userId,
+                            permissions = context.effectivePermissions?.permissions.orEmpty(),
+                        )
+                    )
+                    call.respond(HttpStatusCode.OK, result.toResponse())
+                }
+            }
+
+            hermesRequiresPermission(PermissionCatalog.DOCUMENTS_ELECTRONIC_INVOICE_VIEW_ERRORS) {
+                get("/{documentId}/errors") {
+                    val context = call.hermesAuthContext()
+                    val organizationId = call.requiredElectronicInvoiceOrganizationId()
+                    val result = electronicInvoicingModule.getElectronicInvoiceErrorsUseCase!!.execute(
+                        electronicInvoiceErrorsCommand(
+                            organizationId = organizationId,
+                            documentId = call.requiredElectronicInvoicePath("documentId"),
+                            actorUserId = context.userId,
+                            permissions = context.effectivePermissions?.permissions.orEmpty(),
                         )
                     )
                     call.respond(HttpStatusCode.OK, result.toResponse())
