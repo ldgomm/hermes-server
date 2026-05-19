@@ -8,6 +8,7 @@ import com.hermes.application.admin.business.AdminBusinessActivitiesResult
 import com.hermes.application.admin.business.AdminBusinessBranchResult
 import com.hermes.application.admin.business.AdminBusinessBranchSummary
 import com.hermes.application.admin.business.AdminBusinessBranchesResult
+import com.hermes.application.admin.business.AdminBusinessEmissionPointResult
 import com.hermes.application.admin.business.AdminBusinessEmissionPointSummary
 import com.hermes.application.admin.business.AdminBusinessEmissionPointsResult
 import com.hermes.application.admin.business.AdminBusinessProfile
@@ -16,11 +17,14 @@ import com.hermes.application.admin.business.AdminBusinessReadinessResult
 import com.hermes.application.admin.business.AdminBusinessResult
 import com.hermes.application.admin.business.ChangeAdminActivityStatusCommand
 import com.hermes.application.admin.business.ChangeAdminBranchStatusCommand
+import com.hermes.application.admin.business.ChangeAdminEmissionPointStatusCommand
 import com.hermes.application.admin.business.CreateAdminActivityCommand
 import com.hermes.application.admin.business.CreateAdminBranchCommand
+import com.hermes.application.admin.business.CreateAdminEmissionPointCommand
 import com.hermes.application.admin.business.UpdateAdminActivityCommand
 import com.hermes.application.admin.business.UpdateAdminBranchCommand
 import com.hermes.application.admin.business.UpdateAdminBusinessCommand
+import com.hermes.application.admin.business.UpdateAdminEmissionPointCommand
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -214,6 +218,35 @@ data class AdminEmissionPointsResponse(
 )
 
 @Serializable
+data class AdminEmissionPointEnvelope(
+    val emissionPoint: AdminEmissionPointResponse,
+)
+
+@Serializable
+data class CreateAdminEmissionPointRequest(
+    val branchId: String,
+    val establishmentCode: String,
+    val emissionPointCode: String,
+    val displayName: String,
+    val status: String = "active",
+    val reason: String,
+)
+
+@Serializable
+data class UpdateAdminEmissionPointRequest(
+    val branchId: String? = null,
+    val establishmentCode: String? = null,
+    val emissionPointCode: String? = null,
+    val displayName: String? = null,
+    val reason: String,
+)
+
+@Serializable
+data class ChangeAdminEmissionPointStatusRequest(
+    val reason: String,
+)
+
+@Serializable
 data class AdminBusinessReadinessResponse(
     val organizationId: String,
     val overallStatus: String,
@@ -359,6 +392,54 @@ fun ChangeAdminBranchStatusRequest.toCommand(
     reason = reason,
 )
 
+fun CreateAdminEmissionPointRequest.toCommand(
+    organizationId: String,
+    actorUserId: String,
+    actorEffectivePermissions: Set<String>,
+): CreateAdminEmissionPointCommand = CreateAdminEmissionPointCommand(
+    organizationId = organizationId,
+    actorUserId = actorUserId,
+    actorEffectivePermissions = actorEffectivePermissions,
+    branchId = branchId,
+    establishmentCode = establishmentCode,
+    emissionPointCode = emissionPointCode,
+    displayName = displayName,
+    status = status,
+    reason = reason,
+)
+
+fun UpdateAdminEmissionPointRequest.toCommand(
+    organizationId: String,
+    actorUserId: String,
+    actorEffectivePermissions: Set<String>,
+    emissionPointId: String,
+): UpdateAdminEmissionPointCommand = UpdateAdminEmissionPointCommand(
+    organizationId = organizationId,
+    actorUserId = actorUserId,
+    actorEffectivePermissions = actorEffectivePermissions,
+    emissionPointId = emissionPointId,
+    branchId = branchId,
+    establishmentCode = establishmentCode,
+    emissionPointCode = emissionPointCode,
+    displayName = displayName,
+    reason = reason,
+)
+
+fun ChangeAdminEmissionPointStatusRequest.toCommand(
+    organizationId: String,
+    actorUserId: String,
+    actorEffectivePermissions: Set<String>,
+    emissionPointId: String,
+    targetStatus: String,
+): ChangeAdminEmissionPointStatusCommand = ChangeAdminEmissionPointStatusCommand(
+    organizationId = organizationId,
+    actorUserId = actorUserId,
+    actorEffectivePermissions = actorEffectivePermissions,
+    emissionPointId = emissionPointId,
+    targetStatus = targetStatus,
+    reason = reason,
+)
+
 private fun AdminBranchLocationRequest.toCommand(): AdminBranchLocationCommand = AdminBranchLocationCommand(
     countryCode = countryCode,
     province = province,
@@ -384,6 +465,9 @@ fun AdminBusinessBranchesResult.toResponse(): AdminBranchesResponse =
 
 fun AdminBusinessEmissionPointsResult.toResponse(): AdminEmissionPointsResponse =
     AdminEmissionPointsResponse(emissionPoints.map { it.toResponse() })
+
+fun AdminBusinessEmissionPointResult.toResponse(): AdminEmissionPointEnvelope =
+    AdminEmissionPointEnvelope(emissionPoint.toResponse())
 
 fun AdminBusinessReadinessResult.toResponse(): AdminBusinessReadinessResponse = AdminBusinessReadinessResponse(
     organizationId = organizationId,

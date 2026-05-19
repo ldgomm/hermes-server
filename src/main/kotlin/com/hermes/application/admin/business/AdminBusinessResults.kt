@@ -26,6 +26,10 @@ data class AdminBusinessEmissionPointsResult(
     val emissionPoints: List<AdminBusinessEmissionPointSummary>,
 )
 
+data class AdminBusinessEmissionPointResult(
+    val emissionPoint: AdminBusinessEmissionPointSummary,
+)
+
 data class AdminBusinessReadinessResult(
     val organizationId: String,
     val overallStatus: AdminBusinessReadinessStatus,
@@ -113,6 +117,8 @@ data class AdminBusinessEmissionPointSummary(
     val updatedAt: Instant? = null,
 ) {
     val active: Boolean get() = status.equals("active", ignoreCase = true)
+    val inactive: Boolean get() = status.equals("inactive", ignoreCase = true)
+    val archived: Boolean get() = status.equals("archived", ignoreCase = true)
     val fullCode: String get() = "$establishmentCode-$emissionPointCode"
 }
 

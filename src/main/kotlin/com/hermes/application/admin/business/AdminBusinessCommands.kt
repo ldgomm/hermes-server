@@ -152,3 +152,43 @@ data class ListAdminEmissionPointsCommand(
     val actorUserId: String,
     val actorEffectivePermissions: Set<String>,
 )
+
+data class GetAdminEmissionPointCommand(
+    val organizationId: String,
+    val actorUserId: String,
+    val actorEffectivePermissions: Set<String>,
+    val emissionPointId: String,
+)
+
+data class CreateAdminEmissionPointCommand(
+    val organizationId: String,
+    val actorUserId: String,
+    val actorEffectivePermissions: Set<String>,
+    val branchId: String,
+    val establishmentCode: String,
+    val emissionPointCode: String,
+    val displayName: String,
+    val status: String = "active",
+    val reason: String,
+)
+
+data class UpdateAdminEmissionPointCommand(
+    val organizationId: String,
+    val actorUserId: String,
+    val actorEffectivePermissions: Set<String>,
+    val emissionPointId: String,
+    val branchId: String? = null,
+    val establishmentCode: String? = null,
+    val emissionPointCode: String? = null,
+    val displayName: String? = null,
+    val reason: String,
+)
+
+data class ChangeAdminEmissionPointStatusCommand(
+    val organizationId: String,
+    val actorUserId: String,
+    val actorEffectivePermissions: Set<String>,
+    val emissionPointId: String,
+    val targetStatus: String,
+    val reason: String,
+)

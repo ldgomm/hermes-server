@@ -1,7 +1,7 @@
 package com.hermes.application.admin.business
 
 import java.time.Instant
-import java.util.UUID
+import java.util.*
 
 /**
  * Write-side ports are separated from AdminBusinessRepository so read tests/fakes
@@ -151,6 +151,56 @@ data class AdminBranchStatusPatch(
     val updatedAt: Instant,
 )
 
+
+interface AdminEmissionPointMutationRepository {
+    fun findEmissionPoint(organizationId: String, emissionPointId: String): AdminBusinessEmissionPointSummary?
+    fun findBranch(organizationId: String, branchId: String): AdminBusinessBranchSummary?
+
+    fun existsEmissionPointCodes(
+        organizationId: String,
+        establishmentCode: String,
+        emissionPointCode: String,
+        excludeEmissionPointId: String? = null,
+    ): Boolean
+
+    fun createEmissionPoint(draft: AdminEmissionPointCreateDraft): AdminBusinessEmissionPointSummary
+    fun updateEmissionPoint(patch: AdminEmissionPointUpdatePatch): AdminBusinessEmissionPointSummary
+    fun updateEmissionPointStatus(patch: AdminEmissionPointStatusPatch): AdminBusinessEmissionPointSummary
+}
+
+data class AdminEmissionPointCreateDraft(
+    val id: String,
+    val organizationId: String,
+    val branchId: String,
+    val establishmentCode: String,
+    val emissionPointCode: String,
+    val displayName: String,
+    val status: String,
+    val createdBy: String,
+    val createdAt: Instant,
+)
+
+data class AdminEmissionPointUpdatePatch(
+    val organizationId: String,
+    val emissionPointId: String,
+    val branchId: String? = null,
+    val establishmentCode: String? = null,
+    val emissionPointCode: String? = null,
+    val displayName: String? = null,
+    val updatedBy: String,
+    val updatedAt: Instant,
+) {
+    fun hasChanges(): Boolean = listOf(branchId, establishmentCode, emissionPointCode, displayName).any { it != null }
+}
+
+data class AdminEmissionPointStatusPatch(
+    val organizationId: String,
+    val emissionPointId: String,
+    val status: String,
+    val updatedBy: String,
+    val updatedAt: Instant,
+)
+
 enum class AdminBusinessAuditAction {
     BUSINESS_SETTINGS_UPDATED,
     ACTIVITY_CREATED,
@@ -161,6 +211,10 @@ enum class AdminBusinessAuditAction {
     BRANCH_UPDATED,
     BRANCH_ACTIVATED,
     BRANCH_DEACTIVATED,
+    EMISSION_POINT_CREATED,
+    EMISSION_POINT_UPDATED,
+    EMISSION_POINT_ACTIVATED,
+    EMISSION_POINT_DEACTIVATED,
 }
 
 data class AdminBusinessAuditEvent(

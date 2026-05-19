@@ -1,21 +1,6 @@
 package com.hermes.infrastructure.mongo.admin.business
 
-import com.hermes.application.admin.business.AdminActivityCreateDraft
-import com.hermes.application.admin.business.AdminActivityMutationRepository
-import com.hermes.application.admin.business.AdminActivityStatusPatch
-import com.hermes.application.admin.business.AdminActivityUpdatePatch
-import com.hermes.application.admin.business.AdminBranchCreateDraft
-import com.hermes.application.admin.business.AdminBranchLocation
-import com.hermes.application.admin.business.AdminBranchMutationRepository
-import com.hermes.application.admin.business.AdminBranchStatusPatch
-import com.hermes.application.admin.business.AdminBranchUpdatePatch
-import com.hermes.application.admin.business.AdminBusinessActivitySummary
-import com.hermes.application.admin.business.AdminBusinessBranchSummary
-import com.hermes.application.admin.business.AdminBusinessEmissionPointSummary
-import com.hermes.application.admin.business.AdminBusinessMutationRepository
-import com.hermes.application.admin.business.AdminBusinessProfile
-import com.hermes.application.admin.business.AdminBusinessRepository
-import com.hermes.application.admin.business.AdminBusinessUpdatePatch
+import com.hermes.application.admin.business.*
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.role.SystemRoleCode
 import com.hermes.domain.shared.DomainRuleViolation
@@ -24,31 +9,31 @@ import com.hermes.infrastructure.mongo.electronicinvoicing.ElectronicInvoicingMo
 import com.mongodb.client.FindIterable
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
-import com.mongodb.client.model.Filters.and
-import com.mongodb.client.model.Filters.eq
-import com.mongodb.client.model.Filters.ne
+import com.mongodb.client.model.Filters.*
 import com.mongodb.client.model.FindOneAndUpdateOptions
 import com.mongodb.client.model.ReturnDocument
 import com.mongodb.client.model.Sorts
-import com.mongodb.client.model.Updates.combine
-import com.mongodb.client.model.Updates.inc
-import com.mongodb.client.model.Updates.set
+import com.mongodb.client.model.Updates.*
 import org.bson.Document
-import java.util.Date
+import java.util.*
 
 class MongoAdminBusinessRepository(
     database: MongoDatabase,
 ) : AdminBusinessRepository,
     AdminBusinessMutationRepository,
     AdminActivityMutationRepository,
-    AdminBranchMutationRepository {
+    AdminBranchMutationRepository,
+    AdminEmissionPointMutationRepository {
 
     private val organizations: MongoCollection<Document> = database.getCollection(MongoCollectionNames.ORGANIZATIONS)
-    private val activities: MongoCollection<Document> = database.getCollection(MongoCollectionNames.ORGANIZATION_ACTIVITIES)
+    private val activities: MongoCollection<Document> =
+        database.getCollection(MongoCollectionNames.ORGANIZATION_ACTIVITIES)
     private val branches: MongoCollection<Document> = database.getCollection(MongoCollectionNames.BRANCHES)
     private val emissionPoints: MongoCollection<Document> = database.getCollection(MongoCollectionNames.EMISSION_POINTS)
-    private val taxSettings: MongoCollection<Document> = database.getCollection(MongoCollectionNames.ORGANIZATION_TAX_SETTINGS)
-    private val sriSettings: MongoCollection<Document> = database.getCollection(ElectronicInvoicingMongoCollectionNames.ORGANIZATION_SRI_SETTINGS)
+    private val taxSettings: MongoCollection<Document> =
+        database.getCollection(MongoCollectionNames.ORGANIZATION_TAX_SETTINGS)
+    private val sriSettings: MongoCollection<Document> =
+        database.getCollection(ElectronicInvoicingMongoCollectionNames.ORGANIZATION_SRI_SETTINGS)
     private val memberships: MongoCollection<Document> = database.getCollection(MongoCollectionNames.MEMBERSHIPS)
     private val roles: MongoCollection<Document> = database.getCollection(MongoCollectionNames.ROLES)
 
@@ -254,13 +239,14 @@ class MongoAdminBusinessRepository(
         return branches.countDocuments(and(filters)).toInt()
     }
 
-    override fun hasActiveEmissionPoints(organizationId: String, branchId: String): Boolean = emissionPoints.countDocuments(
-        and(
-            eq("organizationId", organizationId.trim()),
-            eq("branchId", branchId.trim()),
-            eq("status", "active"),
-        )
-    ) > 0
+    override fun hasActiveEmissionPoints(organizationId: String, branchId: String): Boolean =
+        emissionPoints.countDocuments(
+            and(
+                eq("organizationId", organizationId.trim()),
+                eq("branchId", branchId.trim()),
+                eq("status", "active"),
+            )
+        ) > 0
 
     override fun createBranch(draft: AdminBranchCreateDraft): AdminBusinessBranchSummary {
         val now = Date.from(draft.createdAt)
@@ -321,10 +307,90 @@ class MongoAdminBusinessRepository(
         return MongoAdminBusinessMappers.branchFromDocument(updated)
     }
 
+
+    override fun findEmissionPoint(
+        organizationId: String,
+        emissionPointId: String,
+    ): AdminBusinessEmissionPointSummary? = emissionPoints
+        .find(and(eq("organizationId", organizationId.trim()), eq("_id", emissionPointId.trim())))
+        .firstOrNull()
+        ?.let(MongoAdminBusinessMappers::emissionPointFromDocument)
+
+    override fun existsEmissionPointCodes(
+        organizationId: String,
+        establishmentCode: String,
+        emissionPointCode: String,
+        excludeEmissionPointId: String?,
+    ): Boolean {
+        val filters = buildList {
+            add(eq("organizationId", organizationId.trim()))
+            add(eq("establishmentCode", establishmentCode.trim()))
+            add(eq("emissionPointCode", emissionPointCode.trim()))
+            if (!excludeEmissionPointId.isNullOrBlank()) add(ne("_id", excludeEmissionPointId.trim()))
+        }
+        return emissionPoints.countDocuments(and(filters)) > 0
+    }
+
+    override fun createEmissionPoint(draft: AdminEmissionPointCreateDraft): AdminBusinessEmissionPointSummary {
+        val now = Date.from(draft.createdAt)
+        val document = Document("_id", draft.id)
+            .append("organizationId", draft.organizationId)
+            .append("branchId", draft.branchId)
+            .append("establishmentCode", draft.establishmentCode)
+            .append("emissionPointCode", draft.emissionPointCode)
+            .append("displayName", draft.displayName)
+            .append("status", draft.status)
+            .append("documentSequences", Document())
+            .append("createdAt", now)
+            .append("createdBy", draft.createdBy)
+            .append("updatedAt", now)
+            .append("updatedBy", draft.createdBy)
+            .append("version", 1L)
+            .append("schemaVersion", 1)
+
+        emissionPoints.insertOne(document)
+        return MongoAdminBusinessMappers.emissionPointFromDocument(document)
+    }
+
+    override fun updateEmissionPoint(patch: AdminEmissionPointUpdatePatch): AdminBusinessEmissionPointSummary {
+        val sets = buildList {
+            patch.branchId?.let { add(set("branchId", it)) }
+            patch.establishmentCode?.let { add(set("establishmentCode", it)) }
+            patch.emissionPointCode?.let { add(set("emissionPointCode", it)) }
+            patch.displayName?.let { add(set("displayName", it)) }
+            add(set("updatedAt", Date.from(patch.updatedAt)))
+            add(set("updatedBy", patch.updatedBy))
+            add(inc("version", 1L))
+        }
+
+        val updated = emissionPoints.findOneAndUpdate(
+            and(eq("organizationId", patch.organizationId.trim()), eq("_id", patch.emissionPointId.trim())),
+            combine(sets),
+            FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER),
+        ) ?: throw DomainRuleViolation("Emission point does not exist.")
+
+        return MongoAdminBusinessMappers.emissionPointFromDocument(updated)
+    }
+
+    override fun updateEmissionPointStatus(patch: AdminEmissionPointStatusPatch): AdminBusinessEmissionPointSummary {
+        val updated = emissionPoints.findOneAndUpdate(
+            and(eq("organizationId", patch.organizationId.trim()), eq("_id", patch.emissionPointId.trim())),
+            combine(
+                set("status", patch.status),
+                set("updatedAt", Date.from(patch.updatedAt)),
+                set("updatedBy", patch.updatedBy),
+                inc("version", 1L),
+            ),
+            FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER),
+        ) ?: throw DomainRuleViolation("Emission point does not exist.")
+
+        return MongoAdminBusinessMappers.emissionPointFromDocument(updated)
+    }
+
     private fun Document.isOwnerOrAdminRole(): Boolean {
         val code = getString("code").normalizedDbToken()
         val permissions = getList("permissionKeys", String::class.java).orEmpty() +
-            getList("permissions", String::class.java).orEmpty()
+                getList("permissions", String::class.java).orEmpty()
 
         return code in setOf(
             SystemRoleCode.ORGANIZATION_OWNER.code,
