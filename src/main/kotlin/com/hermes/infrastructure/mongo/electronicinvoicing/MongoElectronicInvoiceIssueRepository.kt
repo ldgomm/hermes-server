@@ -47,7 +47,16 @@ class MongoElectronicInvoiceIssueRepository(
                 Filters.eq(MongoDocumentFields.ORGANIZATION_ID, organizationId.trim()),
                 Filters.eq("saleId", saleId.trim()),
                 Filters.eq("documentType", "electronic_invoice"),
-                Filters.eq("status", ElectronicDocumentStatus.AUTHORIZED.name),
+                Filters.`in`("status", authorizedDerivedStatuses),
             )
         ) > 0
+
+    private companion object {
+        val authorizedDerivedStatuses: List<String> = listOf(
+            ElectronicDocumentStatus.AUTHORIZED.name,
+            ElectronicDocumentStatus.DELIVERY_PENDING.name,
+            ElectronicDocumentStatus.DELIVERED.name,
+            ElectronicDocumentStatus.DELIVERY_FAILED.name,
+        )
+    }
 }

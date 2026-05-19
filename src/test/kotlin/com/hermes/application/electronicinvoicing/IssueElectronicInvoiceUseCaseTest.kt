@@ -286,6 +286,7 @@ private class InMemoryIssueElectronicSequenceRepository : ElectronicSequenceRepo
         }
 }
 
+//Redeclaration: class InMemoryElectronicInvoiceIssueRepository : ElectronicInvoiceIssueRepository
 private class InMemoryElectronicInvoiceIssueRepository : ElectronicInvoiceIssueRepository {
     private val records = linkedMapOf<String, ElectronicInvoiceIssueRecord>()
 
@@ -304,6 +305,7 @@ private class InMemoryElectronicInvoiceIssueRepository : ElectronicInvoiceIssueR
         records.values.any { it.organizationId == organizationId && it.saleId == saleId && it.status == ElectronicDocumentStatus.AUTHORIZED }
 }
 
+//Redeclaration: class InMemoryElectronicDocumentArtifactStorage : ElectronicDocumentArtifactStorage, ElectronicDocumentArtifactReader
 private class InMemoryElectronicDocumentArtifactStorage : ElectronicDocumentArtifactStorage {
     val artifacts = mutableListOf<StoredElectronicDocumentArtifact>()
 

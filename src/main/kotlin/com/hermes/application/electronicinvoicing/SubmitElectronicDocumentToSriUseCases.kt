@@ -19,7 +19,7 @@ class SubmitElectronicDocumentToSriUseCase(
         val submitted = command.record.markSubmittedToReception(now, command.actorUserId)
         repository.update(submitted)
         auditLogger.log(
-            submitted.audit(
+            submitted.toIssueAuditEvent(
                 ElectronicInvoiceIssueAuditAction.SRI_RECEPTION_SUBMITTED,
                 command.actorUserId,
                 now
@@ -71,7 +71,7 @@ class SubmitElectronicDocumentToSriUseCase(
         val updated = submitted.markReceptionResult(reception, classification, Instant.now(clock), command.actorUserId)
         repository.update(updated)
         auditLogger.log(
-            updated.audit(
+            updated.toIssueAuditEvent(
                 action = if (reception.status == SriReceptionStatus.RECEIVED) {
                     ElectronicInvoiceIssueAuditAction.SRI_RECEPTION_RECEIVED
                 } else {
@@ -109,7 +109,7 @@ class QuerySriAuthorizationUseCase(
 
         val now = Instant.now(clock)
         auditLogger.log(
-            command.record.audit(
+            command.record.toIssueAuditEvent(
                 ElectronicInvoiceIssueAuditAction.SRI_AUTHORIZATION_QUERIED,
                 command.actorUserId,
                 now
@@ -178,7 +178,7 @@ class QuerySriAuthorizationUseCase(
         )
         repository.update(updated)
         auditLogger.log(
-            updated.audit(
+            updated.toIssueAuditEvent(
                 action = when (authorization.status) {
                     SriAuthorizationStatus.AUTHORIZED -> ElectronicInvoiceIssueAuditAction.SRI_AUTHORIZED
                     SriAuthorizationStatus.NOT_AUTHORIZED -> ElectronicInvoiceIssueAuditAction.SRI_NOT_AUTHORIZED
@@ -221,22 +221,5 @@ private fun rawXmlArtifact(
     content = xml.toByteArray(Charsets.UTF_8),
     contentType = "application/xml; charset=UTF-8",
     fileName = "${record.id}_${type.storageValue}.xml",
-    createdAt = now,
-)
-
-private fun ElectronicInvoiceIssueRecord.audit(
-    action: ElectronicInvoiceIssueAuditAction,
-    actorUserId: String?,
-    now: Instant,
-    message: String? = null,
-): ElectronicInvoiceIssueAuditEvent = ElectronicInvoiceIssueAuditEvent(
-    action = action,
-    actorUserId = actorUserId,
-    organizationId = organizationId,
-    documentId = id,
-    saleId = saleId,
-    accessKey = accessKey.value,
-    status = status,
-    message = message,
     createdAt = now,
 )

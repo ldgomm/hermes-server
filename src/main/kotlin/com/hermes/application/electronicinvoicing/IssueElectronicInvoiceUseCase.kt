@@ -48,7 +48,7 @@ class IssueElectronicInvoiceUseCase(
         )
         repository.create(record)
         auditLogger.log(
-            record.audit(
+            record.toIssueAuditEvent(
                 ElectronicInvoiceIssueAuditAction.SRI_ACCESS_KEY_GENERATED,
                 command.actorUserId,
                 issuedAt
@@ -80,7 +80,7 @@ class IssueElectronicInvoiceUseCase(
         record = record.markXmlGenerated(generatedXml, unsignedArtifact, Instant.now(clock), command.actorUserId)
         repository.update(record)
         auditLogger.log(
-            record.audit(
+            record.toIssueAuditEvent(
                 ElectronicInvoiceIssueAuditAction.ELECTRONIC_XML_GENERATED,
                 command.actorUserId,
                 Instant.now(clock)
@@ -95,7 +95,7 @@ class IssueElectronicInvoiceUseCase(
             record = record.markXsdInvalid(validation.errors, Instant.now(clock), command.actorUserId)
             repository.update(record)
             auditLogger.log(
-                record.audit(
+                record.toIssueAuditEvent(
                     ElectronicInvoiceIssueAuditAction.ELECTRONIC_XML_XSD_INVALID,
                     command.actorUserId,
                     Instant.now(clock),
@@ -117,7 +117,7 @@ class IssueElectronicInvoiceUseCase(
         record = record.markXsdValidated(Instant.now(clock), command.actorUserId)
         repository.update(record)
         auditLogger.log(
-            record.audit(
+            record.toIssueAuditEvent(
                 ElectronicInvoiceIssueAuditAction.ELECTRONIC_XML_XSD_VALIDATED,
                 command.actorUserId,
                 Instant.now(clock)
@@ -141,7 +141,7 @@ class IssueElectronicInvoiceUseCase(
             record = record.markSignatureFailed(classification, Instant.now(clock), command.actorUserId)
             repository.update(record)
             auditLogger.log(
-                record.audit(
+                record.toIssueAuditEvent(
                     ElectronicInvoiceIssueAuditAction.ELECTRONIC_XML_SIGNATURE_FAILED,
                     command.actorUserId,
                     Instant.now(clock),
@@ -165,7 +165,7 @@ class IssueElectronicInvoiceUseCase(
         record = record.markSigned(signResult.signedXml, signedArtifact, signResult.signedAt, command.actorUserId)
         repository.update(record)
         auditLogger.log(
-            record.audit(
+            record.toIssueAuditEvent(
                 ElectronicInvoiceIssueAuditAction.ELECTRONIC_XML_SIGNED,
                 command.actorUserId,
                 Instant.now(clock)
@@ -225,20 +225,3 @@ class IssueElectronicInvoiceUseCase(
         )
     }
 }
-
-private fun ElectronicInvoiceIssueRecord.audit(
-    action: ElectronicInvoiceIssueAuditAction,
-    actorUserId: String?,
-    now: Instant,
-    message: String? = null,
-): ElectronicInvoiceIssueAuditEvent = ElectronicInvoiceIssueAuditEvent(
-    action = action,
-    actorUserId = actorUserId,
-    organizationId = organizationId,
-    documentId = id,
-    saleId = saleId,
-    accessKey = accessKey.value,
-    status = status,
-    message = message,
-    createdAt = now,
-)

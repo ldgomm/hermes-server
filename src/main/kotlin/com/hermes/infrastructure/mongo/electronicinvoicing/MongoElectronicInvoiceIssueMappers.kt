@@ -1,11 +1,20 @@
 package com.hermes.infrastructure.mongo.electronicinvoicing
 
 import com.hermes.application.electronicinvoicing.ElectronicInvoiceIssueRecord
-import com.hermes.domain.electronicinvoicing.*
+import com.hermes.domain.electronicinvoicing.ElectronicDocumentStatus
+import com.hermes.domain.electronicinvoicing.SriAccessKey
+import com.hermes.domain.electronicinvoicing.SriDocumentType
+import com.hermes.domain.electronicinvoicing.SriEnvironment
+import com.hermes.domain.electronicinvoicing.SriErrorCategory
+import com.hermes.domain.electronicinvoicing.SriErrorClassification
+import com.hermes.domain.electronicinvoicing.SriErrorRecoverability
+import com.hermes.domain.electronicinvoicing.SriMessage
+import com.hermes.domain.electronicinvoicing.SriMessageType
+import com.hermes.domain.electronicinvoicing.SriSeries
 import com.hermes.infrastructure.mongo.MongoDocumentFields
 import com.hermes.infrastructure.mongo.mapping.MongoInstantMapper
 import org.bson.Document
-import java.util.*
+import java.util.Date
 
 object MongoElectronicInvoiceIssueMappers {
     private const val SCHEMA_VERSION = 1
@@ -32,6 +41,8 @@ object MongoElectronicInvoiceIssueMappers {
             .append("signedXmlSha256", record.signedXmlSha256)
             .append("authorizedXmlObjectKey", record.authorizedXmlObjectKey)
             .append("authorizedXmlSha256", record.authorizedXmlSha256)
+            .append("ridePdfObjectKey", record.ridePdfObjectKey)
+            .append("ridePdfSha256", record.ridePdfSha256)
             .append("signatureId", record.signatureId)
             .append("lastSriReceptionStatus", record.lastSriReceptionStatus)
             .append("lastSriAuthorizationStatus", record.lastSriAuthorizationStatus)
@@ -39,6 +50,10 @@ object MongoElectronicInvoiceIssueMappers {
             .append("lastErrorClassification", record.lastErrorClassification?.let(::classificationToDocument))
             .append("issuedAt", Date.from(record.issuedAt))
             .append("authorizedAt", record.authorizedAt?.let(Date::from))
+            .append("rideGeneratedAt", record.rideGeneratedAt?.let(Date::from))
+            .append("deliveryEmailTo", record.deliveryEmailTo)
+            .append("deliveredAt", record.deliveredAt?.let(Date::from))
+            .append("deliveryErrorMessage", record.deliveryErrorMessage)
             .append(MongoDocumentFields.CREATED_AT, Date.from(record.createdAt))
             .append(MongoDocumentFields.UPDATED_AT, Date.from(record.updatedAt))
             .append(MongoDocumentFields.CREATED_BY, record.createdBy)
@@ -70,6 +85,8 @@ object MongoElectronicInvoiceIssueMappers {
             signedXmlSha256 = document.optionalString("signedXmlSha256"),
             authorizedXmlObjectKey = document.optionalString("authorizedXmlObjectKey"),
             authorizedXmlSha256 = document.optionalString("authorizedXmlSha256"),
+            ridePdfObjectKey = document.optionalString("ridePdfObjectKey"),
+            ridePdfSha256 = document.optionalString("ridePdfSha256"),
             signatureId = document.optionalString("signatureId"),
             lastSriReceptionStatus = document.optionalString("lastSriReceptionStatus"),
             lastSriAuthorizationStatus = document.optionalString("lastSriAuthorizationStatus"),
@@ -78,6 +95,10 @@ object MongoElectronicInvoiceIssueMappers {
                 ?.let(::classificationFromDocument),
             issuedAt = MongoInstantMapper.readRequired(document, "issuedAt"),
             authorizedAt = MongoInstantMapper.readOptional(document, "authorizedAt"),
+            rideGeneratedAt = MongoInstantMapper.readOptional(document, "rideGeneratedAt"),
+            deliveryEmailTo = document.optionalString("deliveryEmailTo"),
+            deliveredAt = MongoInstantMapper.readOptional(document, "deliveredAt"),
+            deliveryErrorMessage = document.optionalString("deliveryErrorMessage"),
             createdAt = MongoInstantMapper.readRequired(document, MongoDocumentFields.CREATED_AT),
             updatedAt = MongoInstantMapper.readRequired(document, MongoDocumentFields.UPDATED_AT),
             createdBy = document.requiredString(MongoDocumentFields.CREATED_BY),

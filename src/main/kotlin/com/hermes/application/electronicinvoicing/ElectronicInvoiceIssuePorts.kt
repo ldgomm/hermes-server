@@ -1,6 +1,12 @@
 package com.hermes.application.electronicinvoicing
 
-import com.hermes.domain.electronicinvoicing.*
+import com.hermes.domain.electronicinvoicing.ElectronicDocumentStatus
+import com.hermes.domain.electronicinvoicing.SriAccessKey
+import com.hermes.domain.electronicinvoicing.SriDocumentType
+import com.hermes.domain.electronicinvoicing.SriEnvironment
+import com.hermes.domain.electronicinvoicing.SriErrorClassification
+import com.hermes.domain.electronicinvoicing.SriMessage
+import com.hermes.domain.electronicinvoicing.SriSeries
 import com.hermes.domain.shared.DomainRuleViolation
 import java.time.Instant
 
@@ -55,10 +61,17 @@ enum class ElectronicDocumentArtifactType(val storageValue: String) {
     UNSIGNED_XML("unsigned_xml"),
     SIGNED_XML("signed_xml"),
     AUTHORIZED_XML("authorized_xml"),
+    RIDE_PDF("ride_pdf"),
     SRI_RECEPTION_REQUEST("sri_reception_request"),
     SRI_RECEPTION_RESPONSE("sri_reception_response"),
     SRI_AUTHORIZATION_REQUEST("sri_authorization_request"),
-    SRI_AUTHORIZATION_RESPONSE("sri_authorization_response")
+    SRI_AUTHORIZATION_RESPONSE("sri_authorization_response");
+
+    companion object {
+        fun fromStorage(value: String): ElectronicDocumentArtifactType =
+            entries.firstOrNull { it.storageValue == value.trim().lowercase() }
+                ?: throw DomainRuleViolation("Unknown electronic document artifact type: $value.")
+    }
 }
 
 data class StoreElectronicDocumentArtifactCommand(
@@ -82,12 +95,12 @@ data class StoreElectronicDocumentArtifactCommand(
         if (this === other) return true
         if (other !is StoreElectronicDocumentArtifactCommand) return false
         return organizationId == other.organizationId &&
-                documentId == other.documentId &&
-                artifactType == other.artifactType &&
-                content.contentEquals(other.content) &&
-                contentType == other.contentType &&
-                fileName == other.fileName &&
-                createdAt == other.createdAt
+            documentId == other.documentId &&
+            artifactType == other.artifactType &&
+            content.contentEquals(other.content) &&
+            contentType == other.contentType &&
+            fileName == other.fileName &&
+            createdAt == other.createdAt
     }
 
     override fun hashCode(): Int {
@@ -139,6 +152,8 @@ data class ElectronicInvoiceIssueRecord(
     val signedXmlSha256: String? = null,
     val authorizedXmlObjectKey: String? = null,
     val authorizedXmlSha256: String? = null,
+    val ridePdfObjectKey: String? = null,
+    val ridePdfSha256: String? = null,
     val signatureId: String? = null,
     val lastSriReceptionStatus: String? = null,
     val lastSriAuthorizationStatus: String? = null,
@@ -146,6 +161,10 @@ data class ElectronicInvoiceIssueRecord(
     val lastErrorClassification: SriErrorClassification? = null,
     val issuedAt: Instant,
     val authorizedAt: Instant? = null,
+    val rideGeneratedAt: Instant? = null,
+    val deliveryEmailTo: String? = null,
+    val deliveredAt: Instant? = null,
+    val deliveryErrorMessage: String? = null,
     val createdAt: Instant,
     val updatedAt: Instant,
     val createdBy: String,
@@ -169,6 +188,9 @@ data class ElectronicInvoiceIssueRecord(
         if (updatedBy.isBlank()) throw DomainRuleViolation("Electronic invoice updatedBy cannot be blank.")
         if (updatedAt.isBefore(createdAt)) throw DomainRuleViolation("Electronic invoice updatedAt cannot be before createdAt.")
         if (version < 1) throw DomainRuleViolation("Electronic invoice version must be positive.")
+        if (deliveredAt != null && deliveryEmailTo.isNullOrBlank()) {
+            throw DomainRuleViolation("Delivered electronic invoice requires delivery email recipient.")
+        }
     }
 
     fun transitionTo(
@@ -257,6 +279,51 @@ data class ElectronicInvoiceIssueRecord(
             sriMessages = result.messages,
             lastErrorClassification = classification,
         )
+
+    fun markRideGenerated(
+        rideArtifact: StoredElectronicDocumentArtifact,
+        now: Instant,
+        actorUserId: String,
+    ): ElectronicInvoiceIssueRecord {
+        if (rideArtifact.artifactType != ElectronicDocumentArtifactType.RIDE_PDF) {
+            throw DomainRuleViolation("RIDE artifact must have RIDE_PDF type.")
+        }
+        if (status !in setOf(ElectronicDocumentStatus.AUTHORIZED, ElectronicDocumentStatus.DELIVERY_PENDING, ElectronicDocumentStatus.DELIVERY_FAILED)) {
+            throw DomainRuleViolation("RIDE can only be generated for authorized or delivery-pending electronic invoices.")
+        }
+        val deliveryReady = if (status == ElectronicDocumentStatus.DELIVERY_PENDING) {
+            copy(
+                updatedAt = now,
+                updatedBy = actorUserId.required("Actor user id"),
+                version = version + 1,
+            )
+        } else {
+            transitionTo(ElectronicDocumentStatus.DELIVERY_PENDING, now, actorUserId)
+        }
+        return deliveryReady.copy(
+            ridePdfObjectKey = rideArtifact.objectKey,
+            ridePdfSha256 = rideArtifact.sha256,
+            rideGeneratedAt = now,
+            deliveryErrorMessage = null,
+        )
+    }
+
+    fun markDelivered(emailTo: String, deliveredAt: Instant, actorUserId: String): ElectronicInvoiceIssueRecord =
+        transitionTo(ElectronicDocumentStatus.DELIVERED, deliveredAt, actorUserId).copy(
+            deliveryEmailTo = emailTo.required("Delivery email recipient"),
+            deliveredAt = deliveredAt,
+            deliveryErrorMessage = null,
+        )
+
+    fun markDeliveryFailed(
+        emailTo: String,
+        reason: String,
+        failedAt: Instant,
+        actorUserId: String,
+    ): ElectronicInvoiceIssueRecord = transitionTo(ElectronicDocumentStatus.DELIVERY_FAILED, failedAt, actorUserId).copy(
+        deliveryEmailTo = emailTo.required("Delivery email recipient"),
+        deliveryErrorMessage = reason.trim().takeIf { it.isNotBlank() } ?: "Email delivery failed.",
+    )
 
     companion object {
         @Suppress("LongParameterList")
