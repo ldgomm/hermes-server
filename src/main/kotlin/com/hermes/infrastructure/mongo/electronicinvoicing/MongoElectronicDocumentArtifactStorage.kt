@@ -1,11 +1,6 @@
 package com.hermes.infrastructure.mongo.electronicinvoicing
 
-import com.hermes.application.electronicinvoicing.ElectronicDocumentArtifactFile
-import com.hermes.application.electronicinvoicing.ElectronicDocumentArtifactReader
-import com.hermes.application.electronicinvoicing.ElectronicDocumentArtifactStorage
-import com.hermes.application.electronicinvoicing.ElectronicDocumentArtifactType
-import com.hermes.application.electronicinvoicing.StoreElectronicDocumentArtifactCommand
-import com.hermes.application.electronicinvoicing.StoredElectronicDocumentArtifact
+import com.hermes.application.electronicinvoicing.*
 import com.hermes.infrastructure.mongo.MongoDocumentFields
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
@@ -17,7 +12,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
-import java.util.Date
+import java.util.*
 
 class MongoElectronicDocumentArtifactStorage(
     database: MongoDatabase,
@@ -59,19 +54,16 @@ class MongoElectronicDocumentArtifactStorage(
             Filters.eq(MongoDocumentFields.ID, objectKey),
             Document(
                 "\$setOnInsert",
-                Document(MongoDocumentFields.ID, objectKey)
-                    .append(MongoDocumentFields.ORGANIZATION_ID, command.organizationId)
-                    .append("documentId", command.documentId)
-                    .append("artifactType", command.artifactType.storageValue)
-                    .append("objectKey", objectKey)
-                    .append("sha256", sha256)
-                    .append("sizeBytes", command.content.size.toLong())
-                    .append("contentType", command.contentType)
+                Document(MongoDocumentFields.ID, objectKey).append(
+                    MongoDocumentFields.ORGANIZATION_ID,
+                    command.organizationId
+                ).append("documentId", command.documentId).append("artifactType", command.artifactType.storageValue)
+                    .append("objectKey", objectKey).append("sha256", sha256)
+                    .append("sizeBytes", command.content.size.toLong()).append("contentType", command.contentType)
                     .append("fileName", command.fileName)
                     .append(MongoDocumentFields.CREATED_AT, Date.from(command.createdAt))
                     .append(MongoDocumentFields.UPDATED_AT, Date.from(command.createdAt))
-                    .append(MongoDocumentFields.VERSION, 1L)
-                    .append(MongoDocumentFields.SCHEMA_VERSION, 1),
+                    .append(MongoDocumentFields.VERSION, 1L).append(MongoDocumentFields.SCHEMA_VERSION, 1),
             ),
             UpdateOptions().upsert(true),
         )
@@ -81,8 +73,7 @@ class MongoElectronicDocumentArtifactStorage(
 
     override fun get(objectKey: String): ElectronicDocumentArtifactFile? {
         val key = objectKey.trim().takeIf { it.isNotBlank() } ?: return null
-        val metadata = collection.find(Filters.eq(MongoDocumentFields.ID, key)).firstOrNull()
-            ?: return null
+        val metadata = collection.find(Filters.eq(MongoDocumentFields.ID, key)).firstOrNull() ?: return null
         return metadata.toArtifactFileOrNull()
     }
 
@@ -90,17 +81,13 @@ class MongoElectronicDocumentArtifactStorage(
         organizationId: String,
         documentId: String,
         artifactType: ElectronicDocumentArtifactType,
-    ): ElectronicDocumentArtifactFile? = collection
-        .find(
-            Filters.and(
-                Filters.eq(MongoDocumentFields.ORGANIZATION_ID, organizationId.trim()),
-                Filters.eq("documentId", documentId.trim()),
-                Filters.eq("artifactType", artifactType.storageValue),
-            )
+    ): ElectronicDocumentArtifactFile? = collection.find(
+        Filters.and(
+            Filters.eq(MongoDocumentFields.ORGANIZATION_ID, organizationId.trim()),
+            Filters.eq("documentId", documentId.trim()),
+            Filters.eq("artifactType", artifactType.storageValue),
         )
-        .sort(Sorts.descending(MongoDocumentFields.CREATED_AT))
-        .firstOrNull()
-        ?.toArtifactFileOrNull()
+    ).sort(Sorts.descending(MongoDocumentFields.CREATED_AT)).firstOrNull()?.toArtifactFileOrNull()
 
     private fun Document.toArtifactFileOrNull(): ElectronicDocumentArtifactFile? {
         val objectKey = getString("objectKey") ?: getString(MongoDocumentFields.ID) ?: return null
@@ -134,14 +121,9 @@ class MongoElectronicDocumentArtifactStorage(
         trim().replace(Regex("[^A-Za-z0-9_.-]"), "_").take(128).ifBlank { "unknown" }
 
     private fun String.safeFileName(): String =
-        trim()
-            .substringAfterLast('/')
-            .substringAfterLast('\\')
-            .replace(Regex("[^A-Za-z0-9_.-]"), "_")
-            .take(160)
+        trim().substringAfterLast('/').substringAfterLast('\\').replace(Regex("[^A-Za-z0-9_.-]"), "_").take(160)
             .ifBlank { "artifact.bin" }
 
-    private fun ByteArray.sha256Hex(): String = MessageDigest.getInstance("SHA-256")
-        .digest(this)
-        .joinToString(separator = "") { byte -> "%02x".format(byte) }
+    private fun ByteArray.sha256Hex(): String =
+        MessageDigest.getInstance("SHA-256").digest(this).joinToString(separator = "") { byte -> "%02x".format(byte) }
 }

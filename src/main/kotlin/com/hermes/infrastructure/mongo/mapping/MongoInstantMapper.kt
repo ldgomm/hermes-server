@@ -3,7 +3,7 @@ package com.hermes.infrastructure.mongo.mapping
 import org.bson.Document
 import java.time.Instant
 import java.time.format.DateTimeParseException
-import java.util.Date
+import java.util.*
 
 object MongoInstantMapper {
     fun toDate(instant: Instant): Date = Date.from(instant)
@@ -36,7 +36,9 @@ object MongoInstantMapper {
         return try {
             Instant.parse(value)
         } catch (error: DateTimeParseException) {
-            throw IllegalArgumentException("Instant field '$fieldName' contains an invalid ISO-8601 value: $value", error)
+            throw IllegalArgumentException(
+                "Instant field '$fieldName' contains an invalid ISO-8601 value: $value", error
+            )
         }
     }
 }

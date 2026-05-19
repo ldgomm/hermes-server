@@ -1,27 +1,19 @@
 package com.hermes.infrastructure.mongo.electronicinvoicing
 
-import com.hermes.domain.electronicinvoicing.ElectronicSequence
-import com.hermes.domain.electronicinvoicing.ElectronicSequenceStatus
-import com.hermes.domain.electronicinvoicing.SriDocumentType
-import com.hermes.domain.electronicinvoicing.SriEnvironment
-import com.hermes.domain.electronicinvoicing.SriSeries
+import com.hermes.domain.electronicinvoicing.*
 import com.hermes.infrastructure.mongo.MongoDocumentFields
 import com.hermes.infrastructure.mongo.mapping.MongoInstantMapper
 import org.bson.Document
-import java.time.Instant
-import java.util.Date
+import java.util.*
 
 object MongoElectronicSequenceMappers {
-    fun toDocument(sequence: ElectronicSequence): Document = Document()
-        .append(MongoDocumentFields.ID, sequence.id)
+    fun toDocument(sequence: ElectronicSequence): Document = Document().append(MongoDocumentFields.ID, sequence.id)
         .append(MongoDocumentFields.ORGANIZATION_ID, sequence.organizationId)
         .append("environment", sequence.environment.storageValue)
         .append("documentType", sequence.documentType.storageValue)
         .append("establishmentCode", sequence.series.establishmentCode)
-        .append("emissionPointCode", sequence.series.emissionPointCode)
-        .append("series", sequence.series.value)
-        .append("currentValue", sequence.currentValue)
-        .append("status", sequence.status.storageValue)
+        .append("emissionPointCode", sequence.series.emissionPointCode).append("series", sequence.series.value)
+        .append("currentValue", sequence.currentValue).append("status", sequence.status.storageValue)
         .append("lastIssuedDocumentId", sequence.lastIssuedDocumentId)
         .append("lastIssuedAt", sequence.lastIssuedAt?.let(Date::from))
         .append(MongoDocumentFields.CREATED_AT, Date.from(sequence.createdAt))
@@ -31,7 +23,8 @@ object MongoElectronicSequenceMappers {
 
     fun fromDocument(document: Document): ElectronicSequence = ElectronicSequence(
         id = document.getString(MongoDocumentFields.ID).required(MongoDocumentFields.ID),
-        organizationId = document.getString(MongoDocumentFields.ORGANIZATION_ID).required(MongoDocumentFields.ORGANIZATION_ID),
+        organizationId = document.getString(MongoDocumentFields.ORGANIZATION_ID)
+            .required(MongoDocumentFields.ORGANIZATION_ID),
         environment = SriEnvironment.fromStorage(document.getString("environment").required("environment")),
         documentType = SriDocumentType.fromStorage(document.getString("documentType").required("documentType")),
         series = SriSeries(
@@ -45,7 +38,9 @@ object MongoElectronicSequenceMappers {
         createdAt = MongoInstantMapper.readRequired(document, MongoDocumentFields.CREATED_AT),
         updatedAt = MongoInstantMapper.readRequired(document, MongoDocumentFields.UPDATED_AT),
         version = document.readInt(MongoDocumentFields.VERSION, default = 1),
-        schemaVersion = document.readInt(MongoDocumentFields.SCHEMA_VERSION, default = ElectronicSequence.SCHEMA_VERSION),
+        schemaVersion = document.readInt(
+            MongoDocumentFields.SCHEMA_VERSION, default = ElectronicSequence.SCHEMA_VERSION
+        ),
     )
 
     private fun String?.required(fieldName: String): String = this?.trim()?.takeIf { it.isNotBlank() }
@@ -60,6 +55,7 @@ object MongoElectronicSequenceMappers {
             is Number -> raw.toInt()
             is String -> raw.toIntOrNull()
                 ?: throw IllegalArgumentException("Int field '$fieldName' contains an invalid value: $raw")
+
             else -> throw IllegalArgumentException("Int field '$fieldName' has unsupported type: ${raw::class.qualifiedName}")
         }
     }

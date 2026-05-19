@@ -32,10 +32,14 @@ class CreateReceivableForSaleUseCase(
         val sale = saleRepository.findById(organizationId, command.saleId.required("Sale id"))
             ?: throw DomainRuleViolation("Sale was not found.")
 
-        if (sale.operationalStatus in setOf(SaleOperationalStatus.DRAFT, SaleOperationalStatus.CANCELED, SaleOperationalStatus.CLOSED)) {
+        if (sale.operationalStatus in setOf(
+                SaleOperationalStatus.DRAFT, SaleOperationalStatus.CANCELED, SaleOperationalStatus.CLOSED
+            )
+        ) {
             throw DomainRuleViolation("Cannot create receivable for sale with status ${sale.operationalStatus}.")
         }
-        val remaining = if (sale.paidAmount >= sale.total) Money.zero(sale.total.currency) else sale.total - sale.paidAmount
+        val remaining =
+            if (sale.paidAmount >= sale.total) Money.zero(sale.total.currency) else sale.total - sale.paidAmount
         if (remaining.amount.signum() <= 0) throw DomainRuleViolation("Cannot create receivable for a fully paid sale.")
         if (receivableRepository.findBySaleId(organizationId, sale.id) != null) {
             throw DomainRuleViolation("Sale already has a receivable.")
@@ -88,7 +92,9 @@ class RegisterReceivableCollectionUseCase(
         val organizationId = command.organizationId.required("Organization id")
         val actorUserId = command.actorUserId.required("Actor user id")
 
-        PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.RECEIVABLES_REGISTER_PAYMENT)
+        PermissionRules.assertCanPerform(
+            command.actorEffectivePermissions, PermissionCatalog.RECEIVABLES_REGISTER_PAYMENT
+        )
         PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.PAYMENTS_COLLECT)
 
         val receivable = receivableRepository.findById(organizationId, command.receivableId.required("Receivable id"))
@@ -111,7 +117,9 @@ class RegisterReceivableCollectionUseCase(
         val updatedReceivable = receivable.registerCollection(command.amount, now)
 
         val cashUpdate = if (command.method.affectsCashDrawer) {
-            PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.CASH_MOVEMENTS_REGISTER_INFLOW)
+            PermissionRules.assertCanPerform(
+                command.actorEffectivePermissions, PermissionCatalog.CASH_MOVEMENTS_REGISTER_INFLOW
+            )
             val session = cashSessionRepository.findOpenByBranch(organizationId, sale.branchId)
                 ?: throw DomainRuleViolation("Open cash session is required for cash receivable collections in branch ${sale.branchId}.")
             val movement = CashMovement.create(

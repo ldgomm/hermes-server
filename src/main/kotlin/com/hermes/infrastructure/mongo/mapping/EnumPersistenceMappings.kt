@@ -161,10 +161,7 @@ data class EnumPersistenceMapping<E : Enum<E>>(
         val missing = expectedNames - enumToValue.keys
         if (missing.isNotEmpty()) error("Missing $enumType mappings: $missing")
 
-        val duplicatedValues = enumToValue.values
-            .groupBy { it }
-            .filterValues { it.size > 1 }
-            .keys
+        val duplicatedValues = enumToValue.values.groupBy { it }.filterValues { it.size > 1 }.keys
 
         if (duplicatedValues.isNotEmpty()) {
             error("Duplicated persistence values in $enumType: $duplicatedValues")

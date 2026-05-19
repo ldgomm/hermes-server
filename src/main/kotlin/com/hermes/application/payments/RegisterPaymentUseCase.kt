@@ -39,8 +39,7 @@ class RegisterPaymentUseCase(
 
         PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.PAYMENTS_COLLECT)
 
-        val sale = saleRepository.findById(organizationId, saleId)
-            ?: throw DomainRuleViolation("Sale was not found.")
+        val sale = saleRepository.findById(organizationId, saleId) ?: throw DomainRuleViolation("Sale was not found.")
 
         if (command.amount.amount.signum() <= 0) throw DomainRuleViolation("Payment amount must be greater than zero.")
         if (command.amount.currency != sale.total.currency) throw DomainRuleViolation("Payment currency must match sale currency.")
@@ -51,18 +50,24 @@ class RegisterPaymentUseCase(
 
         val willRemainPartiallyPaid = command.amount < remainingBeforePayment
         if (willRemainPartiallyPaid) {
-            PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.PAYMENTS_PARTIAL_COLLECT)
+            PermissionRules.assertCanPerform(
+                command.actorEffectivePermissions, PermissionCatalog.PAYMENTS_PARTIAL_COLLECT
+            )
             if (!command.markRemainingAsReceivable) {
                 throw DomainRuleViolation("Partial payment requires marking the remaining balance as receivable.")
             }
-            PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.PAYMENTS_MARK_AS_CREDIT)
+            PermissionRules.assertCanPerform(
+                command.actorEffectivePermissions, PermissionCatalog.PAYMENTS_MARK_AS_CREDIT
+            )
             PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.RECEIVABLES_CREATE)
         }
         if (!willRemainPartiallyPaid && command.markRemainingAsReceivable) {
             throw DomainRuleViolation("A fully paid sale cannot be marked as receivable.")
         }
         if (command.method.affectsCashDrawer) {
-            PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.CASH_MOVEMENTS_REGISTER_INFLOW)
+            PermissionRules.assertCanPerform(
+                command.actorEffectivePermissions, PermissionCatalog.CASH_MOVEMENTS_REGISTER_INFLOW
+            )
         }
 
         val payment = com.hermes.domain.payment.Payment.record(
@@ -168,7 +173,9 @@ class RegisterPaymentUseCase(
         )
     }
 
-    private fun auditCashMovement(actorUserId: String, organizationId: String, saleId: String, cashUpdate: CashUpdate, now: Instant) {
+    private fun auditCashMovement(
+        actorUserId: String, organizationId: String, saleId: String, cashUpdate: CashUpdate, now: Instant
+    ) {
         auditLogger.log(
             PaymentAuditEvent(
                 action = PaymentAuditAction.CASH_MOVEMENT_CREATED,
@@ -186,7 +193,9 @@ class RegisterPaymentUseCase(
         )
     }
 
-    private fun auditReceivable(actorUserId: String, organizationId: String, saleId: String, receivable: Receivable, now: Instant) {
+    private fun auditReceivable(
+        actorUserId: String, organizationId: String, saleId: String, receivable: Receivable, now: Instant
+    ) {
         auditLogger.log(
             PaymentAuditEvent(
                 action = PaymentAuditAction.RECEIVABLE_CREATED,

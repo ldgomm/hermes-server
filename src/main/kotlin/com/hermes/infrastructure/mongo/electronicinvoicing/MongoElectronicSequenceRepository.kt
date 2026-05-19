@@ -37,13 +37,12 @@ class MongoElectronicSequenceRepository(
     override fun findByKey(key: ElectronicSequenceKey): ElectronicSequence? =
         collection.find(key.filter()).firstOrNull()?.let(MongoElectronicSequenceMappers::fromDocument)
 
-    override fun findById(organizationId: String, sequenceId: String): ElectronicSequence? =
-        collection.find(
-            and(
-                eq(MongoDocumentFields.ORGANIZATION_ID, organizationId.trim()),
-                eq(MongoDocumentFields.ID, sequenceId.trim()),
-            )
-        ).firstOrNull()?.let(MongoElectronicSequenceMappers::fromDocument)
+    override fun findById(organizationId: String, sequenceId: String): ElectronicSequence? = collection.find(
+        and(
+            eq(MongoDocumentFields.ORGANIZATION_ID, organizationId.trim()),
+            eq(MongoDocumentFields.ID, sequenceId.trim()),
+        )
+    ).firstOrNull()?.let(MongoElectronicSequenceMappers::fromDocument)
 
     override fun search(query: ElectronicSequenceSearchQuery): List<ElectronicSequence> {
         val filters = mutableListOf<Bson>(eq(MongoDocumentFields.ORGANIZATION_ID, query.organizationId.trim()))
@@ -52,9 +51,7 @@ class MongoElectronicSequenceRepository(
         query.status?.let { filters += eq("status", it.storageValue) }
         return collection.find(and(filters))
             .sort(Sorts.ascending("environment", "documentType", "establishmentCode", "emissionPointCode"))
-            .limit(query.limit.coerceIn(1, 200))
-            .map(MongoElectronicSequenceMappers::fromDocument)
-            .toList()
+            .limit(query.limit.coerceIn(1, 200)).map(MongoElectronicSequenceMappers::fromDocument).toList()
     }
 
     override fun nextSequential(command: NextElectronicSequentialCommand): ElectronicSequenceReservation {

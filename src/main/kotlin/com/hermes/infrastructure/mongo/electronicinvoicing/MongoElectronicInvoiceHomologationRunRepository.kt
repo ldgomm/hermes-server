@@ -21,24 +21,20 @@ class MongoElectronicInvoiceHomologationRunRepository(
         collection.insertOne(toDocument(run))
     }
 
-    override fun findById(organizationId: String, runId: String): ElectronicInvoiceHomologationRun? =
-        collection.find(
-            Filters.and(
-                Filters.eq(MongoDocumentFields.ORGANIZATION_ID, organizationId.trim()),
-                Filters.eq(MongoDocumentFields.ID, runId.trim()),
-            )
-        ).firstOrNull()?.let(::fromDocument)
+    override fun findById(organizationId: String, runId: String): ElectronicInvoiceHomologationRun? = collection.find(
+        Filters.and(
+            Filters.eq(MongoDocumentFields.ORGANIZATION_ID, organizationId.trim()),
+            Filters.eq(MongoDocumentFields.ID, runId.trim()),
+        )
+    ).firstOrNull()?.let(::fromDocument)
 
     override fun search(query: ElectronicInvoiceHomologationRunSearchQuery): List<ElectronicInvoiceHomologationRun> {
         val filters = mutableListOf(Filters.eq(MongoDocumentFields.ORGANIZATION_ID, query.organizationId.trim()))
         if (query.statuses.isNotEmpty()) {
             filters += Filters.`in`("status", query.statuses.map { it.storageValue })
         }
-        return collection.find(Filters.and(filters))
-            .sort(Sorts.descending(MongoDocumentFields.CREATED_AT))
-            .limit(query.limit)
-            .map(::fromDocument)
-            .toList()
+        return collection.find(Filters.and(filters)).sort(Sorts.descending(MongoDocumentFields.CREATED_AT))
+            .limit(query.limit).map(::fromDocument).toList()
     }
 
     override fun findLatestApprovedForProduction(organizationId: String): ElectronicInvoiceHomologationRun? =
@@ -49,24 +45,16 @@ class MongoElectronicInvoiceHomologationRunRepository(
                 Filters.eq("status", ElectronicInvoiceHomologationRunStatus.PASSED.storageValue),
                 Filters.eq("environment", SriEnvironment.TEST.storageValue),
             )
-        )
-            .sort(Sorts.descending(MongoDocumentFields.CREATED_AT))
-            .firstOrNull()
-            ?.let(::fromDocument)
+        ).sort(Sorts.descending(MongoDocumentFields.CREATED_AT)).firstOrNull()?.let(::fromDocument)
 
     private fun toDocument(run: ElectronicInvoiceHomologationRun): Document {
-        val document = Document()
-            .append(MongoDocumentFields.ID, run.id)
-            .append(MongoDocumentFields.ORGANIZATION_ID, run.organizationId)
-            .append("status", run.status.storageValue)
-            .append("environment", run.environment.storageValue)
-            .append("requestedByUserId", run.requestedByUserId)
+        val document = Document().append(MongoDocumentFields.ID, run.id)
+            .append(MongoDocumentFields.ORGANIZATION_ID, run.organizationId).append("status", run.status.storageValue)
+            .append("environment", run.environment.storageValue).append("requestedByUserId", run.requestedByUserId)
             .append("requiredScenarioCodes", run.requiredScenarioCodes.map { it.name }.sorted())
             .append("scenarioResults", run.scenarioResults.map(::scenarioResultToDocument))
-            .append("reportMarkdown", run.reportMarkdown)
-            .append("approvedForProduction", run.approvedForProduction)
-            .append("startedAt", Date.from(run.startedAt))
-            .append("finishedAt", run.finishedAt?.let(Date::from))
+            .append("reportMarkdown", run.reportMarkdown).append("approvedForProduction", run.approvedForProduction)
+            .append("startedAt", Date.from(run.startedAt)).append("finishedAt", run.finishedAt?.let(Date::from))
             .append(MongoDocumentFields.CREATED_AT, Date.from(run.createdAt))
             .append(MongoDocumentFields.CREATED_BY, run.requestedByUserId)
             .append(MongoDocumentFields.UPDATED_AT, Date.from(run.updatedAt))
@@ -88,8 +76,7 @@ class MongoElectronicInvoiceHomologationRunRepository(
         environment = SriEnvironment.fromStorage(document.getString("environment")),
         requestedByUserId = document.getString("requestedByUserId"),
         requiredScenarioCodes = document.getStringList("requiredScenarioCodes")
-            .map { ElectronicInvoiceHomologationScenarioCode.valueOf(it) }
-            .toSet(),
+            .map { ElectronicInvoiceHomologationScenarioCode.valueOf(it) }.toSet(),
         scenarioResults = document.getDocumentList("scenarioResults").map(::scenarioResultFromDocument),
         reportMarkdown = document.getString("reportMarkdown"),
         productionDecision = document.get("productionDecision", Document::class.java)?.let(::decisionFromDocument),
@@ -102,19 +89,13 @@ class MongoElectronicInvoiceHomologationRunRepository(
         schemaVersion = document.getInteger(MongoDocumentFields.SCHEMA_VERSION, 1),
     )
 
-    private fun scenarioResultToDocument(result: ElectronicInvoiceHomologationScenarioResult): Document = Document()
-        .append("code", result.code.name)
-        .append("status", result.status.name)
-        .append("documentId", result.documentId)
-        .append("saleId", result.saleId)
-        .append("finalDocumentStatus", result.finalDocumentStatus?.name)
-        .append("accessKey", result.accessKey)
-        .append("authorized", result.authorized)
-        .append("delivered", result.delivered)
-        .append("artifactTypes", result.artifactTypes.map { it.name }.sorted())
-        .append("messages", result.messages)
-        .append("startedAt", Date.from(result.startedAt))
-        .append("finishedAt", Date.from(result.finishedAt))
+    private fun scenarioResultToDocument(result: ElectronicInvoiceHomologationScenarioResult): Document =
+        Document().append("code", result.code.name).append("status", result.status.name)
+            .append("documentId", result.documentId).append("saleId", result.saleId)
+            .append("finalDocumentStatus", result.finalDocumentStatus?.name).append("accessKey", result.accessKey)
+            .append("authorized", result.authorized).append("delivered", result.delivered)
+            .append("artifactTypes", result.artifactTypes.map { it.name }.sorted()).append("messages", result.messages)
+            .append("startedAt", Date.from(result.startedAt)).append("finishedAt", Date.from(result.finishedAt))
 
     private fun scenarioResultFromDocument(document: Document): ElectronicInvoiceHomologationScenarioResult =
         ElectronicInvoiceHomologationScenarioResult(
@@ -133,11 +114,9 @@ class MongoElectronicInvoiceHomologationRunRepository(
             finishedAt = document.getDate("finishedAt").toInstant(),
         )
 
-    private fun decisionToDocument(decision: ElectronicInvoiceProductionReadinessDecision): Document = Document()
-        .append("approved", decision.approved)
-        .append("environment", decision.environment.storageValue)
-        .append("reasons", decision.reasons)
-        .append("decidedAt", Date.from(decision.decidedAt))
+    private fun decisionToDocument(decision: ElectronicInvoiceProductionReadinessDecision): Document =
+        Document().append("approved", decision.approved).append("environment", decision.environment.storageValue)
+            .append("reasons", decision.reasons).append("decidedAt", Date.from(decision.decidedAt))
 
     private fun decisionFromDocument(document: Document): ElectronicInvoiceProductionReadinessDecision =
         ElectronicInvoiceProductionReadinessDecision(
@@ -148,11 +127,9 @@ class MongoElectronicInvoiceHomologationRunRepository(
         )
 }
 
-private fun Document.getStringList(name: String): List<String> =
-    getList(name, String::class.java).orEmpty()
+private fun Document.getStringList(name: String): List<String> = getList(name, String::class.java).orEmpty()
 
-private fun Document.getDocumentList(name: String): List<Document> =
-    getList(name, Document::class.java).orEmpty()
+private fun Document.getDocumentList(name: String): List<Document> = getList(name, Document::class.java).orEmpty()
 
 private fun Document.getLongLike(name: String): Long = when (val value = get(name)) {
     is Long -> value

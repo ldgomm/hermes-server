@@ -7,7 +7,7 @@ import com.hermes.infrastructure.mongo.MongoDocumentFields
 import com.hermes.infrastructure.mongo.mapping.MongoInstantMapper
 import com.mongodb.client.MongoDatabase
 import org.bson.Document
-import java.util.UUID
+import java.util.*
 
 class MongoCatalogAuditLogger(database: MongoDatabase) : CatalogAuditLogger {
     private val collection = database.getCollection(MongoCollectionNames.AUDIT_LOGS)
@@ -19,29 +19,17 @@ class MongoCatalogAuditLogger(database: MongoDatabase) : CatalogAuditLogger {
         val actorUserId = event.actorUserId?.takeIf { it.isNotBlank() }
 
         collection.insertOne(
-            Document(MongoDocumentFields.ID, "aud_" + UUID.randomUUID().toString().replace("-", ""))
-                .append(MongoDocumentFields.ORGANIZATION_ID, organizationId)
-                .append(MongoDocumentFields.CREATED_AT, occurredAt)
-                .append(MongoDocumentFields.CREATED_BY, actorUserId)
-                .append(MongoDocumentFields.UPDATED_AT, occurredAt)
-                .append(MongoDocumentFields.UPDATED_BY, actorUserId)
-                .append(MongoDocumentFields.VERSION, 1)
-                .append(MongoDocumentFields.SCHEMA_VERSION, 1)
-                .append("module", "catalog")
-                .append("actorUserId", actorUserId)
-                .append("actorType", if (actorUserId == null) "system" else "user")
-                .append("action", event.action.name)
-                .append("entityType", "catalog")
-                .append("entityId", targetId)
-                .append("targetId", targetId)
-                .append("occurredAt", occurredAt)
-                .append("createdAt", occurredAt)
-                .append("ipAddress", null)
-                .append("requestId", null)
-                .append("reason", event.reason)
-                .append("before", Document(event.before))
-                .append("after", Document(event.after))
-                .append("metadata", Document("module", "catalog")),
+            Document(MongoDocumentFields.ID, "aud_" + UUID.randomUUID().toString().replace("-", "")).append(
+                MongoDocumentFields.ORGANIZATION_ID, organizationId
+            ).append(MongoDocumentFields.CREATED_AT, occurredAt).append(MongoDocumentFields.CREATED_BY, actorUserId)
+                .append(MongoDocumentFields.UPDATED_AT, occurredAt).append(MongoDocumentFields.UPDATED_BY, actorUserId)
+                .append(MongoDocumentFields.VERSION, 1).append(MongoDocumentFields.SCHEMA_VERSION, 1)
+                .append("module", "catalog").append("actorUserId", actorUserId)
+                .append("actorType", if (actorUserId == null) "system" else "user").append("action", event.action.name)
+                .append("entityType", "catalog").append("entityId", targetId).append("targetId", targetId)
+                .append("occurredAt", occurredAt).append("createdAt", occurredAt).append("ipAddress", null)
+                .append("requestId", null).append("reason", event.reason).append("before", Document(event.before))
+                .append("after", Document(event.after)).append("metadata", Document("module", "catalog")),
         )
     }
 

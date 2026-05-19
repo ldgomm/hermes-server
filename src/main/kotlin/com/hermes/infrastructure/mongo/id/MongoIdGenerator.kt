@@ -1,6 +1,6 @@
 package com.hermes.infrastructure.mongo.id
 
-import java.util.UUID
+import java.util.*
 
 object MongoIdGenerator {
     fun newId(prefix: MongoIdPrefix): MongoId {

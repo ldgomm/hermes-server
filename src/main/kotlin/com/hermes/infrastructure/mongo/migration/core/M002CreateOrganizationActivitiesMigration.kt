@@ -14,30 +14,19 @@ object M002CreateOrganizationActivitiesMigration : MongoMigration {
         val properties = MongoMigrationSupport.commonRootProperties(requireOrganizationId = true)
             .append("code", MongoMigrationSupport.string(maxLength = 64))
             .append("name", MongoMigrationSupport.string(maxLength = 128))
-            .append("description", MongoMigrationSupport.nullableString(maxLength = 1024))
-            .append(
-                "activityType",
-                MongoMigrationSupport.enum(
+            .append("description", MongoMigrationSupport.nullableString(maxLength = 1024)).append(
+                "activityType", MongoMigrationSupport.enum(
                     listOf(
-                        "restaurant",
-                        "retail",
-                        "services",
-                        "tourism",
-                        "rental",
-                        "mixed",
-                        "custom"
+                        "restaurant", "retail", "services", "tourism", "rental", "mixed", "custom"
                     )
                 )
-            )
-            .append(
+            ).append(
                 "workflowMode",
                 MongoMigrationSupport.enum(listOf("quick_sale", "order", "reservation", "service_order", "rental"))
-            )
-            .append("status", MongoMigrationSupport.enum(listOf("draft", "active", "paused", "archived")))
+            ).append("status", MongoMigrationSupport.enum(listOf("draft", "active", "paused", "archived")))
             .append("requiresScheduling", MongoMigrationSupport.bool())
             .append("tracksInventory", MongoMigrationSupport.bool())
-            .append("allowsReceivables", MongoMigrationSupport.bool())
-            .append("sortOrder", MongoMigrationSupport.int())
+            .append("allowsReceivables", MongoMigrationSupport.bool()).append("sortOrder", MongoMigrationSupport.int())
             .append("publicDiscovery", MongoMigrationSupport.obj())
             .append("assistedCommerce", MongoMigrationSupport.obj())
 

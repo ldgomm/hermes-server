@@ -8,13 +8,21 @@ object CredentialAdminMongoBootstrap {
     fun ensureIndexes(database: MongoDatabase) {
         database.getCollection(CredentialAdminMongoCollectionNames.INVITATIONS).apply {
             createIndex(Indexes.ascending("tokenHash"), IndexOptions().unique(true))
-            createIndex(Indexes.compoundIndex(Indexes.ascending("organizationId"), Indexes.ascending("email"), Indexes.ascending("status")))
+            createIndex(
+                Indexes.compoundIndex(
+                    Indexes.ascending("organizationId"), Indexes.ascending("email"), Indexes.ascending("status")
+                )
+            )
             createIndex(Indexes.ascending("expiresAt"))
         }
 
         database.getCollection(CredentialAdminMongoCollectionNames.PASSWORD_RESET_TOKENS).apply {
             createIndex(Indexes.ascending("tokenHash"), IndexOptions().unique(true))
-            createIndex(Indexes.compoundIndex(Indexes.ascending("userId"), Indexes.ascending("usedAt"), Indexes.ascending("revokedAt")))
+            createIndex(
+                Indexes.compoundIndex(
+                    Indexes.ascending("userId"), Indexes.ascending("usedAt"), Indexes.ascending("revokedAt")
+                )
+            )
             createIndex(Indexes.ascending("expiresAt"))
         }
 

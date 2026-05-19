@@ -13,7 +13,7 @@ import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Sorts
 import org.bson.Document
 import org.bson.conversions.Bson
-import java.util.Date
+import java.util.*
 
 class MongoElectronicInvoiceIssueRepository(
     database: MongoDatabase,
@@ -39,13 +39,12 @@ class MongoElectronicInvoiceIssueRepository(
         }
     }
 
-    override fun findById(organizationId: String, documentId: String): ElectronicInvoiceIssueRecord? =
-        collection.find(
-            Filters.and(
-                Filters.eq(MongoDocumentFields.ORGANIZATION_ID, organizationId.trim()),
-                Filters.eq(MongoDocumentFields.ID, documentId.trim()),
-            )
-        ).firstOrNull()?.let(MongoElectronicInvoiceIssueMappers::fromDocument)
+    override fun findById(organizationId: String, documentId: String): ElectronicInvoiceIssueRecord? = collection.find(
+        Filters.and(
+            Filters.eq(MongoDocumentFields.ORGANIZATION_ID, organizationId.trim()),
+            Filters.eq(MongoDocumentFields.ID, documentId.trim()),
+        )
+    ).firstOrNull()?.let(MongoElectronicInvoiceIssueMappers::fromDocument)
 
     override fun search(query: ElectronicInvoiceIssueSearchQuery): List<ElectronicInvoiceIssueRecord> {
         val filters = mutableListOf<Bson>(
@@ -71,9 +70,7 @@ class MongoElectronicInvoiceIssueRepository(
 
         return collection.find(Filters.and(filters))
             .sort(Sorts.descending("issuedAt", MongoDocumentFields.CREATED_AT, MongoDocumentFields.ID))
-            .limit(query.limit)
-            .into(mutableListOf())
-            .map(MongoElectronicInvoiceIssueMappers::fromDocument)
+            .limit(query.limit).into(mutableListOf()).map(MongoElectronicInvoiceIssueMappers::fromDocument)
     }
 
     override fun existsAuthorizedInvoiceForSale(organizationId: String, saleId: String): Boolean =

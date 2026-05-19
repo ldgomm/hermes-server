@@ -32,7 +32,8 @@ interface PaymentCashSessionRepository {
 
     fun findOpenByOrganization(organizationId: String): CashSession?
 
-    fun findOpenByBranch(organizationId: String, branchId: String): CashSession? = findOpenByOrganization(organizationId)
+    fun findOpenByBranch(organizationId: String, branchId: String): CashSession? =
+        findOpenByOrganization(organizationId)
 
     fun update(session: CashSession)
 }

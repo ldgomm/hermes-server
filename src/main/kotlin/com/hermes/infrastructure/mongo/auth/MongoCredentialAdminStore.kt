@@ -21,10 +21,7 @@ import java.time.Instant
 
 class MongoCredentialAdminStore(
     private val database: MongoDatabase,
-) : InvitationRepository,
-    PasswordResetTokenRepository,
-    MembershipMutationRepository,
-    RoleQueryRepository {
+) : InvitationRepository, PasswordResetTokenRepository, MembershipMutationRepository, RoleQueryRepository {
 
     private val invitations get() = database.getCollection(CredentialAdminMongoCollectionNames.INVITATIONS)
     private val resetTokens get() = database.getCollection(CredentialAdminMongoCollectionNames.PASSWORD_RESET_TOKENS)
@@ -48,7 +45,9 @@ class MongoCredentialAdminStore(
         ).firstOrNull()?.toInvitation()
 
     override fun update(invitation: Invitation) {
-        invitations.replaceOne(Filters.eq("_id", invitation.id), invitation.toDocument(), ReplaceOptions().upsert(false))
+        invitations.replaceOne(
+            Filters.eq("_id", invitation.id), invitation.toDocument(), ReplaceOptions().upsert(false)
+        )
     }
 
     override fun create(token: PasswordResetToken) {
@@ -92,7 +91,9 @@ class MongoCredentialAdminStore(
     }
 
     override fun update(membership: OrganizationMembership) {
-        memberships.replaceOne(Filters.eq("_id", membership.id), membership.toDocument(), ReplaceOptions().upsert(false))
+        memberships.replaceOne(
+            Filters.eq("_id", membership.id), membership.toDocument(), ReplaceOptions().upsert(false)
+        )
     }
 
     override fun findRolesByIds(roleIds: Set<String>): List<RoleDefinition> {
@@ -103,19 +104,13 @@ class MongoCredentialAdminStore(
     override fun findRoleById(roleId: String): RoleDefinition? =
         roles.find(Filters.eq("_id", roleId)).firstOrNull()?.toRoleDefinition()
 
-    private fun Invitation.toDocument(): Document = Document("_id", id)
-        .append("organizationId", organizationId)
-        .append("email", email)
-        .append("invitedByUserId", invitedByUserId)
-        .append("roleIds", roleIds.toList())
-        .append("tokenHash", tokenHash)
-        .append("status", status.name)
-        .append("createdAt", createdAt.toString())
-        .append("expiresAt", expiresAt.toString())
-        .append("acceptedAt", acceptedAt?.toString())
-        .append("revokedAt", revokedAt?.toString())
-        .append("acceptedUserId", acceptedUserId)
-        .append("version", version)
+    private fun Invitation.toDocument(): Document =
+        Document("_id", id).append("organizationId", organizationId).append("email", email)
+            .append("invitedByUserId", invitedByUserId).append("roleIds", roleIds.toList())
+            .append("tokenHash", tokenHash).append("status", status.name).append("createdAt", createdAt.toString())
+            .append("expiresAt", expiresAt.toString()).append("acceptedAt", acceptedAt?.toString())
+            .append("revokedAt", revokedAt?.toString()).append("acceptedUserId", acceptedUserId)
+            .append("version", version)
 
     private fun Document.toInvitation(): Invitation = Invitation(
         id = getString("_id"),
@@ -133,16 +128,12 @@ class MongoCredentialAdminStore(
         version = getLong("version") ?: 1L,
     )
 
-    private fun PasswordResetToken.toDocument(): Document = Document("_id", id)
-        .append("userId", userId)
-        .append("tokenHash", tokenHash)
-        .append("createdAt", createdAt.toString())
-        .append("expiresAt", expiresAt.toString())
-        .append("usedAt", usedAt?.toString())
-        .append("revokedAt", revokedAt?.toString())
-        .append("requestedByIp", requestedByIp)
-        .append("requestedByUserAgent", requestedByUserAgent)
-        .append("version", version)
+    private fun PasswordResetToken.toDocument(): Document =
+        Document("_id", id).append("userId", userId).append("tokenHash", tokenHash)
+            .append("createdAt", createdAt.toString()).append("expiresAt", expiresAt.toString())
+            .append("usedAt", usedAt?.toString()).append("revokedAt", revokedAt?.toString())
+            .append("requestedByIp", requestedByIp).append("requestedByUserAgent", requestedByUserAgent)
+            .append("version", version)
 
     private fun Document.toPasswordResetToken(): PasswordResetToken = PasswordResetToken(
         id = getString("_id"),
@@ -157,17 +148,12 @@ class MongoCredentialAdminStore(
         version = getLong("version") ?: 1L,
     )
 
-    private fun OrganizationMembership.toDocument(): Document = Document("_id", id)
-        .append("organizationId", organizationId)
-        .append("userId", userId)
-        .append("roleIds", roleIds.toList())
-        .append("status", status.name)
-        .append("createdAt", createdAt.toString())
-        .append("updatedAt", updatedAt.toString())
-        .append("invitedBy", invitedBy)
-        .append("acceptedAt", acceptedAt?.toString())
-        .append("revokedAt", revokedAt?.toString())
-        .append("version", version)
+    private fun OrganizationMembership.toDocument(): Document =
+        Document("_id", id).append("organizationId", organizationId).append("userId", userId)
+            .append("roleIds", roleIds.toList()).append("status", status.name).append("createdAt", createdAt.toString())
+            .append("updatedAt", updatedAt.toString()).append("invitedBy", invitedBy)
+            .append("acceptedAt", acceptedAt?.toString()).append("revokedAt", revokedAt?.toString())
+            .append("version", version)
 
     private fun Document.toMembership(): OrganizationMembership = OrganizationMembership(
         id = getString("_id"),

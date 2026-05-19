@@ -1,8 +1,8 @@
 package com.hermes.backend.auth
 
 import com.hermes.application.auth.AuthenticatedRequestContext
-import io.ktor.server.application.ApplicationCall
-import io.ktor.util.AttributeKey
+import io.ktor.server.application.*
+import io.ktor.util.*
 
 object HermesAuthAttributes {
     val Context: AttributeKey<AuthenticatedRequestContext> = AttributeKey("HermesAuthenticatedContext")

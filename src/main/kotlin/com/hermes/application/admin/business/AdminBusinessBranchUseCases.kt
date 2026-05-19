@@ -123,7 +123,8 @@ class UpdateAdminBranchUseCase(
             command.location != null -> command.location.toBranchLocation(requireContent = true)
             else -> null
         }
-        val changeLocation = command.clearLocation || normalizedLocation != null && normalizedLocation != current.location
+        val changeLocation =
+            command.clearLocation || normalizedLocation != null && normalizedLocation != current.location
 
         val normalizedBusinessHoursId = when {
             command.clearBusinessHoursId -> null
@@ -131,7 +132,7 @@ class UpdateAdminBranchUseCase(
             else -> null
         }
         val changeBusinessHoursId = command.clearBusinessHoursId ||
-            (command.businessHoursId != null && normalizedBusinessHoursId != current.businessHoursId)
+                (command.businessHoursId != null && normalizedBusinessHoursId != current.businessHoursId)
 
         val patch = AdminBranchUpdatePatch(
             organizationId = organizationId,
@@ -257,7 +258,11 @@ private val allowedBranchStatuses = setOf("active", "inactive", "archived")
 private val allowedLocationPrivacyModes = setOf("private", "approximate_public", "exact_public", "hidden")
 
 private fun assertCanCreateBranch(effectivePermissions: Set<String>) {
-    if (!canPerformAny(effectivePermissions, setOf(PermissionCatalog.BRANCHES_CREATE, PermissionCatalog.SETTINGS_BRANCHES_MANAGE))) {
+    if (!canPerformAny(
+            effectivePermissions,
+            setOf(PermissionCatalog.BRANCHES_CREATE, PermissionCatalog.SETTINGS_BRANCHES_MANAGE)
+        )
+    ) {
         throw DomainRuleViolation(
             "Missing any required permission: ${PermissionCatalog.BRANCHES_CREATE}, ${PermissionCatalog.SETTINGS_BRANCHES_MANAGE}."
         )
@@ -265,7 +270,11 @@ private fun assertCanCreateBranch(effectivePermissions: Set<String>) {
 }
 
 private fun assertCanUpdateBranch(effectivePermissions: Set<String>) {
-    if (!canPerformAny(effectivePermissions, setOf(PermissionCatalog.BRANCHES_UPDATE, PermissionCatalog.SETTINGS_BRANCHES_MANAGE))) {
+    if (!canPerformAny(
+            effectivePermissions,
+            setOf(PermissionCatalog.BRANCHES_UPDATE, PermissionCatalog.SETTINGS_BRANCHES_MANAGE)
+        )
+    ) {
         throw DomainRuleViolation(
             "Missing any required permission: ${PermissionCatalog.BRANCHES_UPDATE}, ${PermissionCatalog.SETTINGS_BRANCHES_MANAGE}."
         )

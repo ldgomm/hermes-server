@@ -21,14 +21,11 @@ object MongoDecimalMapper {
 
     fun fromDecimal128(value: Decimal128): BigDecimal = value.bigDecimalValue()
 
-    fun moneyToDecimal128(value: BigDecimal): Decimal128 =
-        toDecimal128(value, scale = MONEY_SCALE)
+    fun moneyToDecimal128(value: BigDecimal): Decimal128 = toDecimal128(value, scale = MONEY_SCALE)
 
-    fun quantityToDecimal128(value: BigDecimal): Decimal128 =
-        toDecimal128(value, scale = QUANTITY_SCALE)
+    fun quantityToDecimal128(value: BigDecimal): Decimal128 = toDecimal128(value, scale = QUANTITY_SCALE)
 
-    fun percentageToDecimal128(value: BigDecimal): Decimal128 =
-        toDecimal128(value, scale = PERCENTAGE_SCALE)
+    fun percentageToDecimal128(value: BigDecimal): Decimal128 = toDecimal128(value, scale = PERCENTAGE_SCALE)
 
     fun readRequired(document: Document, fieldName: String): BigDecimal {
         return readOptional(document, fieldName)
@@ -44,6 +41,7 @@ object MongoDecimalMapper {
             is Long -> raw.toBigDecimal()
             is String -> raw.toBigDecimalOrNull()
                 ?: throw IllegalArgumentException("Decimal field '$fieldName' contains an invalid string value: $raw")
+
             else -> throw IllegalArgumentException(
                 "Decimal field '$fieldName' must be Decimal128, BigDecimal, number, or numeric string. Current type: ${raw::class.qualifiedName}",
             )

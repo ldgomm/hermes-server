@@ -35,9 +35,13 @@ class DatabaseHealthVerifier private constructor(
         val latency = measureTimeMillis {
             database.runCommand(Document("ping", 1))
             buildInfo = runCatching { database.runCommand(Document("buildInfo", 1)) }.getOrNull()
-            hello = runCatching { database.runCommand(Document("hello", 1)) }
-                .recoverCatching { database.runCommand(Document("isMaster", 1)) }
-                .getOrNull()
+            hello = runCatching {
+                database.runCommand(
+                    Document(
+                        "hello", 1
+                    )
+                )
+            }.recoverCatching { database.runCommand(Document("isMaster", 1)) }.getOrNull()
 
             transactionProbe = runTransactionProbe(hello)
         }
@@ -45,8 +49,8 @@ class DatabaseHealthVerifier private constructor(
         val supportsSessions = hello?.containsKey("logicalSessionTimeoutMinutes") == true
         val replicaSetName = hello?.getString("setName")
         val isWritablePrimary = hello?.getBoolean("isWritablePrimary") ?: hello?.getBoolean("ismaster")
-        val transactionSupported = transactionProbe == TransactionProbeResult.SUPPORTED ||
-                (!probeTransactions && supportsSessions && replicaSetName != null)
+        val transactionSupported =
+            transactionProbe == TransactionProbeResult.SUPPORTED || (!probeTransactions && supportsSessions && replicaSetName != null)
 
         val ok = supportsSessions && transactionSupported
         if (!ok) {
@@ -85,9 +89,9 @@ class DatabaseHealthVerifier private constructor(
                 session.startTransaction()
                 database.getCollection(MongoCollectionNames.DATABASE_HEALTH_CHECKS).insertOne(
                     session,
-                    Document(MongoDocumentFields.ID, "health_${Instant.now().toEpochMilli()}")
-                        .append("checkedAt", Date.from(Instant.now()))
-                        .append(MongoDocumentFields.SCHEMA_VERSION, 1),
+                    Document(MongoDocumentFields.ID, "health_${Instant.now().toEpochMilli()}").append(
+                        "checkedAt", Date.from(Instant.now())
+                    ).append(MongoDocumentFields.SCHEMA_VERSION, 1),
                 )
                 session.abortTransaction()
             }

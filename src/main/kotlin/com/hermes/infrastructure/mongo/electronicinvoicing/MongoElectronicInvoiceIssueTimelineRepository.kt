@@ -11,35 +11,27 @@ import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Sorts
 import org.bson.Document
 import java.time.Instant
-import java.util.Date
+import java.util.*
 
 class MongoElectronicInvoiceIssueTimelineRepository(
     database: MongoDatabase,
 ) : ElectronicInvoiceTimelineRepository {
-    private val collection: MongoCollection<Document> =
-        database.getCollection(MongoCollectionNames.AUDIT_LOGS)
+    private val collection: MongoCollection<Document> = database.getCollection(MongoCollectionNames.AUDIT_LOGS)
 
-    override fun list(query: ElectronicInvoiceTimelineQuery): List<ElectronicInvoiceTimelineEvent> = collection
-        .find(
-            Filters.and(
-                Filters.eq(MongoDocumentFields.ORGANIZATION_ID, query.organizationId.trim()),
-                Filters.eq("module", "electronic_invoicing"),
-                Filters.eq("context", "electronic_invoice_issue"),
-                Filters.eq("targetId", query.documentId.trim()),
-            )
+    override fun list(query: ElectronicInvoiceTimelineQuery): List<ElectronicInvoiceTimelineEvent> = collection.find(
+        Filters.and(
+            Filters.eq(MongoDocumentFields.ORGANIZATION_ID, query.organizationId.trim()),
+            Filters.eq("module", "electronic_invoicing"),
+            Filters.eq("context", "electronic_invoice_issue"),
+            Filters.eq("targetId", query.documentId.trim()),
         )
-        .sort(Sorts.ascending("occurredAt", MongoDocumentFields.CREATED_AT, MongoDocumentFields.ID))
-        .limit(query.limit)
-        .into(mutableListOf())
-        .mapNotNull { it.toTimelineEventOrNull() }
+    ).sort(Sorts.ascending("occurredAt", MongoDocumentFields.CREATED_AT, MongoDocumentFields.ID)).limit(query.limit)
+        .into(mutableListOf()).mapNotNull { it.toTimelineEventOrNull() }
 
     private fun Document.toTimelineEventOrNull(): ElectronicInvoiceTimelineEvent? {
         val metadata = get("metadata", Document::class.java)
-        val documentId = getString("documentId")
-            ?: getString("targetId")
-            ?: getString("entityId")
-            ?: metadata?.getString("documentId")
-            ?: return null
+        val documentId = getString("documentId") ?: getString("targetId") ?: getString("entityId")
+        ?: metadata?.getString("documentId") ?: return null
 
         return ElectronicInvoiceTimelineEvent(
             id = getString(MongoDocumentFields.ID) ?: return null,
@@ -51,12 +43,9 @@ class MongoElectronicInvoiceIssueTimelineRepository(
             accessKey = getString("accessKey") ?: metadata?.getString("accessKey"),
             status = getString("status"),
             message = getString("message"),
-            occurredAt = instantField("occurredAt")
-                ?: instantField(MongoDocumentFields.CREATED_AT)
-                ?: Instant.EPOCH,
+            occurredAt = instantField("occurredAt") ?: instantField(MongoDocumentFields.CREATED_AT) ?: Instant.EPOCH,
         )
     }
 
-    private fun Document.instantField(name: String): Instant? =
-        (this[name] as? Date)?.toInstant()
+    private fun Document.instantField(name: String): Instant? = (this[name] as? Date)?.toInstant()
 }

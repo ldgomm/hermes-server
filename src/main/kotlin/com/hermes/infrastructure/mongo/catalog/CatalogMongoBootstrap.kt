@@ -158,23 +158,47 @@ object CatalogMongoBootstrap {
     private fun ensureCatalogRequestIndexes(database: MongoDatabase) {
         val collection = database.getCollection(MongoCollectionNames.CATALOG_ITEM_REQUESTS)
 
-        collection.createIndexIfMissing(Indexes.ascending("organizationId", "status"), "catalog_item_requests_org_status_idx")
-        collection.createIndexIfMissing(Indexes.ascending("requestedByUserId", "status"), "catalog_item_requests_requested_by_status_idx")
-        collection.createIndexIfMissing(Indexes.ascending("organizationId", "normalizedRequestedName", "status"), "catalog_item_requests_org_normalized_name_status_idx")
-        collection.createIndexIfMissing(Indexes.ascending("status", "createdAt"), "catalog_item_requests_status_created_at_idx")
+        collection.createIndexIfMissing(
+            Indexes.ascending("organizationId", "status"), "catalog_item_requests_org_status_idx"
+        )
+        collection.createIndexIfMissing(
+            Indexes.ascending("requestedByUserId", "status"), "catalog_item_requests_requested_by_status_idx"
+        )
+        collection.createIndexIfMissing(
+            Indexes.ascending("organizationId", "normalizedRequestedName", "status"),
+            "catalog_item_requests_org_normalized_name_status_idx"
+        )
+        collection.createIndexIfMissing(
+            Indexes.ascending("status", "createdAt"), "catalog_item_requests_status_created_at_idx"
+        )
     }
 
     private fun ensureCatalogPriceHistoryIndexes(database: MongoDatabase) {
         val collection = database.getCollection(MongoCollectionNames.CATALOG_PRICE_HISTORY)
-        collection.createIndexIfMissing(Indexes.ascending("organizationId", "catalogItemId", "changedAt"), "catalog_price_history_org_item_changed_at_idx")
-        collection.createIndexIfMissing(Indexes.ascending("organizationId", "changedAt"), "catalog_price_history_org_changed_at_idx")
+        collection.createIndexIfMissing(
+            Indexes.ascending("organizationId", "catalogItemId", "changedAt"),
+            "catalog_price_history_org_item_changed_at_idx"
+        )
+        collection.createIndexIfMissing(
+            Indexes.ascending("organizationId", "changedAt"), "catalog_price_history_org_changed_at_idx"
+        )
     }
 
     private fun ensureCatalogAuditIndexes(database: MongoDatabase) {
         val collection = database.getCollection(MongoCollectionNames.AUDIT_LOGS)
-        collection.createIndexIfMissing(Indexes.ascending("module", "organizationId", "createdAt"), "audit_logs_module_org_created_at_idx")
-        collection.createIndexIfMissing(Indexes.ascending("module", "targetId", "createdAt"), "audit_logs_module_target_created_at_idx", sparse = true)
-        collection.createIndexIfMissing(Indexes.ascending("module", "actorUserId", "createdAt"), "audit_logs_module_actor_created_at_idx", sparse = true)
+        collection.createIndexIfMissing(
+            Indexes.ascending("module", "organizationId", "createdAt"), "audit_logs_module_org_created_at_idx"
+        )
+        collection.createIndexIfMissing(
+            Indexes.ascending("module", "targetId", "createdAt"),
+            "audit_logs_module_target_created_at_idx",
+            sparse = true
+        )
+        collection.createIndexIfMissing(
+            Indexes.ascending("module", "actorUserId", "createdAt"),
+            "audit_logs_module_actor_created_at_idx",
+            sparse = true
+        )
     }
 
     private fun MongoCollection<Document>.createIndexIfMissing(

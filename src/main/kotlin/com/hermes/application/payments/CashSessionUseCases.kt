@@ -90,9 +90,20 @@ class RegisterCashMovementUseCase(
         val actorUserId = command.actorUserId.required("Actor user id")
 
         when (command.direction) {
-            CashMovementDirection.IN -> PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.CASH_MOVEMENTS_REGISTER_INFLOW)
-            CashMovementDirection.OUT -> PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.CASH_MOVEMENTS_REGISTER_OUTFLOW)
-            CashMovementDirection.NEUTRAL -> PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.CASH_MOVEMENTS_ADJUST)
+            CashMovementDirection.IN -> PermissionRules.assertCanPerform(
+                command.actorEffectivePermissions,
+                PermissionCatalog.CASH_MOVEMENTS_REGISTER_INFLOW
+            )
+
+            CashMovementDirection.OUT -> PermissionRules.assertCanPerform(
+                command.actorEffectivePermissions,
+                PermissionCatalog.CASH_MOVEMENTS_REGISTER_OUTFLOW
+            )
+
+            CashMovementDirection.NEUTRAL -> PermissionRules.assertCanPerform(
+                command.actorEffectivePermissions,
+                PermissionCatalog.CASH_MOVEMENTS_ADJUST
+            )
         }
         if (command.type == CashMovementType.ADJUSTMENT) {
             PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.CASH_MOVEMENTS_ADJUST)

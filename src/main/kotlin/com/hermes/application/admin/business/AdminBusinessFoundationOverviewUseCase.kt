@@ -25,11 +25,12 @@ class GetAdminBusinessFoundationOverviewUseCase(
         assertCanViewBusiness(command.actorEffectivePermissions)
 
         val organizationId = command.organizationId.required("Organization id")
-        val business = repository.findBusiness(organizationId)
-            ?: throw DomainRuleViolation("Organization does not exist.")
+        val business =
+            repository.findBusiness(organizationId) ?: throw DomainRuleViolation("Organization does not exist.")
 
         val activities = repository.listActivities(organizationId).sortedWith(compareBy({ it.sortOrder }, { it.name }))
-        val branches = repository.listBranches(organizationId).sortedWith(compareBy({ it.code ?: it.name }, { it.name }))
+        val branches =
+            repository.listBranches(organizationId).sortedWith(compareBy({ it.code ?: it.name }, { it.name }))
         val emissionPoints = repository.listEmissionPoints(organizationId)
             .sortedWith(compareBy({ it.establishmentCode }, { it.emissionPointCode }, { it.displayName }))
 
@@ -54,8 +55,7 @@ class GetAdminBusinessFoundationOverviewUseCase(
             activities = activities,
             branches = branches,
             emissionPoints = emissionPoints,
-            nextActions = readiness.checks
-                .filter { it.status != AdminBusinessReadinessStatus.READY && it.action != null }
+            nextActions = readiness.checks.filter { it.status != AdminBusinessReadinessStatus.READY && it.action != null }
                 .map {
                     AdminBusinessFoundationNextAction(
                         code = it.code.name,

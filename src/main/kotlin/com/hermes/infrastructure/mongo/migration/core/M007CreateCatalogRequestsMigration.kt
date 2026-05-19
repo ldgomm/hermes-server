@@ -13,8 +13,7 @@ object M007CreateCatalogRequestsMigration : MongoMigration {
     override val description: String = "Create catalog item requests collection."
 
     override fun up(database: MongoDatabase) {
-        val properties = Document()
-            .append(MongoDocumentFields.ID, MongoMigrationSupport.id())
+        val properties = Document().append(MongoDocumentFields.ID, MongoMigrationSupport.id())
             .append(MongoDocumentFields.ORGANIZATION_ID, MongoMigrationSupport.id(prefix = "org_"))
             .append("requestedByUserId", MongoMigrationSupport.id(prefix = "usr_"))
             .append("requestedName", MongoMigrationSupport.string(maxLength = 256))

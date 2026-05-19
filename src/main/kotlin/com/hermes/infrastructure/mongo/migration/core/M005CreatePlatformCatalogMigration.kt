@@ -19,8 +19,7 @@ object M005CreatePlatformCatalogMigration : MongoMigration {
     }
 
     private fun createCategories(database: MongoDatabase) {
-        val properties = Document()
-            .append(MongoDocumentFields.ID, MongoMigrationSupport.id())
+        val properties = Document().append(MongoDocumentFields.ID, MongoMigrationSupport.id())
             .append("parentId", MongoMigrationSupport.nullableString(maxLength = 128))
             .append("code", MongoMigrationSupport.string(maxLength = 128))
             .append("name", MongoMigrationSupport.string(maxLength = 256))
@@ -55,17 +54,34 @@ object M005CreatePlatformCatalogMigration : MongoMigration {
             ),
         )
 
-        MongoMigrationSupport.createIndex(collection, Indexes.ascending("code"), "platform_categories_code_unique_idx", unique = true)
-        MongoMigrationSupport.createIndex(collection, Indexes.ascending("parentId", "status", "sortOrder"), "platform_categories_parent_status_sort_idx", sparse = true)
-        MongoMigrationSupport.createIndex(collection, Indexes.ascending("status", "sortOrder"), "platform_categories_status_sort_idx")
-        MongoMigrationSupport.createIndex(collection, Indexes.ascending("normalizedName"), "platform_categories_normalized_name_idx")
-        MongoMigrationSupport.createIndex(collection, Indexes.ascending("businessTypeTags"), "platform_categories_business_type_tags_idx", sparse = true)
-        MongoMigrationSupport.createIndex(collection, Indexes.ascending("activityTags"), "platform_categories_activity_tags_idx", sparse = true)
+        MongoMigrationSupport.createIndex(
+            collection, Indexes.ascending("code"), "platform_categories_code_unique_idx", unique = true
+        )
+        MongoMigrationSupport.createIndex(
+            collection,
+            Indexes.ascending("parentId", "status", "sortOrder"),
+            "platform_categories_parent_status_sort_idx",
+            sparse = true
+        )
+        MongoMigrationSupport.createIndex(
+            collection, Indexes.ascending("status", "sortOrder"), "platform_categories_status_sort_idx"
+        )
+        MongoMigrationSupport.createIndex(
+            collection, Indexes.ascending("normalizedName"), "platform_categories_normalized_name_idx"
+        )
+        MongoMigrationSupport.createIndex(
+            collection,
+            Indexes.ascending("businessTypeTags"),
+            "platform_categories_business_type_tags_idx",
+            sparse = true
+        )
+        MongoMigrationSupport.createIndex(
+            collection, Indexes.ascending("activityTags"), "platform_categories_activity_tags_idx", sparse = true
+        )
     }
 
     private fun createFamilies(database: MongoDatabase) {
-        val properties = Document()
-            .append(MongoDocumentFields.ID, MongoMigrationSupport.id())
+        val properties = Document().append(MongoDocumentFields.ID, MongoMigrationSupport.id())
             .append("globalFamilyId", MongoMigrationSupport.string(maxLength = 128))
             .append("canonicalName", MongoMigrationSupport.string(maxLength = 256))
             .append("normalizedName", MongoMigrationSupport.string(maxLength = 256))
@@ -100,16 +116,31 @@ object M005CreatePlatformCatalogMigration : MongoMigration {
             ),
         )
 
-        MongoMigrationSupport.createIndex(collection, Indexes.ascending("globalFamilyId"), "platform_catalog_families_global_id_unique_idx", unique = true)
-        MongoMigrationSupport.createIndex(collection, Indexes.ascending("categoryId", "status"), "platform_catalog_families_category_status_idx", sparse = true)
-        MongoMigrationSupport.createIndex(collection, Indexes.ascending("type", "status"), "platform_catalog_families_type_status_idx")
-        MongoMigrationSupport.createIndex(collection, Indexes.ascending("normalizedName"), "platform_catalog_families_normalized_name_idx")
-        MongoMigrationSupport.createIndex(collection, Indexes.ascending("aliases"), "platform_catalog_families_aliases_idx", sparse = true)
+        MongoMigrationSupport.createIndex(
+            collection,
+            Indexes.ascending("globalFamilyId"),
+            "platform_catalog_families_global_id_unique_idx",
+            unique = true
+        )
+        MongoMigrationSupport.createIndex(
+            collection,
+            Indexes.ascending("categoryId", "status"),
+            "platform_catalog_families_category_status_idx",
+            sparse = true
+        )
+        MongoMigrationSupport.createIndex(
+            collection, Indexes.ascending("type", "status"), "platform_catalog_families_type_status_idx"
+        )
+        MongoMigrationSupport.createIndex(
+            collection, Indexes.ascending("normalizedName"), "platform_catalog_families_normalized_name_idx"
+        )
+        MongoMigrationSupport.createIndex(
+            collection, Indexes.ascending("aliases"), "platform_catalog_families_aliases_idx", sparse = true
+        )
     }
 
     private fun createTemplates(database: MongoDatabase) {
-        val properties = Document()
-            .append(MongoDocumentFields.ID, MongoMigrationSupport.id())
+        val properties = Document().append(MongoDocumentFields.ID, MongoMigrationSupport.id())
             .append("globalCatalogId", MongoMigrationSupport.string(maxLength = 128))
             .append("canonicalName", MongoMigrationSupport.string(maxLength = 256))
             .append("normalizedName", MongoMigrationSupport.string(maxLength = 256))
@@ -117,8 +148,7 @@ object M005CreatePlatformCatalogMigration : MongoMigration {
             .append("status", MongoMigrationSupport.enum(TEMPLATE_STATUSES))
             .append("productFamilyId", MongoMigrationSupport.nullableString(maxLength = 128))
             .append("variantAttributes", MongoMigrationSupport.obj())
-            .append("identifiers", MongoMigrationSupport.array())
-            .append("attributes", MongoMigrationSupport.obj())
+            .append("identifiers", MongoMigrationSupport.array()).append("attributes", MongoMigrationSupport.obj())
             .append("media", MongoMigrationSupport.array())
 
         val collection = MongoMigrationSupport.ensureCollection(
@@ -141,11 +171,30 @@ object M005CreatePlatformCatalogMigration : MongoMigration {
             ),
         )
 
-        MongoMigrationSupport.createIndex(collection, Indexes.ascending("globalCatalogId"), "platform_catalog_templates_global_id_unique_idx", unique = true)
-        MongoMigrationSupport.createIndex(collection, Indexes.ascending("productFamilyId", "status"), "platform_catalog_templates_family_status_idx", sparse = true)
-        MongoMigrationSupport.createIndex(collection, Indexes.ascending("type", "status"), "platform_catalog_templates_type_status_idx")
-        MongoMigrationSupport.createIndex(collection, Indexes.ascending("normalizedName"), "platform_catalog_templates_normalized_name_idx")
-        MongoMigrationSupport.createIndex(collection, Indexes.ascending("identifiers.normalizedValue"), "platform_catalog_templates_identifier_idx", sparse = true)
+        MongoMigrationSupport.createIndex(
+            collection,
+            Indexes.ascending("globalCatalogId"),
+            "platform_catalog_templates_global_id_unique_idx",
+            unique = true
+        )
+        MongoMigrationSupport.createIndex(
+            collection,
+            Indexes.ascending("productFamilyId", "status"),
+            "platform_catalog_templates_family_status_idx",
+            sparse = true
+        )
+        MongoMigrationSupport.createIndex(
+            collection, Indexes.ascending("type", "status"), "platform_catalog_templates_type_status_idx"
+        )
+        MongoMigrationSupport.createIndex(
+            collection, Indexes.ascending("normalizedName"), "platform_catalog_templates_normalized_name_idx"
+        )
+        MongoMigrationSupport.createIndex(
+            collection,
+            Indexes.ascending("identifiers.normalizedValue"),
+            "platform_catalog_templates_identifier_idx",
+            sparse = true
+        )
     }
 
     private val CATALOG_ITEM_TYPES = listOf("PRODUCT", "SERVICE", "PACKAGE", "RENTAL", "FEE")

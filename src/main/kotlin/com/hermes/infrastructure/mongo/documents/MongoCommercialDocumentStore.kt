@@ -40,23 +40,19 @@ private class MongoCommercialDocumentRepository(
         )
     }
 
-    override fun findById(organizationId: String, documentId: String): CommercialDocument? =
-        collection.find(
-            Filters.and(
-                Filters.eq(MongoDocumentFields.ORGANIZATION_ID, organizationId.trim()),
-                Filters.eq(MongoDocumentFields.ID, documentId.trim()),
-            )
-        ).firstOrNull()?.let(MongoCommercialDocumentMappers::fromDocument)
+    override fun findById(organizationId: String, documentId: String): CommercialDocument? = collection.find(
+        Filters.and(
+            Filters.eq(MongoDocumentFields.ORGANIZATION_ID, organizationId.trim()),
+            Filters.eq(MongoDocumentFields.ID, documentId.trim()),
+        )
+    ).firstOrNull()?.let(MongoCommercialDocumentMappers::fromDocument)
 
-    override fun findBySale(organizationId: String, saleId: String): List<CommercialDocument> =
-        collection.find(
-            Filters.and(
-                Filters.eq(MongoDocumentFields.ORGANIZATION_ID, organizationId.trim()),
-                Filters.eq("saleId", saleId.trim()),
-            )
-        ).sort(Sorts.descending("issuedAt"))
-            .into(mutableListOf())
-            .map(MongoCommercialDocumentMappers::fromDocument)
+    override fun findBySale(organizationId: String, saleId: String): List<CommercialDocument> = collection.find(
+        Filters.and(
+            Filters.eq(MongoDocumentFields.ORGANIZATION_ID, organizationId.trim()),
+            Filters.eq("saleId", saleId.trim()),
+        )
+    ).sort(Sorts.descending("issuedAt")).into(mutableListOf()).map(MongoCommercialDocumentMappers::fromDocument)
 
     override fun findByDocumentNumber(organizationId: String, documentNumber: String): CommercialDocument? =
         collection.find(
@@ -74,11 +70,8 @@ private class MongoCommercialDocumentRepository(
         query.from?.let { filters += Filters.gte("issuedAt", MongoInstantMapper.toDate(it)) }
         query.to?.let { filters += Filters.lte("issuedAt", MongoInstantMapper.toDate(it)) }
 
-        return collection.find(Filters.and(filters))
-            .sort(Sorts.descending("issuedAt"))
-            .limit(query.limit.coerceIn(1, 500))
-            .into(mutableListOf())
-            .map(MongoCommercialDocumentMappers::fromDocument)
+        return collection.find(Filters.and(filters)).sort(Sorts.descending("issuedAt"))
+            .limit(query.limit.coerceIn(1, 500)).into(mutableListOf()).map(MongoCommercialDocumentMappers::fromDocument)
     }
 }
 
@@ -134,9 +127,7 @@ private class MongoCommercialDocumentNumberGenerator(
                 Updates.set(MongoDocumentFields.UPDATED_BY, "system"),
                 Updates.inc(MongoDocumentFields.VERSION, 1),
             ),
-            FindOneAndUpdateOptions()
-                .upsert(true)
-                .returnDocument(ReturnDocument.AFTER),
+            FindOneAndUpdateOptions().upsert(true).returnDocument(ReturnDocument.AFTER),
         ) ?: error("Could not increment commercial document counter.")
 
         return when (val raw = updated["current"]) {

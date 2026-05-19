@@ -16,26 +16,18 @@ class MongoCommercialDocumentAuditLogger(database: MongoDatabase) : CommercialDo
     override fun log(event: CommercialDocumentAuditEvent) {
         val occurredAt = MongoInstantMapper.toDate(event.createdAt)
         collection.insertOne(
-            Document(MongoDocumentFields.ID, "docaudit_" + UUID.randomUUID().toString().replace("-", ""))
-                .append(MongoDocumentFields.ORGANIZATION_ID, event.organizationId)
-                .append(MongoDocumentFields.CREATED_AT, occurredAt)
+            Document(MongoDocumentFields.ID, "docaudit_" + UUID.randomUUID().toString().replace("-", "")).append(
+                MongoDocumentFields.ORGANIZATION_ID, event.organizationId
+            ).append(MongoDocumentFields.CREATED_AT, occurredAt)
                 .append(MongoDocumentFields.CREATED_BY, event.actorUserId)
                 .append(MongoDocumentFields.UPDATED_AT, occurredAt)
-                .append(MongoDocumentFields.UPDATED_BY, event.actorUserId)
-                .append(MongoDocumentFields.VERSION, 1)
-                .append(MongoDocumentFields.SCHEMA_VERSION, 1)
-                .append("module", "commercial_documents")
-                .append("context", "commercial_documents")
-                .append("actorUserId", event.actorUserId)
-                .append("action", event.action.name)
-                .append("entityType", "commercial_document")
-                .append("entityId", event.targetId)
-                .append("targetId", event.targetId)
-                .append("saleId", event.saleId)
-                .append("occurredAt", occurredAt)
-                .append("reason", event.reason)
-                .append("before", Document(event.before))
-                .append("after", Document(event.after))
+                .append(MongoDocumentFields.UPDATED_BY, event.actorUserId).append(MongoDocumentFields.VERSION, 1)
+                .append(MongoDocumentFields.SCHEMA_VERSION, 1).append("module", "commercial_documents")
+                .append("context", "commercial_documents").append("actorUserId", event.actorUserId)
+                .append("action", event.action.name).append("entityType", "commercial_document")
+                .append("entityId", event.targetId).append("targetId", event.targetId).append("saleId", event.saleId)
+                .append("occurredAt", occurredAt).append("reason", event.reason)
+                .append("before", Document(event.before)).append("after", Document(event.after))
                 .append("metadata", Document("module", "commercial_documents")),
         )
     }

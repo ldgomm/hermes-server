@@ -24,14 +24,8 @@ import java.util.regex.Pattern
 class MongoAuthStore(
     private val database: MongoDatabase,
     private val client: MongoClient? = null,
-) : UserRepository,
-    UserCredentialRepository,
-    OrganizationRepository,
-    OrganizationMembershipRepository,
-    AuthRoleLookupRepository,
-    UserSessionRepository,
-    RefreshTokenRepository,
-    OwnerWorkspaceRepository,
+) : UserRepository, UserCredentialRepository, OrganizationRepository, OrganizationMembershipRepository,
+    AuthRoleLookupRepository, UserSessionRepository, RefreshTokenRepository, OwnerWorkspaceRepository,
     AuthContextRepository {
 
     private val users: MongoCollection<Document> = database.getCollection(MongoCollectionNames.USERS)
@@ -47,15 +41,12 @@ class MongoAuthStore(
 
     override fun emailExists(email: String): Boolean = existsUserByEmail(email)
 
-    override fun findUserByEmail(email: String): User? = users
-        .find(regex("email", "^${Pattern.quote(email.trim().lowercase())}$", "i"))
-        .firstOrNull()
-        ?.let(MongoAuthMappers::userFromDocument)
+    override fun findUserByEmail(email: String): User? =
+        users.find(regex("email", "^${Pattern.quote(email.trim().lowercase())}$", "i")).firstOrNull()
+            ?.let(MongoAuthMappers::userFromDocument)
 
-    override fun findUserById(userId: String): User? = users
-        .find(eq("_id", userId.trim()))
-        .firstOrNull()
-        ?.let(MongoAuthMappers::userFromDocument)
+    override fun findUserById(userId: String): User? =
+        users.find(eq("_id", userId.trim())).firstOrNull()?.let(MongoAuthMappers::userFromDocument)
 
     override fun create(user: User) {
         users.insertOne(MongoAuthMappers.userToDocument(user))
@@ -90,21 +81,19 @@ class MongoAuthStore(
         create(credential)
     }
 
-    override fun existsByTaxId(countryCode: String, taxId: String): Boolean =
-        organizations.countDocuments(
-            and(
-                eq("countryCode", countryCode.trim().uppercase()),
-                eq("taxId", taxId.trim()),
-            ),
-        ) > 0
+    override fun existsByTaxId(countryCode: String, taxId: String): Boolean = organizations.countDocuments(
+        and(
+            eq("countryCode", countryCode.trim().uppercase()),
+            eq("taxId", taxId.trim()),
+        ),
+    ) > 0
 
     override fun organizationTaxIdExists(countryCode: String, taxId: String): Boolean =
         existsByTaxId(countryCode, taxId)
 
-    override fun findOrganizationById(organizationId: String): Organization? = organizations
-        .find(eq("_id", organizationId.trim()))
-        .firstOrNull()
-        ?.let(MongoAuthMappers::organizationFromDocument)
+    override fun findOrganizationById(organizationId: String): Organization? =
+        organizations.find(eq("_id", organizationId.trim())).firstOrNull()
+            ?.let(MongoAuthMappers::organizationFromDocument)
 
     override fun create(organization: Organization) {
         organizations.insertOne(MongoAuthMappers.organizationToDocument(organization))
@@ -130,24 +119,19 @@ class MongoAuthStore(
         memberships.insertOne(MongoAuthMappers.membershipToDocument(membership))
     }
 
-    override fun findSystemRoleByCode(code: String): RoleDefinition? = roles
-        .find(eq("code", code.trim()))
-        .firstOrNull()
-        ?.let(MongoAuthMappers::roleFromDocument)
+    override fun findSystemRoleByCode(code: String): RoleDefinition? =
+        roles.find(eq("code", code.trim())).firstOrNull()?.let(MongoAuthMappers::roleFromDocument)
 
     override fun create(session: UserSession) {
         sessions.insertOne(MongoAuthMappers.sessionToDocument(session))
     }
 
-    override fun findSessionById(sessionId: String): UserSession? = sessions
-        .find(eq("_id", sessionId.trim()))
-        .firstOrNull()
-        ?.let(MongoAuthMappers::sessionFromDocument)
+    override fun findSessionById(sessionId: String): UserSession? =
+        sessions.find(eq("_id", sessionId.trim())).firstOrNull()?.let(MongoAuthMappers::sessionFromDocument)
 
-    override fun findActiveByUserId(userId: String): List<UserSession> = sessions
-        .find(and(eq("userId", userId.trim()), eq("status", "active")))
-        .into(mutableListOf())
-        .map(MongoAuthMappers::sessionFromDocument)
+    override fun findActiveByUserId(userId: String): List<UserSession> =
+        sessions.find(and(eq("userId", userId.trim()), eq("status", "active"))).into(mutableListOf())
+            .map(MongoAuthMappers::sessionFromDocument)
 
     override fun update(session: UserSession) {
         sessions.replaceOne(
@@ -161,21 +145,17 @@ class MongoAuthStore(
         refreshTokens.insertOne(MongoAuthMappers.refreshTokenToDocument(refreshToken))
     }
 
-    override fun findRefreshTokenByHash(tokenHash: String): RefreshToken? = refreshTokens
-        .find(eq("tokenHash", tokenHash.trim()))
-        .firstOrNull()
-        ?.let(MongoAuthMappers::refreshTokenFromDocument)
+    override fun findRefreshTokenByHash(tokenHash: String): RefreshToken? =
+        refreshTokens.find(eq("tokenHash", tokenHash.trim())).firstOrNull()
+            ?.let(MongoAuthMappers::refreshTokenFromDocument)
 
-    override fun findActiveBySessionId(sessionId: String): List<RefreshToken> = refreshTokens
-        .find(
-            and(
-                eq("sessionId", sessionId.trim()),
-                exists("usedAt", false),
-                exists("revokedAt", false),
-            ),
-        )
-        .into(mutableListOf())
-        .map(MongoAuthMappers::refreshTokenFromDocument)
+    override fun findActiveBySessionId(sessionId: String): List<RefreshToken> = refreshTokens.find(
+        and(
+            eq("sessionId", sessionId.trim()),
+            exists("usedAt", false),
+            exists("revokedAt", false),
+        ),
+    ).into(mutableListOf()).map(MongoAuthMappers::refreshTokenFromDocument)
 
     override fun update(refreshToken: RefreshToken) {
         refreshTokens.replaceOne(
@@ -202,17 +182,13 @@ class MongoAuthStore(
         create(newToken)
     }
 
-    override fun findMembershipsByUserId(userId: String): List<OrganizationMembership> = memberships
-        .find(eq("userId", userId.trim()))
-        .into(mutableListOf())
-        .map(MongoAuthMappers::membershipFromDocument)
+    override fun findMembershipsByUserId(userId: String): List<OrganizationMembership> =
+        memberships.find(eq("userId", userId.trim())).into(mutableListOf())
+            .map(MongoAuthMappers::membershipFromDocument)
 
     override fun findRolesByIds(roleIds: Set<String>): List<RoleDefinition> {
         if (roleIds.isEmpty()) return emptyList()
-        return roles
-            .find(`in`("_id", roleIds))
-            .into(mutableListOf())
-            .map(MongoAuthMappers::roleFromDocument)
+        return roles.find(`in`("_id", roleIds)).into(mutableListOf()).map(MongoAuthMappers::roleFromDocument)
     }
 
     override fun createOwnerWorkspace(

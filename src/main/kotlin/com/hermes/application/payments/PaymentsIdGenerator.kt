@@ -1,6 +1,6 @@
 package com.hermes.application.payments
 
-import java.util.UUID
+import java.util.*
 
 fun interface PaymentsIdGenerator {
     fun newId(prefix: String): String

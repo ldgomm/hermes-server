@@ -19,11 +19,8 @@ import java.util.*
 
 class MongoAdminBusinessRepository(
     database: MongoDatabase,
-) : AdminBusinessRepository,
-    AdminBusinessMutationRepository,
-    AdminActivityMutationRepository,
-    AdminBranchMutationRepository,
-    AdminEmissionPointMutationRepository {
+) : AdminBusinessRepository, AdminBusinessMutationRepository, AdminActivityMutationRepository,
+    AdminBranchMutationRepository, AdminEmissionPointMutationRepository {
 
     private val organizations: MongoCollection<Document> = database.getCollection(MongoCollectionNames.ORGANIZATIONS)
     private val activities: MongoCollection<Document> =
@@ -37,28 +34,24 @@ class MongoAdminBusinessRepository(
     private val memberships: MongoCollection<Document> = database.getCollection(MongoCollectionNames.MEMBERSHIPS)
     private val roles: MongoCollection<Document> = database.getCollection(MongoCollectionNames.ROLES)
 
-    override fun findBusiness(organizationId: String): AdminBusinessProfile? = organizations
-        .find(eq("_id", organizationId.trim()))
-        .firstOrNull()
-        ?.let(MongoAdminBusinessMappers::businessFromDocument)
+    override fun findBusiness(organizationId: String): AdminBusinessProfile? =
+        organizations.find(eq("_id", organizationId.trim())).firstOrNull()
+            ?.let(MongoAdminBusinessMappers::businessFromDocument)
 
-    override fun listActivities(organizationId: String): List<AdminBusinessActivitySummary> = activities
-        .find(and(eq("organizationId", organizationId.trim()), ne("status", "archived")))
-        .sort(Sorts.ascending("sortOrder", "name"))
-        .into(mutableListOf())
-        .map(MongoAdminBusinessMappers::activityFromDocument)
+    override fun listActivities(organizationId: String): List<AdminBusinessActivitySummary> =
+        activities.find(and(eq("organizationId", organizationId.trim()), ne("status", "archived")))
+            .sort(Sorts.ascending("sortOrder", "name")).into(mutableListOf())
+            .map(MongoAdminBusinessMappers::activityFromDocument)
 
-    override fun listBranches(organizationId: String): List<AdminBusinessBranchSummary> = branches
-        .find(and(eq("organizationId", organizationId.trim()), ne("status", "archived")))
-        .sort(Sorts.ascending("type", "name"))
-        .into(mutableListOf())
-        .map(MongoAdminBusinessMappers::branchFromDocument)
+    override fun listBranches(organizationId: String): List<AdminBusinessBranchSummary> =
+        branches.find(and(eq("organizationId", organizationId.trim()), ne("status", "archived")))
+            .sort(Sorts.ascending("type", "name")).into(mutableListOf())
+            .map(MongoAdminBusinessMappers::branchFromDocument)
 
-    override fun listEmissionPoints(organizationId: String): List<AdminBusinessEmissionPointSummary> = emissionPoints
-        .find(and(eq("organizationId", organizationId.trim()), ne("status", "archived")))
-        .sort(Sorts.ascending("branchId", "establishmentCode", "emissionPointCode"))
-        .into(mutableListOf())
-        .map(MongoAdminBusinessMappers::emissionPointFromDocument)
+    override fun listEmissionPoints(organizationId: String): List<AdminBusinessEmissionPointSummary> =
+        emissionPoints.find(and(eq("organizationId", organizationId.trim()), ne("status", "archived")))
+            .sort(Sorts.ascending("branchId", "establishmentCode", "emissionPointCode")).into(mutableListOf())
+            .map(MongoAdminBusinessMappers::emissionPointFromDocument)
 
     override fun hasTaxSettings(organizationId: String): Boolean =
         taxSettings.countDocuments(eq("organizationId", organizationId.trim())) > 0
@@ -67,9 +60,7 @@ class MongoAdminBusinessRepository(
         sriSettings.countDocuments(eq("organizationId", organizationId.trim())) > 0
 
     override fun hasActiveOwnerOrAdminMembership(organizationId: String): Boolean {
-        val activeMemberships = memberships
-            .find(eq("organizationId", organizationId.trim()))
-            .into(mutableListOf())
+        val activeMemberships = memberships.find(eq("organizationId", organizationId.trim())).into(mutableListOf())
             .filter { it.getString("status").normalizedDbToken() == "active" }
 
         if (activeMemberships.isEmpty()) return false
@@ -77,9 +68,7 @@ class MongoAdminBusinessRepository(
         val roleIds = activeMemberships.flatMap { MongoAdminBusinessMappers.roleIdsFromMembership(it) }.toSet()
         if (roleIds.isEmpty()) return false
 
-        return roles
-            .find(com.mongodb.client.model.Filters.`in`("_id", roleIds))
-            .into(mutableListOf())
+        return roles.find(com.mongodb.client.model.Filters.`in`("_id", roleIds)).into(mutableListOf())
             .any { role -> role.isOwnerOrAdminRole() }
     }
 
@@ -117,10 +106,9 @@ class MongoAdminBusinessRepository(
         return MongoAdminBusinessMappers.businessFromDocument(updated)
     }
 
-    override fun findActivity(organizationId: String, activityId: String): AdminBusinessActivitySummary? = activities
-        .find(and(eq("organizationId", organizationId.trim()), eq("_id", activityId.trim())))
-        .firstOrNull()
-        ?.let(MongoAdminBusinessMappers::activityFromDocument)
+    override fun findActivity(organizationId: String, activityId: String): AdminBusinessActivitySummary? =
+        activities.find(and(eq("organizationId", organizationId.trim()), eq("_id", activityId.trim()))).firstOrNull()
+            ?.let(MongoAdminBusinessMappers::activityFromDocument)
 
     override fun existsActivityCode(
         organizationId: String,
@@ -137,26 +125,16 @@ class MongoAdminBusinessRepository(
 
     override fun createActivity(draft: AdminActivityCreateDraft): AdminBusinessActivitySummary {
         val now = Date.from(draft.createdAt)
-        val document = Document("_id", draft.id)
-            .append("organizationId", draft.organizationId)
-            .append("code", draft.code)
-            .append("name", draft.name)
-            .append("description", draft.description)
-            .append("activityType", draft.activityType)
-            .append("workflowMode", draft.workflowMode)
-            .append("status", draft.status)
-            .append("requiresScheduling", draft.requiresScheduling)
-            .append("tracksInventory", draft.tracksInventory)
-            .append("allowsReceivables", draft.allowsReceivables)
-            .append("sortOrder", draft.sortOrder)
-            .append("publicDiscovery", Document())
-            .append("assistedCommerce", Document())
-            .append("createdAt", now)
-            .append("createdBy", draft.createdBy)
-            .append("updatedAt", now)
-            .append("updatedBy", draft.createdBy)
-            .append("version", 1L)
-            .append("schemaVersion", 1)
+        val document =
+            Document("_id", draft.id).append("organizationId", draft.organizationId).append("code", draft.code)
+                .append("name", draft.name).append("description", draft.description)
+                .append("activityType", draft.activityType).append("workflowMode", draft.workflowMode)
+                .append("status", draft.status).append("requiresScheduling", draft.requiresScheduling)
+                .append("tracksInventory", draft.tracksInventory).append("allowsReceivables", draft.allowsReceivables)
+                .append("sortOrder", draft.sortOrder).append("publicDiscovery", Document())
+                .append("assistedCommerce", Document()).append("createdAt", now).append("createdBy", draft.createdBy)
+                .append("updatedAt", now).append("updatedBy", draft.createdBy).append("version", 1L)
+                .append("schemaVersion", 1)
 
         activities.insertOne(document)
         return MongoAdminBusinessMappers.activityFromDocument(document)
@@ -202,10 +180,9 @@ class MongoAdminBusinessRepository(
         return MongoAdminBusinessMappers.activityFromDocument(updated)
     }
 
-    override fun findBranch(organizationId: String, branchId: String): AdminBusinessBranchSummary? = branches
-        .find(and(eq("organizationId", organizationId.trim()), eq("_id", branchId.trim())))
-        .firstOrNull()
-        ?.let(MongoAdminBusinessMappers::branchFromDocument)
+    override fun findBranch(organizationId: String, branchId: String): AdminBusinessBranchSummary? =
+        branches.find(and(eq("organizationId", organizationId.trim()), eq("_id", branchId.trim()))).firstOrNull()
+            ?.let(MongoAdminBusinessMappers::branchFromDocument)
 
     override fun existsBranchCode(
         organizationId: String,
@@ -250,22 +227,14 @@ class MongoAdminBusinessRepository(
 
     override fun createBranch(draft: AdminBranchCreateDraft): AdminBusinessBranchSummary {
         val now = Date.from(draft.createdAt)
-        val document = Document("_id", draft.id)
-            .append("organizationId", draft.organizationId)
-            .append("code", draft.code)
-            .append("name", draft.name)
-            .append("type", draft.type)
-            .append("status", draft.status)
-            .append("location", draft.location.toLocationDocumentOrEmpty())
-            .append("contact", Document())
-            .append("businessHoursId", draft.businessHoursId)
-            .append("publicDiscovery", Document("visible", false).append("status", "private"))
-            .append("createdAt", now)
-            .append("createdBy", draft.createdBy)
-            .append("updatedAt", now)
-            .append("updatedBy", draft.createdBy)
-            .append("version", 1L)
-            .append("schemaVersion", 2)
+        val document =
+            Document("_id", draft.id).append("organizationId", draft.organizationId).append("code", draft.code)
+                .append("name", draft.name).append("type", draft.type).append("status", draft.status)
+                .append("location", draft.location.toLocationDocumentOrEmpty()).append("contact", Document())
+                .append("businessHoursId", draft.businessHoursId)
+                .append("publicDiscovery", Document("visible", false).append("status", "private"))
+                .append("createdAt", now).append("createdBy", draft.createdBy).append("updatedAt", now)
+                .append("updatedBy", draft.createdBy).append("version", 1L).append("schemaVersion", 2)
 
         branches.insertOne(document)
         return MongoAdminBusinessMappers.branchFromDocument(document)
@@ -311,10 +280,9 @@ class MongoAdminBusinessRepository(
     override fun findEmissionPoint(
         organizationId: String,
         emissionPointId: String,
-    ): AdminBusinessEmissionPointSummary? = emissionPoints
-        .find(and(eq("organizationId", organizationId.trim()), eq("_id", emissionPointId.trim())))
-        .firstOrNull()
-        ?.let(MongoAdminBusinessMappers::emissionPointFromDocument)
+    ): AdminBusinessEmissionPointSummary? =
+        emissionPoints.find(and(eq("organizationId", organizationId.trim()), eq("_id", emissionPointId.trim())))
+            .firstOrNull()?.let(MongoAdminBusinessMappers::emissionPointFromDocument)
 
     override fun existsEmissionPointCodes(
         organizationId: String,
@@ -333,20 +301,13 @@ class MongoAdminBusinessRepository(
 
     override fun createEmissionPoint(draft: AdminEmissionPointCreateDraft): AdminBusinessEmissionPointSummary {
         val now = Date.from(draft.createdAt)
-        val document = Document("_id", draft.id)
-            .append("organizationId", draft.organizationId)
-            .append("branchId", draft.branchId)
-            .append("establishmentCode", draft.establishmentCode)
-            .append("emissionPointCode", draft.emissionPointCode)
-            .append("displayName", draft.displayName)
-            .append("status", draft.status)
-            .append("documentSequences", Document())
-            .append("createdAt", now)
-            .append("createdBy", draft.createdBy)
-            .append("updatedAt", now)
-            .append("updatedBy", draft.createdBy)
-            .append("version", 1L)
-            .append("schemaVersion", 1)
+        val document =
+            Document("_id", draft.id).append("organizationId", draft.organizationId).append("branchId", draft.branchId)
+                .append("establishmentCode", draft.establishmentCode)
+                .append("emissionPointCode", draft.emissionPointCode).append("displayName", draft.displayName)
+                .append("status", draft.status).append("documentSequences", Document()).append("createdAt", now)
+                .append("createdBy", draft.createdBy).append("updatedAt", now).append("updatedBy", draft.createdBy)
+                .append("version", 1L).append("schemaVersion", 1)
 
         emissionPoints.insertOne(document)
         return MongoAdminBusinessMappers.emissionPointFromDocument(document)
@@ -389,8 +350,9 @@ class MongoAdminBusinessRepository(
 
     private fun Document.isOwnerOrAdminRole(): Boolean {
         val code = getString("code").normalizedDbToken()
-        val permissions = getList("permissionKeys", String::class.java).orEmpty() +
-                getList("permissions", String::class.java).orEmpty()
+        val permissions = getList("permissionKeys", String::class.java).orEmpty() + getList(
+            "permissions", String::class.java
+        ).orEmpty()
 
         return code in setOf(
             SystemRoleCode.ORGANIZATION_OWNER.code,
@@ -401,13 +363,8 @@ class MongoAdminBusinessRepository(
 
 private fun AdminBranchLocation?.toLocationDocumentOrEmpty(): Document {
     if (this == null) return Document()
-    val document = Document()
-        .append("countryCode", countryCode)
-        .append("province", province)
-        .append("city", city)
-        .append("sector", sector)
-        .append("addressLine", addressLine)
-        .append("privacyMode", privacyMode)
+    val document = Document().append("countryCode", countryCode).append("province", province).append("city", city)
+        .append("sector", sector).append("addressLine", addressLine).append("privacyMode", privacyMode)
 
     if (latitude != null && longitude != null) {
         document.append(

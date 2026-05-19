@@ -21,8 +21,7 @@ object M003CreateBranchesAndEmissionPointsMigration : MongoMigration {
             .append("code", MongoMigrationSupport.string(maxLength = 16))
             .append("type", MongoMigrationSupport.enum(listOf("main", "branch", "warehouse", "mobile", "virtual")))
             .append("status", MongoMigrationSupport.enum(listOf("active", "inactive", "archived")))
-            .append("location", MongoMigrationSupport.obj())
-            .append("contact", MongoMigrationSupport.obj())
+            .append("location", MongoMigrationSupport.obj()).append("contact", MongoMigrationSupport.obj())
             .append("businessHoursId", MongoMigrationSupport.nullableString(maxLength = 128))
             .append("publicDiscovery", MongoMigrationSupport.obj())
 

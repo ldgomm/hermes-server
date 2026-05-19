@@ -34,9 +34,18 @@ object AuthMongoBootstrap {
         }
 
         database.getCollection(AuthMongoCollectionNames.REFRESH_TOKENS).run {
-            createIndex(Indexes.ascending("tokenHash"), IndexOptions().name("refresh_tokens_hash_unique_idx").unique(true))
-            createIndex(Indexes.ascending("sessionId", "revokedAt", "usedAt"), IndexOptions().name("refresh_tokens_session_active_idx"))
-            createIndex(Indexes.ascending("userId", "expiresAt"), IndexOptions().name("refresh_tokens_user_expires_idx"))
+            createIndex(
+                Indexes.ascending("tokenHash"),
+                IndexOptions().name("refresh_tokens_hash_unique_idx").unique(true)
+            )
+            createIndex(
+                Indexes.ascending("sessionId", "revokedAt", "usedAt"),
+                IndexOptions().name("refresh_tokens_session_active_idx")
+            )
+            createIndex(
+                Indexes.ascending("userId", "expiresAt"),
+                IndexOptions().name("refresh_tokens_user_expires_idx")
+            )
         }
     }
 }

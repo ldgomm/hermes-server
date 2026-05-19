@@ -13,8 +13,7 @@ object M006CreateOrganizationCatalogMigration : MongoMigration {
     override val description: String = "Create local organization catalog items with search and identifier indexes."
 
     override fun up(database: MongoDatabase) {
-        val properties = Document()
-            .append(MongoDocumentFields.ID, MongoMigrationSupport.id())
+        val properties = Document().append(MongoDocumentFields.ID, MongoMigrationSupport.id())
             .append(MongoDocumentFields.ORGANIZATION_ID, MongoMigrationSupport.id(prefix = "org_"))
             .append("branchId", MongoMigrationSupport.nullableString(maxLength = 128))
             .append("activityId", MongoMigrationSupport.id(prefix = "act_"))
@@ -29,8 +28,7 @@ object M006CreateOrganizationCatalogMigration : MongoMigration {
             .append("publicDiscoveryStatus", MongoMigrationSupport.enum(PUBLIC_DISCOVERY_STATUSES))
             .append("productFamilyId", MongoMigrationSupport.nullableString(maxLength = 128))
             .append("variantAttributes", MongoMigrationSupport.obj())
-            .append("identifiers", MongoMigrationSupport.array())
-            .append("attributes", MongoMigrationSupport.obj())
+            .append("identifiers", MongoMigrationSupport.array()).append("attributes", MongoMigrationSupport.obj())
             .append("media", MongoMigrationSupport.array())
 
         val collection = MongoMigrationSupport.ensureCollection(
@@ -101,7 +99,8 @@ object M006CreateOrganizationCatalogMigration : MongoMigration {
     }
 
     private val CATALOG_ITEM_TYPES = listOf("PRODUCT", "SERVICE", "PACKAGE", "RENTAL", "FEE")
-    private val CATALOG_ITEM_STATUSES = listOf("DRAFT", "ACTIVE", "PAUSED", "OUT_OF_STOCK", "ARCHIVED", "REMOVED_FROM_ACCOUNT")
+    private val CATALOG_ITEM_STATUSES =
+        listOf("DRAFT", "ACTIVE", "PAUSED", "OUT_OF_STOCK", "ARCHIVED", "REMOVED_FROM_ACCOUNT")
     private val PUBLIC_DISCOVERY_STATUSES = listOf(
         "PRIVATE",
         "PUBLIC_PENDING_REVIEW",

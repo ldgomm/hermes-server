@@ -13,8 +13,5 @@ data class DatabaseHealthVerification(
 )
 
 enum class TransactionProbeResult {
-    NOT_REQUESTED,
-    SUPPORTED,
-    UNSUPPORTED,
-    FAILED,
+    NOT_REQUESTED, SUPPORTED, UNSUPPORTED, FAILED,
 }

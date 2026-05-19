@@ -5,7 +5,6 @@ import com.hermes.infrastructure.mongo.migration.MongoMigration
 import com.hermes.infrastructure.mongo.migration.MongoMigrationSupport
 import com.mongodb.client.MongoDatabase
 import com.mongodb.client.model.Indexes
-import org.bson.Document
 
 object M001CreateOrganizationsMigration : MongoMigration {
     override val id: String = "M001_create_organizations"
@@ -15,31 +14,20 @@ object M001CreateOrganizationsMigration : MongoMigration {
         val properties = MongoMigrationSupport.commonRootProperties(requireOrganizationId = false)
             .append("legalName", MongoMigrationSupport.string(maxLength = 256))
             .append("commercialName", MongoMigrationSupport.string(maxLength = 256))
-            .append("taxId", MongoMigrationSupport.string(minLength = 10, maxLength = 13))
-            .append(
-                "taxIdType",
-                MongoMigrationSupport.enum(listOf("ruc", "cedula", "passport", "final_consumer_internal"))
-            )
-            .append("countryCode", MongoMigrationSupport.enum(listOf("EC")))
+            .append("taxId", MongoMigrationSupport.string(minLength = 10, maxLength = 13)).append(
+                "taxIdType", MongoMigrationSupport.enum(listOf("ruc", "cedula", "passport", "final_consumer_internal"))
+            ).append("countryCode", MongoMigrationSupport.enum(listOf("EC")))
             .append("timezone", MongoMigrationSupport.string(maxLength = 64))
-            .append("defaultCurrency", MongoMigrationSupport.enum(listOf("USD")))
-            .append(
-                "taxRegime",
-                MongoMigrationSupport.enum(
+            .append("defaultCurrency", MongoMigrationSupport.enum(listOf("USD"))).append(
+                "taxRegime", MongoMigrationSupport.enum(
                     listOf(
-                        "rimpe_popular",
-                        "rimpe_entrepreneur",
-                        "general",
-                        "unknown",
-                        "custom_verified"
+                        "rimpe_popular", "rimpe_entrepreneur", "general", "unknown", "custom_verified"
                     )
                 )
-            )
-            .append("businessModel", MongoMigrationSupport.enum(listOf("single_activity", "multi_activity")))
+            ).append("businessModel", MongoMigrationSupport.enum(listOf("single_activity", "multi_activity")))
             .append("primaryBusinessType", MongoMigrationSupport.string(maxLength = 64))
             .append("status", MongoMigrationSupport.enum(listOf("onboarding", "active", "suspended", "archived")))
-            .append("contact", MongoMigrationSupport.obj())
-            .append("branding", MongoMigrationSupport.obj())
+            .append("contact", MongoMigrationSupport.obj()).append("branding", MongoMigrationSupport.obj())
 
         val collection = MongoMigrationSupport.ensureCollection(
             database = database,

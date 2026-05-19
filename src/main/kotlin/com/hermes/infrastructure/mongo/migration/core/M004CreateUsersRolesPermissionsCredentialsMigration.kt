@@ -24,13 +24,9 @@ object M004CreateUsersRolesPermissionsCredentialsMigration : MongoMigration {
         val properties = MongoMigrationSupport.commonRootProperties(requireOrganizationId = false)
             .append("email", MongoMigrationSupport.string(maxLength = 320))
             .append("phone", MongoMigrationSupport.nullableString(maxLength = 32))
-            .append("displayName", MongoMigrationSupport.string(maxLength = 128))
-            .append(
-                "status",
-                MongoMigrationSupport.enum(listOf("invited", "active", "blocked", "disabled", "archived"))
-            )
-            .append("auth", MongoMigrationSupport.obj())
-            .append("profile", MongoMigrationSupport.obj())
+            .append("displayName", MongoMigrationSupport.string(maxLength = 128)).append(
+                "status", MongoMigrationSupport.enum(listOf("invited", "active", "blocked", "disabled", "archived"))
+            ).append("auth", MongoMigrationSupport.obj()).append("profile", MongoMigrationSupport.obj())
 
         val collection = MongoMigrationSupport.ensureCollection(
             database = database,
@@ -171,10 +167,8 @@ object M004CreateUsersRolesPermissionsCredentialsMigration : MongoMigration {
     private fun createCredentialEvents(database: MongoDatabase) {
         val properties = MongoMigrationSupport.commonRootProperties(requireOrganizationId = false)
             .append("userId", MongoMigrationSupport.id(prefix = "usr_"))
-            .append("organizationId", MongoMigrationSupport.nullableString(maxLength = 128))
-            .append(
-                "eventType",
-                MongoMigrationSupport.enum(
+            .append("organizationId", MongoMigrationSupport.nullableString(maxLength = 128)).append(
+                "eventType", MongoMigrationSupport.enum(
                     listOf(
                         "password_created",
                         "password_changed",
@@ -186,8 +180,7 @@ object M004CreateUsersRolesPermissionsCredentialsMigration : MongoMigration {
                         "session_revoked"
                     )
                 )
-            )
-            .append("occurredAt", MongoMigrationSupport.date())
+            ).append("occurredAt", MongoMigrationSupport.date())
             .append("actorUserId", MongoMigrationSupport.nullableString(maxLength = 128))
             .append("metadata", MongoMigrationSupport.obj())
 
@@ -221,8 +214,7 @@ object M004CreateUsersRolesPermissionsCredentialsMigration : MongoMigration {
         val properties = MongoMigrationSupport.commonRootProperties(requireOrganizationId = false)
             .append("userId", MongoMigrationSupport.id(prefix = "usr_"))
             .append("status", MongoMigrationSupport.enum(listOf("active", "revoked", "expired")))
-            .append("createdAt", MongoMigrationSupport.date())
-            .append("expiresAt", MongoMigrationSupport.date())
+            .append("createdAt", MongoMigrationSupport.date()).append("expiresAt", MongoMigrationSupport.date())
             .append("revokedAt", MongoMigrationSupport.nullableDate())
             .append("lastSeenAt", MongoMigrationSupport.nullableDate())
 

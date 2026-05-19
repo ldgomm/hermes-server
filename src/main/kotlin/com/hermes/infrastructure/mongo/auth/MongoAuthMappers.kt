@@ -19,23 +19,16 @@ import com.hermes.domain.user.User
 import com.hermes.domain.user.UserStatus
 import org.bson.Document
 import java.time.Instant
-import java.util.Date
+import java.util.*
 
 object MongoAuthMappers {
-    fun userToDocument(user: User): Document = Document("_id", user.id)
-        .append("email", user.email)
-        .append("phone", user.phone)
-        .append("displayName", user.displayName)
-        .append("status", user.status.toDb())
-        .append("auth", Document())
-        .append("profile", Document())
-        .append("blockedAt", user.blockedAt?.toDate())
-        .append("blockedReason", user.blockedReason)
-        .append("archivedAt", user.archivedAt?.toDate())
-        .append("createdAt", user.createdAt.toDate())
-        .append("updatedAt", user.updatedAt.toDate())
-        .append("version", user.version)
-        .append("schemaVersion", 1)
+    fun userToDocument(user: User): Document =
+        Document("_id", user.id).append("email", user.email).append("phone", user.phone)
+            .append("displayName", user.displayName).append("status", user.status.toDb()).append("auth", Document())
+            .append("profile", Document()).append("blockedAt", user.blockedAt?.toDate())
+            .append("blockedReason", user.blockedReason).append("archivedAt", user.archivedAt?.toDate())
+            .append("createdAt", user.createdAt.toDate()).append("updatedAt", user.updatedAt.toDate())
+            .append("version", user.version).append("schemaVersion", 1)
 
     fun userFromDocument(document: Document): User = User(
         id = document.requiredString("_id"),
@@ -61,23 +54,21 @@ object MongoAuthMappers {
         version = document.getLongFlexible("version") ?: 1L,
     )
 
-    fun credentialToDocument(credential: UserCredential): Document = Document("id", credential.id)
-        .append("userId", credential.userId)
-        .append("passwordHash", credential.passwordHash)
-        .append("status", credential.status.toDb())
-        .append("mustChangePassword", credential.mustChangePassword)
-        .append("temporaryPassword", credential.temporaryPassword)
-        .append("createdAt", credential.createdAt.toDate())
-        .append("updatedAt", credential.updatedAt.toDate())
-        .append("lastPasswordChangedAt", credential.lastPasswordChangedAt?.toDate())
-        .append("revokedAt", credential.revokedAt?.toDate())
-        .append("failedAttempts", credential.failedAttempts)
-        .append("lockedUntil", credential.lockedUntil?.toDate())
-        .append("version", credential.version)
+    fun credentialToDocument(credential: UserCredential): Document =
+        Document("id", credential.id).append("userId", credential.userId)
+            .append("passwordHash", credential.passwordHash).append("status", credential.status.toDb())
+            .append("mustChangePassword", credential.mustChangePassword)
+            .append("temporaryPassword", credential.temporaryPassword)
+            .append("createdAt", credential.createdAt.toDate()).append("updatedAt", credential.updatedAt.toDate())
+            .append("lastPasswordChangedAt", credential.lastPasswordChangedAt?.toDate())
+            .append("revokedAt", credential.revokedAt?.toDate()).append("failedAttempts", credential.failedAttempts)
+            .append("lockedUntil", credential.lockedUntil?.toDate()).append("version", credential.version)
 
     fun credentialFromDocument(document: Document, fallbackUserId: String? = null): UserCredential = UserCredential(
-        id = document.getString("id") ?: document.getString("_id") ?: throw DomainRuleViolation("Credential id is missing."),
-        userId = document.getString("userId") ?: fallbackUserId ?: throw DomainRuleViolation("Credential userId is missing."),
+        id = document.getString("id") ?: document.getString("_id")
+        ?: throw DomainRuleViolation("Credential id is missing."),
+        userId = document.getString("userId") ?: fallbackUserId
+        ?: throw DomainRuleViolation("Credential userId is missing."),
         passwordHash = document.requiredString("passwordHash"),
         status = document.getEnum("status", CredentialStatus.ACTIVE) { raw ->
             CredentialStatus.valueOf(raw.normalizedEnumToken())
@@ -93,21 +84,15 @@ object MongoAuthMappers {
         version = document.getLongFlexible("version") ?: 1L,
     )
 
-    fun organizationToDocument(organization: Organization): Document = Document("_id", organization.id)
-        .append("countryCode", organization.countryCode)
-        .append("taxId", organization.taxId)
-        .append("legalName", organization.legalName)
-        .append("commercialName", organization.commercialName)
-        .append("status", organization.status.toDb())
-        .append("ownerUserId", organization.ownerUserId)
-        .append("timezone", "America/Guayaquil")
-        .append("defaultCurrency", "USD")
-        .append("createdBy", organization.ownerUserId)
-        .append("updatedBy", organization.ownerUserId)
-        .append("createdAt", organization.createdAt.toDate())
-        .append("updatedAt", organization.updatedAt.toDate())
-        .append("version", organization.version)
-        .append("schemaVersion", 1)
+    fun organizationToDocument(organization: Organization): Document =
+        Document("_id", organization.id).append("countryCode", organization.countryCode)
+            .append("taxId", organization.taxId).append("legalName", organization.legalName)
+            .append("commercialName", organization.commercialName).append("status", organization.status.toDb())
+            .append("ownerUserId", organization.ownerUserId).append("timezone", "America/Guayaquil")
+            .append("defaultCurrency", "USD").append("createdBy", organization.ownerUserId)
+            .append("updatedBy", organization.ownerUserId).append("createdAt", organization.createdAt.toDate())
+            .append("updatedAt", organization.updatedAt.toDate()).append("version", organization.version)
+            .append("schemaVersion", 1)
 
     fun organizationFromDocument(document: Document): Organization = Organization(
         id = document.requiredString("_id"),
@@ -121,9 +106,9 @@ object MongoAuthMappers {
                 else -> OrganizationStatus.valueOf(raw.normalizedEnumToken())
             }
         },
-        ownerUserId = document.getString("ownerUserId")
-            ?: document.getString("createdBy")
-            ?: throw DomainRuleViolation("Organization ownerUserId is missing."),
+        ownerUserId = document.getString("ownerUserId") ?: document.getString("createdBy") ?: throw DomainRuleViolation(
+            "Organization ownerUserId is missing."
+        ),
         createdAt = document.requiredInstant("createdAt"),
         updatedAt = document.requiredInstant("updatedAt"),
         version = document.getLongFlexible("version") ?: 1L,
@@ -131,20 +116,13 @@ object MongoAuthMappers {
 
     fun membershipToDocument(membership: OrganizationMembership): Document {
         val primaryRoleId = membership.roleIds.sorted().first()
-        return Document("_id", membership.id)
-            .append("organizationId", membership.organizationId)
-            .append("userId", membership.userId)
-            .append("roleId", primaryRoleId)
-            .append("roleIds", membership.roleIds.sorted())
-            .append("status", membership.status.toDb())
-            .append("effectivePermissions", emptyList<String>())
-            .append("invitedBy", membership.invitedBy)
-            .append("acceptedAt", membership.acceptedAt?.toDate())
-            .append("joinedAt", membership.acceptedAt?.toDate())
-            .append("revokedAt", membership.revokedAt?.toDate())
-            .append("createdAt", membership.createdAt.toDate())
-            .append("updatedAt", membership.updatedAt.toDate())
-            .append("version", membership.version)
+        return Document("_id", membership.id).append("organizationId", membership.organizationId)
+            .append("userId", membership.userId).append("roleId", primaryRoleId)
+            .append("roleIds", membership.roleIds.sorted()).append("status", membership.status.toDb())
+            .append("effectivePermissions", emptyList<String>()).append("invitedBy", membership.invitedBy)
+            .append("acceptedAt", membership.acceptedAt?.toDate()).append("joinedAt", membership.acceptedAt?.toDate())
+            .append("revokedAt", membership.revokedAt?.toDate()).append("createdAt", membership.createdAt.toDate())
+            .append("updatedAt", membership.updatedAt.toDate()).append("version", membership.version)
             .append("schemaVersion", 1)
     }
 
@@ -180,7 +158,9 @@ object MongoAuthMappers {
         val scope = document.getEnum("scope", RoleScope.ORGANIZATION) { raw ->
             RoleScope.valueOf(raw.normalizedEnumToken())
         }
-        val type = document.getEnum("type", if (scope == RoleScope.PLATFORM) RoleType.SYSTEM else RoleType.ORGANIZATION) { raw ->
+        val type = document.getEnum(
+            "type", if (scope == RoleScope.PLATFORM) RoleType.SYSTEM else RoleType.ORGANIZATION
+        ) { raw ->
             RoleType.valueOf(raw.normalizedEnumToken())
         }
         val permissions = document.stringList("permissionKeys").ifEmpty {
@@ -201,23 +181,19 @@ object MongoAuthMappers {
             systemRole = document.getBooleanFlexible("systemRole") ?: (type != RoleType.CUSTOM),
             critical = document.getBooleanFlexible("critical") ?: false,
             editable = document.getBooleanFlexible("editable") ?: false,
-            status = document.getEnum("status", RoleStatus.ACTIVE) { raw -> RoleStatus.valueOf(raw.normalizedEnumToken()) },
+            status = document.getEnum(
+                "status", RoleStatus.ACTIVE
+            ) { raw -> RoleStatus.valueOf(raw.normalizedEnumToken()) },
             schemaVersion = document.getIntegerFlexible("schemaVersion") ?: 1,
         )
     }
 
-    fun sessionToDocument(session: UserSession): Document = Document("_id", session.id)
-        .append("userId", session.userId)
-        .append("status", session.status.toDb())
-        .append("createdAt", session.createdAt.toDate())
-        .append("expiresAt", session.expiresAt.toDate())
-        .append("lastSeenAt", session.lastSeenAt?.toDate())
-        .append("revokedAt", session.revokedAt?.toDate())
-        .append("revokedReason", session.revokedReason)
-        .append("userAgent", session.userAgent)
-        .append("ipAddress", session.ipAddress)
-        .append("version", session.version)
-        .append("schemaVersion", 1)
+    fun sessionToDocument(session: UserSession): Document =
+        Document("_id", session.id).append("userId", session.userId).append("status", session.status.toDb())
+            .append("createdAt", session.createdAt.toDate()).append("expiresAt", session.expiresAt.toDate())
+            .append("lastSeenAt", session.lastSeenAt?.toDate()).append("revokedAt", session.revokedAt?.toDate())
+            .append("revokedReason", session.revokedReason).append("userAgent", session.userAgent)
+            .append("ipAddress", session.ipAddress).append("version", session.version).append("schemaVersion", 1)
 
     fun sessionFromDocument(document: Document): UserSession = UserSession(
         id = document.requiredString("_id"),
@@ -235,18 +211,14 @@ object MongoAuthMappers {
         version = document.getLongFlexible("version") ?: 1L,
     )
 
-    fun refreshTokenToDocument(refreshToken: RefreshToken): Document = Document("_id", refreshToken.id)
-        .append("sessionId", refreshToken.sessionId)
-        .append("userId", refreshToken.userId)
-        .append("tokenHash", refreshToken.tokenHash)
-        .append("createdAt", refreshToken.createdAt.toDate())
-        .append("expiresAt", refreshToken.expiresAt.toDate())
-        .append("usedAt", refreshToken.usedAt?.toDate())
-        .append("revokedAt", refreshToken.revokedAt?.toDate())
-        .append("replacedByTokenId", refreshToken.replacedByTokenId)
-        .append("reuseDetectedAt", refreshToken.reuseDetectedAt?.toDate())
-        .append("version", refreshToken.version)
-        .append("schemaVersion", 1)
+    fun refreshTokenToDocument(refreshToken: RefreshToken): Document =
+        Document("_id", refreshToken.id).append("sessionId", refreshToken.sessionId)
+            .append("userId", refreshToken.userId).append("tokenHash", refreshToken.tokenHash)
+            .append("createdAt", refreshToken.createdAt.toDate()).append("expiresAt", refreshToken.expiresAt.toDate())
+            .append("usedAt", refreshToken.usedAt?.toDate()).append("revokedAt", refreshToken.revokedAt?.toDate())
+            .append("replacedByTokenId", refreshToken.replacedByTokenId)
+            .append("reuseDetectedAt", refreshToken.reuseDetectedAt?.toDate()).append("version", refreshToken.version)
+            .append("schemaVersion", 1)
 
     fun refreshTokenFromDocument(document: Document): RefreshToken = RefreshToken(
         id = document.requiredString("_id"),
@@ -272,34 +244,23 @@ object MongoAuthMappers {
         userAgent: String?,
         message: String?,
         createdAt: Instant,
-    ): Document = Document("_id", "cred_evt_${createdAt.toEpochMilli()}_${java.util.UUID.randomUUID().toString().replace("-", "")}")
-        .append("action", action)
-        .append("actorUserId", actorUserId)
-        .append("targetUserId", targetUserId)
-        .append("organizationId", organizationId)
-        .append("sessionId", sessionId)
-        .append("ipAddress", ipAddress)
-        .append("userAgent", userAgent)
-        .append("message", message)
-        .append("createdAt", createdAt.toDate())
-        .append("updatedAt", createdAt.toDate())
-        .append("version", 1L)
-        .append("schemaVersion", 1)
+    ): Document = Document(
+        "_id", "cred_evt_${createdAt.toEpochMilli()}_${java.util.UUID.randomUUID().toString().replace("-", "")}"
+    ).append("action", action).append("actorUserId", actorUserId).append("targetUserId", targetUserId)
+        .append("organizationId", organizationId).append("sessionId", sessionId).append("ipAddress", ipAddress)
+        .append("userAgent", userAgent).append("message", message).append("createdAt", createdAt.toDate())
+        .append("updatedAt", createdAt.toDate()).append("version", 1L).append("schemaVersion", 1)
 
     private fun Instant.toDate(): Date = Date.from(this)
 
     private fun Enum<*>.toDb(): String = name.lowercase()
 
-    private fun String.normalizedEnumToken(): String = trim()
-        .replace('-', '_')
-        .replace('.', '_')
-        .uppercase()
+    private fun String.normalizedEnumToken(): String = trim().replace('-', '_').replace('.', '_').uppercase()
 
-    private fun Document.requiredString(key: String): String =
-        getString(key)?.takeIf { it.isNotBlank() } ?: throw DomainRuleViolation("Mongo document field $key is required.")
+    private fun Document.requiredString(key: String): String = getString(key)?.takeIf { it.isNotBlank() }
+        ?: throw DomainRuleViolation("Mongo document field $key is required.")
 
-    private fun Document.getNullableString(key: String): String? =
-        getString(key)?.trim()?.takeIf { it.isNotBlank() }
+    private fun Document.getNullableString(key: String): String? = getString(key)?.trim()?.takeIf { it.isNotBlank() }
 
     private fun Document.requiredInstant(key: String): Instant =
         getInstantOrNull(key) ?: throw DomainRuleViolation("Mongo document date field $key is required.")
