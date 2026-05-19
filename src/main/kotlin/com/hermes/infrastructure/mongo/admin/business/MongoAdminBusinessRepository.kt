@@ -4,6 +4,11 @@ import com.hermes.application.admin.business.AdminActivityCreateDraft
 import com.hermes.application.admin.business.AdminActivityMutationRepository
 import com.hermes.application.admin.business.AdminActivityStatusPatch
 import com.hermes.application.admin.business.AdminActivityUpdatePatch
+import com.hermes.application.admin.business.AdminBranchCreateDraft
+import com.hermes.application.admin.business.AdminBranchLocation
+import com.hermes.application.admin.business.AdminBranchMutationRepository
+import com.hermes.application.admin.business.AdminBranchStatusPatch
+import com.hermes.application.admin.business.AdminBranchUpdatePatch
 import com.hermes.application.admin.business.AdminBusinessActivitySummary
 import com.hermes.application.admin.business.AdminBusinessBranchSummary
 import com.hermes.application.admin.business.AdminBusinessEmissionPointSummary
@@ -33,7 +38,11 @@ import java.util.Date
 
 class MongoAdminBusinessRepository(
     database: MongoDatabase,
-) : AdminBusinessRepository, AdminBusinessMutationRepository, AdminActivityMutationRepository {
+) : AdminBusinessRepository,
+    AdminBusinessMutationRepository,
+    AdminActivityMutationRepository,
+    AdminBranchMutationRepository {
+
     private val organizations: MongoCollection<Document> = database.getCollection(MongoCollectionNames.ORGANIZATIONS)
     private val activities: MongoCollection<Document> = database.getCollection(MongoCollectionNames.ORGANIZATION_ACTIVITIES)
     private val branches: MongoCollection<Document> = database.getCollection(MongoCollectionNames.BRANCHES)
@@ -208,6 +217,110 @@ class MongoAdminBusinessRepository(
         return MongoAdminBusinessMappers.activityFromDocument(updated)
     }
 
+    override fun findBranch(organizationId: String, branchId: String): AdminBusinessBranchSummary? = branches
+        .find(and(eq("organizationId", organizationId.trim()), eq("_id", branchId.trim())))
+        .firstOrNull()
+        ?.let(MongoAdminBusinessMappers::branchFromDocument)
+
+    override fun existsBranchCode(
+        organizationId: String,
+        code: String,
+        excludeBranchId: String?,
+    ): Boolean {
+        val filters = buildList {
+            add(eq("organizationId", organizationId.trim()))
+            add(eq("code", code.trim()))
+            if (!excludeBranchId.isNullOrBlank()) add(ne("_id", excludeBranchId.trim()))
+        }
+        return branches.countDocuments(and(filters)) > 0
+    }
+
+    override fun hasActiveMainBranch(organizationId: String, excludeBranchId: String?): Boolean {
+        val filters = buildList {
+            add(eq("organizationId", organizationId.trim()))
+            add(eq("type", "main"))
+            add(eq("status", "active"))
+            if (!excludeBranchId.isNullOrBlank()) add(ne("_id", excludeBranchId.trim()))
+        }
+        return branches.countDocuments(and(filters)) > 0
+    }
+
+    override fun countActiveBranches(organizationId: String, excludeBranchId: String?): Int {
+        val filters = buildList {
+            add(eq("organizationId", organizationId.trim()))
+            add(eq("status", "active"))
+            if (!excludeBranchId.isNullOrBlank()) add(ne("_id", excludeBranchId.trim()))
+        }
+        return branches.countDocuments(and(filters)).toInt()
+    }
+
+    override fun hasActiveEmissionPoints(organizationId: String, branchId: String): Boolean = emissionPoints.countDocuments(
+        and(
+            eq("organizationId", organizationId.trim()),
+            eq("branchId", branchId.trim()),
+            eq("status", "active"),
+        )
+    ) > 0
+
+    override fun createBranch(draft: AdminBranchCreateDraft): AdminBusinessBranchSummary {
+        val now = Date.from(draft.createdAt)
+        val document = Document("_id", draft.id)
+            .append("organizationId", draft.organizationId)
+            .append("code", draft.code)
+            .append("name", draft.name)
+            .append("type", draft.type)
+            .append("status", draft.status)
+            .append("location", draft.location.toLocationDocumentOrEmpty())
+            .append("contact", Document())
+            .append("businessHoursId", draft.businessHoursId)
+            .append("publicDiscovery", Document("visible", false).append("status", "private"))
+            .append("createdAt", now)
+            .append("createdBy", draft.createdBy)
+            .append("updatedAt", now)
+            .append("updatedBy", draft.createdBy)
+            .append("version", 1L)
+            .append("schemaVersion", 2)
+
+        branches.insertOne(document)
+        return MongoAdminBusinessMappers.branchFromDocument(document)
+    }
+
+    override fun updateBranch(patch: AdminBranchUpdatePatch): AdminBusinessBranchSummary {
+        val sets = buildList {
+            patch.code?.let { add(set("code", it)) }
+            patch.name?.let { add(set("name", it)) }
+            patch.type?.let { add(set("type", it)) }
+            if (patch.changeLocation) add(set("location", patch.location.toLocationDocumentOrEmpty()))
+            if (patch.changeBusinessHoursId) add(set("businessHoursId", patch.businessHoursId))
+            add(set("updatedAt", Date.from(patch.updatedAt)))
+            add(set("updatedBy", patch.updatedBy))
+            add(inc("version", 1L))
+        }
+
+        val updated = branches.findOneAndUpdate(
+            and(eq("organizationId", patch.organizationId.trim()), eq("_id", patch.branchId.trim())),
+            combine(sets),
+            FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER),
+        ) ?: throw DomainRuleViolation("Branch does not exist.")
+
+        return MongoAdminBusinessMappers.branchFromDocument(updated)
+    }
+
+    override fun updateBranchStatus(patch: AdminBranchStatusPatch): AdminBusinessBranchSummary {
+        val updated = branches.findOneAndUpdate(
+            and(eq("organizationId", patch.organizationId.trim()), eq("_id", patch.branchId.trim())),
+            combine(
+                set("status", patch.status),
+                set("updatedAt", Date.from(patch.updatedAt)),
+                set("updatedBy", patch.updatedBy),
+                inc("version", 1L),
+            ),
+            FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER),
+        ) ?: throw DomainRuleViolation("Branch does not exist.")
+
+        return MongoAdminBusinessMappers.branchFromDocument(updated)
+    }
+
     private fun Document.isOwnerOrAdminRole(): Boolean {
         val code = getString("code").normalizedDbToken()
         val permissions = getList("permissionKeys", String::class.java).orEmpty() +
@@ -218,6 +331,25 @@ class MongoAdminBusinessRepository(
             SystemRoleCode.ORGANIZATION_ADMIN.code,
         ) || PermissionCatalog.ALL in permissions || PermissionCatalog.ORGANIZATION_UPDATE in permissions
     }
+}
+
+private fun AdminBranchLocation?.toLocationDocumentOrEmpty(): Document {
+    if (this == null) return Document()
+    val document = Document()
+        .append("countryCode", countryCode)
+        .append("province", province)
+        .append("city", city)
+        .append("sector", sector)
+        .append("addressLine", addressLine)
+        .append("privacyMode", privacyMode)
+
+    if (latitude != null && longitude != null) {
+        document.append(
+            "coordinates",
+            Document("type", "Point").append("coordinates", listOf(longitude, latitude)),
+        )
+    }
+    return document
 }
 
 private fun <T> FindIterable<T>.firstOrNull(): T? = first()

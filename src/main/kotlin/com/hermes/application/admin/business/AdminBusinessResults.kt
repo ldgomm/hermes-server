@@ -18,6 +18,10 @@ data class AdminBusinessBranchesResult(
     val branches: List<AdminBusinessBranchSummary>,
 )
 
+data class AdminBusinessBranchResult(
+    val branch: AdminBusinessBranchSummary,
+)
+
 data class AdminBusinessEmissionPointsResult(
     val emissionPoints: List<AdminBusinessEmissionPointSummary>,
 )
@@ -81,6 +85,9 @@ data class AdminBusinessBranchSummary(
     val updatedAt: Instant? = null,
 ) {
     val active: Boolean get() = status.equals("active", ignoreCase = true)
+    val inactive: Boolean get() = status.equals("inactive", ignoreCase = true)
+    val archived: Boolean get() = status.equals("archived", ignoreCase = true)
+    val main: Boolean get() = type.equals("main", ignoreCase = true)
 }
 
 data class AdminBranchLocation(

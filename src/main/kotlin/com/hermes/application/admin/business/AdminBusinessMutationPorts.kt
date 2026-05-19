@@ -96,12 +96,71 @@ data class AdminActivityStatusPatch(
     val updatedAt: Instant,
 )
 
+interface AdminBranchMutationRepository {
+    fun findBranch(organizationId: String, branchId: String): AdminBusinessBranchSummary?
+
+    fun existsBranchCode(
+        organizationId: String,
+        code: String,
+        excludeBranchId: String? = null,
+    ): Boolean
+
+    fun hasActiveMainBranch(organizationId: String, excludeBranchId: String? = null): Boolean
+    fun countActiveBranches(organizationId: String, excludeBranchId: String? = null): Int
+    fun hasActiveEmissionPoints(organizationId: String, branchId: String): Boolean
+
+    fun createBranch(draft: AdminBranchCreateDraft): AdminBusinessBranchSummary
+    fun updateBranch(patch: AdminBranchUpdatePatch): AdminBusinessBranchSummary
+    fun updateBranchStatus(patch: AdminBranchStatusPatch): AdminBusinessBranchSummary
+}
+
+data class AdminBranchCreateDraft(
+    val id: String,
+    val organizationId: String,
+    val code: String,
+    val name: String,
+    val type: String,
+    val status: String,
+    val location: AdminBranchLocation? = null,
+    val businessHoursId: String? = null,
+    val createdBy: String,
+    val createdAt: Instant,
+)
+
+data class AdminBranchUpdatePatch(
+    val organizationId: String,
+    val branchId: String,
+    val code: String? = null,
+    val name: String? = null,
+    val type: String? = null,
+    val location: AdminBranchLocation? = null,
+    val changeLocation: Boolean = false,
+    val businessHoursId: String? = null,
+    val changeBusinessHoursId: Boolean = false,
+    val updatedBy: String,
+    val updatedAt: Instant,
+) {
+    fun hasChanges(): Boolean = listOf(code, name, type).any { it != null } || changeLocation || changeBusinessHoursId
+}
+
+data class AdminBranchStatusPatch(
+    val organizationId: String,
+    val branchId: String,
+    val status: String,
+    val updatedBy: String,
+    val updatedAt: Instant,
+)
+
 enum class AdminBusinessAuditAction {
     BUSINESS_SETTINGS_UPDATED,
     ACTIVITY_CREATED,
     ACTIVITY_UPDATED,
     ACTIVITY_ACTIVATED,
     ACTIVITY_DEACTIVATED,
+    BRANCH_CREATED,
+    BRANCH_UPDATED,
+    BRANCH_ACTIVATED,
+    BRANCH_DEACTIVATED,
 }
 
 data class AdminBusinessAuditEvent(

@@ -1,11 +1,13 @@
 package com.hermes.backend.routes
 
 import com.hermes.application.admin.business.AdminBranchLocation
-import com.hermes.application.admin.business.AdminBusinessActivitiesResult
+import com.hermes.application.admin.business.AdminBranchLocationCommand
 import com.hermes.application.admin.business.AdminBusinessActivityResult
 import com.hermes.application.admin.business.AdminBusinessActivitySummary
-import com.hermes.application.admin.business.AdminBusinessBranchesResult
+import com.hermes.application.admin.business.AdminBusinessActivitiesResult
+import com.hermes.application.admin.business.AdminBusinessBranchResult
 import com.hermes.application.admin.business.AdminBusinessBranchSummary
+import com.hermes.application.admin.business.AdminBusinessBranchesResult
 import com.hermes.application.admin.business.AdminBusinessEmissionPointSummary
 import com.hermes.application.admin.business.AdminBusinessEmissionPointsResult
 import com.hermes.application.admin.business.AdminBusinessProfile
@@ -13,8 +15,11 @@ import com.hermes.application.admin.business.AdminBusinessReadinessCheck
 import com.hermes.application.admin.business.AdminBusinessReadinessResult
 import com.hermes.application.admin.business.AdminBusinessResult
 import com.hermes.application.admin.business.ChangeAdminActivityStatusCommand
+import com.hermes.application.admin.business.ChangeAdminBranchStatusCommand
 import com.hermes.application.admin.business.CreateAdminActivityCommand
+import com.hermes.application.admin.business.CreateAdminBranchCommand
 import com.hermes.application.admin.business.UpdateAdminActivityCommand
+import com.hermes.application.admin.business.UpdateAdminBranchCommand
 import com.hermes.application.admin.business.UpdateAdminBusinessCommand
 import kotlinx.serialization.Serializable
 
@@ -114,6 +119,18 @@ data class ChangeAdminActivityStatusRequest(
 )
 
 @Serializable
+data class AdminBranchLocationRequest(
+    val countryCode: String? = null,
+    val province: String? = null,
+    val city: String? = null,
+    val sector: String? = null,
+    val addressLine: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val privacyMode: String? = null,
+)
+
+@Serializable
 data class AdminBranchLocationResponse(
     val countryCode: String? = null,
     val province: String? = null,
@@ -140,8 +157,41 @@ data class AdminBranchResponse(
 )
 
 @Serializable
+data class AdminBranchEnvelope(
+    val branch: AdminBranchResponse,
+)
+
+@Serializable
 data class AdminBranchesResponse(
     val branches: List<AdminBranchResponse>,
+)
+
+@Serializable
+data class CreateAdminBranchRequest(
+    val code: String,
+    val name: String,
+    val type: String = "branch",
+    val status: String = "active",
+    val location: AdminBranchLocationRequest? = null,
+    val businessHoursId: String? = null,
+    val reason: String,
+)
+
+@Serializable
+data class UpdateAdminBranchRequest(
+    val code: String? = null,
+    val name: String? = null,
+    val type: String? = null,
+    val location: AdminBranchLocationRequest? = null,
+    val clearLocation: Boolean = false,
+    val businessHoursId: String? = null,
+    val clearBusinessHoursId: Boolean = false,
+    val reason: String,
+)
+
+@Serializable
+data class ChangeAdminBranchStatusRequest(
+    val reason: String,
 )
 
 @Serializable
@@ -257,12 +307,77 @@ fun ChangeAdminActivityStatusRequest.toCommand(
     reason = reason,
 )
 
+fun CreateAdminBranchRequest.toCommand(
+    organizationId: String,
+    actorUserId: String,
+    actorEffectivePermissions: Set<String>,
+): CreateAdminBranchCommand = CreateAdminBranchCommand(
+    organizationId = organizationId,
+    actorUserId = actorUserId,
+    actorEffectivePermissions = actorEffectivePermissions,
+    code = code,
+    name = name,
+    type = type,
+    status = status,
+    location = location?.toCommand(),
+    businessHoursId = businessHoursId,
+    reason = reason,
+)
+
+fun UpdateAdminBranchRequest.toCommand(
+    organizationId: String,
+    actorUserId: String,
+    actorEffectivePermissions: Set<String>,
+    branchId: String,
+): UpdateAdminBranchCommand = UpdateAdminBranchCommand(
+    organizationId = organizationId,
+    actorUserId = actorUserId,
+    actorEffectivePermissions = actorEffectivePermissions,
+    branchId = branchId,
+    code = code,
+    name = name,
+    type = type,
+    location = location?.toCommand(),
+    clearLocation = clearLocation,
+    businessHoursId = businessHoursId,
+    clearBusinessHoursId = clearBusinessHoursId,
+    reason = reason,
+)
+
+fun ChangeAdminBranchStatusRequest.toCommand(
+    organizationId: String,
+    actorUserId: String,
+    actorEffectivePermissions: Set<String>,
+    branchId: String,
+    targetStatus: String,
+): ChangeAdminBranchStatusCommand = ChangeAdminBranchStatusCommand(
+    organizationId = organizationId,
+    actorUserId = actorUserId,
+    actorEffectivePermissions = actorEffectivePermissions,
+    branchId = branchId,
+    targetStatus = targetStatus,
+    reason = reason,
+)
+
+private fun AdminBranchLocationRequest.toCommand(): AdminBranchLocationCommand = AdminBranchLocationCommand(
+    countryCode = countryCode,
+    province = province,
+    city = city,
+    sector = sector,
+    addressLine = addressLine,
+    latitude = latitude,
+    longitude = longitude,
+    privacyMode = privacyMode,
+)
+
 fun AdminBusinessResult.toResponse(): AdminBusinessEnvelope = AdminBusinessEnvelope(business.toResponse())
 
 fun AdminBusinessActivityResult.toResponse(): AdminActivityEnvelope = AdminActivityEnvelope(activity.toResponse())
 
 fun AdminBusinessActivitiesResult.toResponse(): AdminActivitiesResponse =
     AdminActivitiesResponse(activities.map { it.toResponse() })
+
+fun AdminBusinessBranchResult.toResponse(): AdminBranchEnvelope = AdminBranchEnvelope(branch.toResponse())
 
 fun AdminBusinessBranchesResult.toResponse(): AdminBranchesResponse =
     AdminBranchesResponse(branches.map { it.toResponse() })

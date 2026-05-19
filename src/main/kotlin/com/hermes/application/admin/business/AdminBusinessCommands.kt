@@ -92,6 +92,61 @@ data class ListAdminBranchesCommand(
     val actorEffectivePermissions: Set<String>,
 )
 
+data class GetAdminBranchCommand(
+    val organizationId: String,
+    val actorUserId: String,
+    val actorEffectivePermissions: Set<String>,
+    val branchId: String,
+)
+
+data class AdminBranchLocationCommand(
+    val countryCode: String? = null,
+    val province: String? = null,
+    val city: String? = null,
+    val sector: String? = null,
+    val addressLine: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val privacyMode: String? = null,
+)
+
+data class CreateAdminBranchCommand(
+    val organizationId: String,
+    val actorUserId: String,
+    val actorEffectivePermissions: Set<String>,
+    val code: String,
+    val name: String,
+    val type: String = "branch",
+    val status: String = "active",
+    val location: AdminBranchLocationCommand? = null,
+    val businessHoursId: String? = null,
+    val reason: String,
+)
+
+data class UpdateAdminBranchCommand(
+    val organizationId: String,
+    val actorUserId: String,
+    val actorEffectivePermissions: Set<String>,
+    val branchId: String,
+    val code: String? = null,
+    val name: String? = null,
+    val type: String? = null,
+    val location: AdminBranchLocationCommand? = null,
+    val clearLocation: Boolean = false,
+    val businessHoursId: String? = null,
+    val clearBusinessHoursId: Boolean = false,
+    val reason: String,
+)
+
+data class ChangeAdminBranchStatusCommand(
+    val organizationId: String,
+    val actorUserId: String,
+    val actorEffectivePermissions: Set<String>,
+    val branchId: String,
+    val targetStatus: String,
+    val reason: String,
+)
+
 data class ListAdminEmissionPointsCommand(
     val organizationId: String,
     val actorUserId: String,
