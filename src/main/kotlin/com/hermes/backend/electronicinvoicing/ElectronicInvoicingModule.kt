@@ -1,6 +1,10 @@
 package com.hermes.backend.electronicinvoicing
 
 import com.hermes.application.electronicinvoicing.CheckOrganizationSriReadinessUseCase
+import com.hermes.application.electronicinvoicing.GetElectronicInvoiceTimelineUseCase
+import com.hermes.application.electronicinvoicing.GenerateElectronicInvoiceRideUseCase
+import com.hermes.application.electronicinvoicing.EmailElectronicInvoiceUseCase
+import com.hermes.application.electronicinvoicing.DownloadElectronicInvoiceArtifactUseCase
 import com.hermes.application.electronicinvoicing.EnsureElectronicSequenceAdminUseCase
 import com.hermes.application.electronicinvoicing.GetElectronicInvoiceUseCase
 import com.hermes.application.electronicinvoicing.GetElectronicSequenceUseCase
@@ -40,4 +44,8 @@ data class ElectronicInvoicingModule(
     val issueElectronicInvoiceFromSaleUseCase: IssueElectronicInvoiceFromSaleUseCase? = null,
     val retryElectronicInvoiceAuthorizationUseCase: RetryElectronicInvoiceAuthorizationUseCase? = null,
     val getElectronicInvoiceErrorsUseCase: GetElectronicInvoiceErrorsUseCase? = null,
+    val generateElectronicInvoiceRideUseCase: GenerateElectronicInvoiceRideUseCase? = null,
+    val emailElectronicInvoiceUseCase: EmailElectronicInvoiceUseCase? = null,
+    val downloadElectronicInvoiceArtifactUseCase: DownloadElectronicInvoiceArtifactUseCase? = null,
+    val getElectronicInvoiceTimelineUseCase: GetElectronicInvoiceTimelineUseCase? = null,
 )

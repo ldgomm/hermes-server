@@ -2,6 +2,11 @@ package com.hermes.backend.electronicinvoicing
 
 import com.hermes.application.electronicinvoicing.CheckOrganizationSriReadinessUseCase
 import com.hermes.application.electronicinvoicing.DefaultElectronicSignatureVault
+import com.hermes.application.electronicinvoicing.SimpleSriRidePdfRenderer
+import com.hermes.application.electronicinvoicing.GetElectronicInvoiceTimelineUseCase
+import com.hermes.application.electronicinvoicing.GenerateElectronicInvoiceRideUseCase
+import com.hermes.application.electronicinvoicing.EmailElectronicInvoiceUseCase
+import com.hermes.application.electronicinvoicing.DownloadElectronicInvoiceArtifactUseCase
 import com.hermes.application.electronicinvoicing.EnsureElectronicSequenceAdminUseCase
 import com.hermes.application.electronicinvoicing.GetElectronicInvoiceErrorsUseCase
 import com.hermes.application.electronicinvoicing.GetElectronicInvoiceUseCase
@@ -29,6 +34,7 @@ import com.hermes.application.signature.ValidateElectronicSignatureUseCase
 import com.hermes.infrastructure.mongo.electronicinvoicing.MongoElectronicDocumentArtifactStorage
 import com.hermes.infrastructure.mongo.electronicinvoicing.MongoElectronicInvoiceIssueAuditLogger
 import com.hermes.infrastructure.mongo.electronicinvoicing.MongoElectronicInvoiceIssueRepository
+import com.hermes.infrastructure.mongo.electronicinvoicing.MongoElectronicInvoiceIssueTimelineRepository
 import com.hermes.infrastructure.mongo.electronicinvoicing.MongoElectronicSequenceRepository
 import com.hermes.infrastructure.mongo.electronicinvoicing.MongoOrganizationSriSettingsRepository
 import com.hermes.infrastructure.mongo.sales.MongoSalesStore
@@ -65,6 +71,7 @@ object ElectronicInvoicingModuleFactory {
         val certificateInspector = Pkcs12CertificateInspector()
         val artifactStorage = MongoElectronicDocumentArtifactStorage(database, artifactRoot)
         val issueAuditLogger = MongoElectronicInvoiceIssueAuditLogger(database)
+        val timelineRepository = MongoElectronicInvoiceIssueTimelineRepository(database)
 
         val receptionClient = SoapSriReceptionClient(
             config = sriWsConfig,
@@ -118,6 +125,22 @@ object ElectronicInvoicingModuleFactory {
             clock = clock,
         )
 
+        val generateElectronicInvoiceRideUseCase = GenerateElectronicInvoiceRideUseCase(
+            repository = issueRepository,
+            artifactStorage = artifactStorage,
+            artifactReader = artifactStorage,
+            rideRenderer = SimpleSriRidePdfRenderer(),
+            auditLogger = issueAuditLogger,
+            clock = clock,
+        )
+        val emailElectronicInvoiceUseCase = EmailElectronicInvoiceUseCase(
+            repository = issueRepository,
+            artifactReader = artifactStorage,
+            generateRideUseCase = generateElectronicInvoiceRideUseCase,
+            auditLogger = issueAuditLogger,
+            clock = clock,
+        )
+
         return ElectronicInvoicingModule(
             getElectronicInvoiceUseCase = GetElectronicInvoiceUseCase(issueRepository),
             listElectronicInvoicesUseCase = ListElectronicInvoicesUseCase(issueRepository),
@@ -158,6 +181,16 @@ object ElectronicInvoicingModuleFactory {
                 querySriAuthorizationUseCase = querySriAuthorizationUseCase,
             ),
             getElectronicInvoiceErrorsUseCase = GetElectronicInvoiceErrorsUseCase(issueRepository),
+            generateElectronicInvoiceRideUseCase = generateElectronicInvoiceRideUseCase,
+            emailElectronicInvoiceUseCase = emailElectronicInvoiceUseCase,
+            downloadElectronicInvoiceArtifactUseCase = DownloadElectronicInvoiceArtifactUseCase(
+                issueRepository = issueRepository,
+                artifactReader = artifactStorage,
+            ),
+            getElectronicInvoiceTimelineUseCase = GetElectronicInvoiceTimelineUseCase(
+                issueRepository = issueRepository,
+                timelineRepository = timelineRepository,
+            ),
         )
     }
 }

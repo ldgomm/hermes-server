@@ -16,8 +16,10 @@ class EmailElectronicInvoiceUseCase(
     private val clock: Clock = Clock.systemUTC(),
 ) {
     fun execute(command: EmailElectronicInvoiceCommand): EmailElectronicInvoiceResult {
-        PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.DOCUMENTS_INVOICE_DOWNLOAD_RIDE)
-        PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.DOCUMENTS_INVOICE_DOWNLOAD_XML)
+        PermissionRules.assertCanPerform(
+            command.actorEffectivePermissions,
+            PermissionCatalog.DOCUMENTS_ELECTRONIC_INVOICE_EMAIL,
+        )
 
         val now = Instant.now(clock)
         var record = repository.findById(command.organizationId.trim(), command.documentId.trim())

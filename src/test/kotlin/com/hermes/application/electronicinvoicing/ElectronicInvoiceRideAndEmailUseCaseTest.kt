@@ -1,13 +1,6 @@
 package com.hermes.application.electronicinvoicing
 
-import com.hermes.domain.electronicinvoicing.ElectronicDocumentStatus
-import com.hermes.domain.electronicinvoicing.SriAccessKeyGenerationCommand
-import com.hermes.domain.electronicinvoicing.SriAccessKeyGenerator
-import com.hermes.domain.electronicinvoicing.SriDocumentType
-import com.hermes.domain.electronicinvoicing.SriEnvironment
-import com.hermes.domain.electronicinvoicing.SriNumericCode
-import com.hermes.domain.electronicinvoicing.SriSequential
-import com.hermes.domain.electronicinvoicing.SriSeries
+import com.hermes.domain.electronicinvoicing.*
 import com.hermes.domain.permission.PermissionCatalog
 import java.security.MessageDigest
 import java.time.Clock
@@ -42,7 +35,9 @@ class ElectronicInvoiceRideAndEmailUseCaseTest {
                 organizationId = ORG,
                 documentId = DOC,
                 actorUserId = USER,
-                actorEffectivePermissions = setOf(PermissionCatalog.DOCUMENTS_INVOICE_DOWNLOAD_RIDE),
+                actorEffectivePermissions = setOf(
+                    PermissionCatalog.DOCUMENTS_ELECTRONIC_INVOICE_DOWNLOAD_RIDE,
+                ),
             )
         )
 
@@ -82,8 +77,7 @@ class ElectronicInvoiceRideAndEmailUseCaseTest {
                 documentId = DOC,
                 actorUserId = USER,
                 actorEffectivePermissions = setOf(
-                    PermissionCatalog.DOCUMENTS_INVOICE_DOWNLOAD_RIDE,
-                    PermissionCatalog.DOCUMENTS_INVOICE_DOWNLOAD_XML,
+                    PermissionCatalog.DOCUMENTS_ELECTRONIC_INVOICE_EMAIL,
                 ),
                 emailTo = "cliente@example.com",
             )
@@ -227,13 +221,13 @@ class ElectronicInvoiceRideAndEmailUseCaseTest {
         override fun existsAuthorizedInvoiceForSale(organizationId: String, saleId: String): Boolean =
             records.values.any {
                 it.organizationId == organizationId &&
-                    it.saleId == saleId &&
-                    it.status in setOf(
-                        ElectronicDocumentStatus.AUTHORIZED,
-                        ElectronicDocumentStatus.DELIVERY_PENDING,
-                        ElectronicDocumentStatus.DELIVERED,
-                        ElectronicDocumentStatus.DELIVERY_FAILED,
-                    )
+                        it.saleId == saleId &&
+                        it.status in setOf(
+                    ElectronicDocumentStatus.AUTHORIZED,
+                    ElectronicDocumentStatus.DELIVERY_PENDING,
+                    ElectronicDocumentStatus.DELIVERED,
+                    ElectronicDocumentStatus.DELIVERY_FAILED,
+                )
             }
     }
 

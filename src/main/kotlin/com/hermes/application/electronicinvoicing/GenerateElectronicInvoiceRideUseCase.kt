@@ -16,10 +16,8 @@ class GenerateElectronicInvoiceRideUseCase(
     private val clock: Clock = Clock.systemUTC(),
 ) {
     fun execute(command: GenerateElectronicInvoiceRideCommand): GenerateElectronicInvoiceRideResult {
-        PermissionRules.assertCanPerform(
-            command.actorEffectivePermissions,
-            PermissionCatalog.DOCUMENTS_INVOICE_DOWNLOAD_RIDE
-        )
+        assertCanGenerateRide(command.actorEffectivePermissions)
+
         val now = Instant.now(clock)
         var record = repository.findById(command.organizationId.trim(), command.documentId.trim())
             ?: throw DomainRuleViolation("Electronic invoice issue record does not exist.")
@@ -97,6 +95,22 @@ class GenerateElectronicInvoiceRideUseCase(
         )
 
         return GenerateElectronicInvoiceRideResult(record, rideFile)
+    }
+
+    private fun assertCanGenerateRide(effectivePermissions: Set<String>) {
+        val canDownloadRide = PermissionRules.canPerform(
+            effectivePermissions,
+            PermissionCatalog.DOCUMENTS_ELECTRONIC_INVOICE_DOWNLOAD_RIDE,
+        )
+        val canEmailInvoice = PermissionRules.canPerform(
+            effectivePermissions,
+            PermissionCatalog.DOCUMENTS_ELECTRONIC_INVOICE_EMAIL,
+        )
+        if (!canDownloadRide && !canEmailInvoice) {
+            throw DomainRuleViolation(
+                "Missing any required permission: ${PermissionCatalog.DOCUMENTS_ELECTRONIC_INVOICE_DOWNLOAD_RIDE}, ${PermissionCatalog.DOCUMENTS_ELECTRONIC_INVOICE_EMAIL}.",
+            )
+        }
     }
 
     private companion object {
