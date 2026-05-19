@@ -1,5 +1,7 @@
 package com.hermes.backend.shared
 
+import com.hermes.backend.admin.business.AdminBusinessModule
+import com.hermes.backend.admin.business.AdminBusinessModuleFactory
 import com.hermes.backend.auth.AuthModule
 import com.hermes.backend.auth.AuthModuleFactory
 import com.hermes.backend.catalog.CatalogModule
@@ -7,11 +9,7 @@ import com.hermes.backend.catalog.CatalogModuleFactory
 import com.hermes.backend.config.AppConfig
 import com.hermes.backend.electronicinvoicing.ElectronicInvoicingModule
 import com.hermes.backend.electronicinvoicing.ElectronicInvoicingModuleFactory
-import com.hermes.backend.health.ApplicationHealthCheck
-import com.hermes.backend.health.HealthCheck
-import com.hermes.backend.health.MinioHealthCheck
-import com.hermes.backend.health.MongoHealthCheck
-import com.hermes.backend.health.RedisHealthCheck
+import com.hermes.backend.health.*
 import com.hermes.backend.payments.PaymentsModule
 import com.hermes.backend.payments.PaymentsModuleFactory
 import com.hermes.backend.sales.ReservationSchedulingModule
@@ -36,6 +34,7 @@ interface AppResources : Closeable {
     val reservationSchedulingModule: ReservationSchedulingModule
     val paymentsModule: PaymentsModule
     val electronicInvoicingModule: ElectronicInvoicingModule
+    val adminBusinessModule: AdminBusinessModule
 }
 
 class DefaultAppResources private constructor(
@@ -50,30 +49,40 @@ class DefaultAppResources private constructor(
     override val reservationSchedulingModule: ReservationSchedulingModule,
     override val paymentsModule: PaymentsModule,
     override val electronicInvoicingModule: ElectronicInvoicingModule,
+    override val adminBusinessModule: AdminBusinessModule,
 ) : AppResources {
     companion object {
         fun start(config: AppConfig): DefaultAppResources {
             val mongoClient = MongoClients.create(config.mongo.uri)
             val mongoDatabase = mongoClient.getDatabase(config.mongo.database)
+
             val redisClient = RedisClient.create(config.redis.uri)
             val redisConnection = redisClient.connect()
+
             val minioClient = MinioClient.builder()
                 .endpoint(config.minio.endpoint)
                 .credentials(config.minio.accessKey, config.minio.secretKey)
                 .build()
+
             val checks = listOf(
                 ApplicationHealthCheck(),
                 MongoHealthCheck(mongoDatabase),
                 RedisHealthCheck(redisConnection),
                 MinioHealthCheck(client = minioClient, bucket = config.minio.healthBucket),
             )
-            val authModule = AuthModuleFactory.fromMongo(client = mongoClient, database = mongoDatabase, config = config)
+
+            val authModule = AuthModuleFactory.fromMongo(
+                client = mongoClient,
+                database = mongoDatabase,
+                config = config,
+            )
             val taxModule = TaxModuleFactory.fromMongo(database = mongoDatabase)
             val catalogModule = CatalogModuleFactory.fromMongo(database = mongoDatabase)
             val salesModule = SalesModuleFactory.fromMongo(database = mongoDatabase)
             val reservationSchedulingModule = ReservationSchedulingModuleFactory.fromMongo(database = mongoDatabase)
             val paymentsModule = PaymentsModuleFactory.fromMongo(client = mongoClient, database = mongoDatabase)
             val electronicInvoicingModule = ElectronicInvoicingModuleFactory.fromMongo(database = mongoDatabase)
+            val adminBusinessModule = AdminBusinessModuleFactory.fromMongo(database = mongoDatabase)
 
             return DefaultAppResources(
                 mongoClient = mongoClient,
@@ -87,6 +96,7 @@ class DefaultAppResources private constructor(
                 reservationSchedulingModule = reservationSchedulingModule,
                 paymentsModule = paymentsModule,
                 electronicInvoicingModule = electronicInvoicingModule,
+                adminBusinessModule = adminBusinessModule,
             )
         }
     }

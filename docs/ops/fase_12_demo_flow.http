@@ -1,0 +1,265 @@
+### Hermes Fase 12 — Demo Flow HTTP
+### Compatible con IntelliJ HTTP Client / VS Code REST Client
+### Ajusta nombres de campos al DTO exacto de tu implementación.
+
+@baseUrl = http://localhost:8080
+@accessToken = REPLACE_ME
+@organizationId = REPLACE_ME
+@saleId = REPLACE_ME
+@documentId = REPLACE_ME
+@signatureId = REPLACE_ME
+@sequenceId = REPLACE_ME
+@homologationRunId = REPLACE_ME
+
+### Common headers
+# Authorization: Bearer {{accessToken}}
+# X-Hermes-Organization-Id: {{organizationId}}
+
+### 1) Consultar settings SRI
+GET {{baseUrl}}/api/v1/sri/settings
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+
+
+### 2) Actualizar settings SRI TEST
+PUT {{baseUrl}}/api/v1/sri/settings
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+Content-Type: application/json
+
+{
+  "environmentMode": "TEST",
+  "issuerRuc": "1790012345001",
+  "legalName": "HERMES DEMO S.A.",
+  "commercialName": "Hermes Demo",
+  "matrixAddress": "Dirección matriz demo",
+  "establishmentCode": "001",
+  "emissionPointCode": "001",
+  "branchAddress": "Dirección sucursal demo",
+  "obligedToKeepAccounting": false,
+  "specialTaxpayerNumber": null,
+  "rimpeLegend": null,
+  "agentRetentionResolution": null,
+  "defaultCurrency": "DOLAR",
+  "invoiceSchemaVersion": "2.1.0",
+  "emailSenderName": "Hermes Demo",
+  "emailReplyTo": "facturacion@example.com",
+  "testReceptionWsdlUrl": "https://example.test/reception?wsdl",
+  "testAuthorizationWsdlUrl": "https://example.test/authorization?wsdl",
+  "productionReceptionWsdlUrl": "https://example.prod/reception?wsdl",
+  "productionAuthorizationWsdlUrl": "https://example.prod/authorization?wsdl"
+}
+
+
+### 3) Readiness antes/después de firma y secuencia
+GET {{baseUrl}}/api/v1/sri/settings/readiness
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+
+
+### 4) Cargar firma electrónica
+### Ajustar si tu endpoint usa multipart/form-data en lugar de JSON/base64.
+POST {{baseUrl}}/api/v1/electronic-signatures
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+Content-Type: application/json
+
+{
+  "alias": "Firma TEST",
+  "p12Base64": "REPLACE_WITH_BASE64_OR_USE_MULTIPART",
+  "password": "REPLACE_WITH_SECRET",
+  "makeDefault": true
+}
+
+
+### 5) Validar firma
+POST {{baseUrl}}/api/v1/electronic-signatures/{{signatureId}}/validate
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+Content-Type: application/json
+
+{}
+
+
+### 6) Activar firma
+POST {{baseUrl}}/api/v1/electronic-signatures/{{signatureId}}/activate
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+Content-Type: application/json
+
+{}
+
+
+### 7) Asegurar secuencia
+POST {{baseUrl}}/api/v1/electronic-sequences/ensure
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+Content-Type: application/json
+
+{
+  "environment": "TEST",
+  "documentType": "INVOICE",
+  "establishmentCode": "001",
+  "emissionPointCode": "001",
+  "initialSequential": 1
+}
+
+
+### 8) Listar secuencias
+GET {{baseUrl}}/api/v1/electronic-sequences
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+
+
+### 9) Detalle de secuencia
+GET {{baseUrl}}/api/v1/electronic-sequences/{{sequenceId}}
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+
+
+### 10) Readiness final
+GET {{baseUrl}}/api/v1/sri/settings/readiness
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+
+
+### 11) Emitir factura electrónica desde venta
+POST {{baseUrl}}/api/v1/electronic-invoices
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+Content-Type: application/json
+
+{
+  "saleId": "{{saleId}}",
+  "sendEmail": false
+}
+
+
+### 12) Listar facturas electrónicas
+GET {{baseUrl}}/api/v1/electronic-invoices?limit=20
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+
+
+### 13) Detalle factura electrónica
+GET {{baseUrl}}/api/v1/electronic-invoices/{{documentId}}
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+
+
+### 14) Errores SRI/Admin
+GET {{baseUrl}}/api/v1/electronic-invoices/{{documentId}}/errors
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+
+
+### 15) Reintentar autorización
+POST {{baseUrl}}/api/v1/electronic-invoices/{{documentId}}/retry-authorization
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+Content-Type: application/json
+
+{}
+
+
+### 16) Generar/regenerar RIDE
+POST {{baseUrl}}/api/v1/electronic-invoices/{{documentId}}/ride
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+Content-Type: application/json
+
+{}
+
+
+### 17) Descargar XML autorizado
+GET {{baseUrl}}/api/v1/electronic-invoices/{{documentId}}/authorized-xml
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+
+
+### 18) Descargar XML firmado
+GET {{baseUrl}}/api/v1/electronic-invoices/{{documentId}}/signed-xml
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+
+
+### 19) Descargar RIDE PDF
+GET {{baseUrl}}/api/v1/electronic-invoices/{{documentId}}/ride.pdf
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+
+
+### 20) Enviar email
+POST {{baseUrl}}/api/v1/electronic-invoices/{{documentId}}/email
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+Content-Type: application/json
+
+{
+  "to": "cliente@example.com",
+  "cc": [],
+  "message": "Adjuntamos su comprobante electrónico."
+}
+
+
+### 21) Timeline
+GET {{baseUrl}}/api/v1/electronic-invoices/{{documentId}}/timeline
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+
+
+### 22) Homologation readiness
+GET {{baseUrl}}/api/v1/electronic-invoices/homologation/readiness
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+
+
+### 23) Run homologation
+POST {{baseUrl}}/api/v1/electronic-invoices/homologation/run
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+Content-Type: application/json
+
+{
+  "requestedScenarios": [
+    "FINAL_CONSUMER_INVOICE",
+    "IDENTIFIED_CUSTOMER_INVOICE",
+    "IVA_INVOICE",
+    "ZERO_RATE_INVOICE",
+    "DISCOUNT_INVOICE",
+    "MULTI_ITEM_INVOICE",
+    "AUTHORIZATION_RETRY",
+    "RIDE_GENERATION",
+    "EMAIL_DELIVERY"
+  ]
+}
+
+
+### 24) Listar runs
+GET {{baseUrl}}/api/v1/electronic-invoices/homologation/runs
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+
+
+### 25) Detalle run
+GET {{baseUrl}}/api/v1/electronic-invoices/homologation/runs/{{homologationRunId}}
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+
+
+### 26) Reporte run markdown
+GET {{baseUrl}}/api/v1/electronic-invoices/homologation/runs/{{homologationRunId}}/report.md
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+
+
+### 27) Gate producción — debe fallar si feature flag global está apagado
+POST {{baseUrl}}/api/v1/sri/settings/enable-production
+Authorization: Bearer {{accessToken}}
+X-Hermes-Organization-Id: {{organizationId}}
+Content-Type: application/json
+
+{
+  "confirmation": "ENABLE_SRI_PRODUCTION",
+  "initialSequential": 1
+}

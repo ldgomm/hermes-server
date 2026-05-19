@@ -73,6 +73,10 @@ private fun Application.configureHermesApplication(config: AppConfig, resources:
         authModule = resources.authModule,
         electronicInvoicingModule = resources.electronicInvoicingModule,
     )
+    configureAdminBusinessRoutes(
+        authModule = resources.authModule,
+        adminBusinessModule = resources.adminBusinessModule,
+    )
 
     monitor.subscribe(ApplicationStopping) { resources.close() }
 }
