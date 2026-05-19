@@ -8,7 +8,10 @@ import com.hermes.backend.plugins.configureStatusPages
 import com.hermes.domain.organization.Organization
 import com.hermes.domain.organization.OrganizationMembership
 import com.hermes.domain.permission.PermissionCatalog
-import com.hermes.domain.role.*
+import com.hermes.domain.role.RoleDefinition
+import com.hermes.domain.role.RoleScope
+import com.hermes.domain.role.RoleStatus
+import com.hermes.domain.role.RoleType
 import com.hermes.domain.session.UserSession
 import com.hermes.domain.shared.DomainRuleViolation
 import com.hermes.domain.user.User

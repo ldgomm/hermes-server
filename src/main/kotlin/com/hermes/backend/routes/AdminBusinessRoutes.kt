@@ -3,6 +3,7 @@ package com.hermes.backend.routes
 import com.hermes.application.admin.business.GetAdminActivityCommand
 import com.hermes.application.admin.business.GetAdminBranchCommand
 import com.hermes.application.admin.business.GetAdminBusinessCommand
+import com.hermes.application.admin.business.GetAdminBusinessFoundationOverviewCommand
 import com.hermes.application.admin.business.GetAdminBusinessReadinessCommand
 import com.hermes.application.admin.business.GetAdminEmissionPointCommand
 import com.hermes.application.admin.business.ListAdminActivitiesCommand
@@ -103,6 +104,22 @@ fun Route.adminBusinessRoutes(
                     val organizationId = context.requireActiveOrganization().organization.id
                     val result = adminBusinessModule.getReadinessUseCase.execute(
                         GetAdminBusinessReadinessCommand(
+                            organizationId = organizationId,
+                            actorUserId = context.userId,
+                            actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
+                        ),
+                    )
+                    call.respond(HttpStatusCode.OK, result.toResponse())
+                }
+
+
+                get("/business/overview") {
+                    val context = call.hermesAuthContext()
+                    val organizationId = context.requireActiveOrganization().organization.id
+                    val useCase = adminBusinessModule.getFoundationOverviewUseCase
+                        ?: throw DomainRuleViolation("Admin business foundation overview module is not configured.")
+                    val result = useCase.execute(
+                        GetAdminBusinessFoundationOverviewCommand(
                             organizationId = organizationId,
                             actorUserId = context.userId,
                             actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),

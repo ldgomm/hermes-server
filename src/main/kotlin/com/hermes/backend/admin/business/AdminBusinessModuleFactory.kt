@@ -8,6 +8,7 @@ import com.hermes.application.admin.business.CreateAdminBranchUseCase
 import com.hermes.application.admin.business.CreateAdminEmissionPointUseCase
 import com.hermes.application.admin.business.GetAdminActivityUseCase
 import com.hermes.application.admin.business.GetAdminBranchUseCase
+import com.hermes.application.admin.business.GetAdminBusinessFoundationOverviewUseCase
 import com.hermes.application.admin.business.GetAdminBusinessReadinessUseCase
 import com.hermes.application.admin.business.GetAdminBusinessUseCase
 import com.hermes.application.admin.business.GetAdminEmissionPointUseCase
@@ -36,6 +37,7 @@ object AdminBusinessModuleFactory {
             listActivitiesUseCase = ListAdminActivitiesUseCase(repository),
             listBranchesUseCase = ListAdminBranchesUseCase(repository),
             listEmissionPointsUseCase = ListAdminEmissionPointsUseCase(repository),
+            getFoundationOverviewUseCase = GetAdminBusinessFoundationOverviewUseCase(repository, clock),
             updateBusinessUseCase = UpdateAdminBusinessUseCase(
                 readRepository = repository,
                 mutationRepository = repository,
