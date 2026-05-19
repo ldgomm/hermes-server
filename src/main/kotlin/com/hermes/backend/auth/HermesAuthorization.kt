@@ -13,7 +13,7 @@ fun Route.hermesRequiresPermission(
     permission: String,
     build: Route.() -> Unit,
 ) {
-    val protectedRoute = createChild(HermesPermissionRouteSelector)
+    val protectedRoute = createChild(HermesPermissionRouteSelector("permission:$permission"))
 
     protectedRoute.intercept(ApplicationCallPipeline.Plugins) {
         val context = call.hermesAuthContextOrNull()
@@ -57,7 +57,10 @@ fun Route.hermesRequiresAnyPermission(
     permissions: Set<String>,
     build: Route.() -> Unit,
 ) {
-    val protectedRoute = createChild(HermesPermissionRouteSelector)
+    val required = permissions.sorted()
+    val protectedRoute = createChild(
+        HermesPermissionRouteSelector("any:${required.joinToString("|")}")
+    )
 
     protectedRoute.intercept(ApplicationCallPipeline.Plugins) {
         val context = call.hermesAuthContextOrNull()
@@ -78,8 +81,6 @@ fun Route.hermesRequiresAnyPermission(
 
         val effectivePermissions = context.effectivePermissions?.permissions.orEmpty()
         if (!AuthorizationPolicy.canPerformAny(effectivePermissions, permissions)) {
-            val required = permissions.sorted()
-
             call.respond(
                 status = HttpStatusCode.Forbidden,
                 message = ErrorEnvelope(
@@ -99,11 +100,13 @@ fun Route.hermesRequiresAnyPermission(
     protectedRoute.build()
 }
 
-private object HermesPermissionRouteSelector : RouteSelector() {
+private class HermesPermissionRouteSelector(
+    private val label: String,
+) : RouteSelector() {
     override suspend fun evaluate(
         context: RoutingResolveContext,
         segmentIndex: Int,
     ): RouteSelectorEvaluation = RouteSelectorEvaluation.Transparent
 
-    override fun toString(): String = "(hermes-permission)"
+    override fun toString(): String = "(hermes-permission:$label)"
 }
