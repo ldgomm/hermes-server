@@ -5,6 +5,12 @@ import com.hermes.application.electronicinvoicing.GetElectronicInvoiceTimelineUs
 import com.hermes.application.electronicinvoicing.GenerateElectronicInvoiceRideUseCase
 import com.hermes.application.electronicinvoicing.EmailElectronicInvoiceUseCase
 import com.hermes.application.electronicinvoicing.DownloadElectronicInvoiceArtifactUseCase
+import com.hermes.application.electronicinvoicing.EnableSriProductionUseCase
+import com.hermes.application.electronicinvoicing.GetElectronicInvoiceHomologationReadinessUseCase
+import com.hermes.application.electronicinvoicing.GetElectronicInvoiceHomologationReportUseCase
+import com.hermes.application.electronicinvoicing.GetElectronicInvoiceHomologationRunUseCase
+import com.hermes.application.electronicinvoicing.ListElectronicInvoiceHomologationRunsUseCase
+import com.hermes.application.electronicinvoicing.RunElectronicInvoiceHomologationFromAdminUseCase
 import com.hermes.application.electronicinvoicing.EnsureElectronicSequenceAdminUseCase
 import com.hermes.application.electronicinvoicing.GetElectronicInvoiceUseCase
 import com.hermes.application.electronicinvoicing.GetElectronicSequenceUseCase
@@ -48,4 +54,10 @@ data class ElectronicInvoicingModule(
     val emailElectronicInvoiceUseCase: EmailElectronicInvoiceUseCase? = null,
     val downloadElectronicInvoiceArtifactUseCase: DownloadElectronicInvoiceArtifactUseCase? = null,
     val getElectronicInvoiceTimelineUseCase: GetElectronicInvoiceTimelineUseCase? = null,
+    val getElectronicInvoiceHomologationReadinessUseCase: GetElectronicInvoiceHomologationReadinessUseCase? = null,
+    val runElectronicInvoiceHomologationFromAdminUseCase: RunElectronicInvoiceHomologationFromAdminUseCase? = null,
+    val listElectronicInvoiceHomologationRunsUseCase: ListElectronicInvoiceHomologationRunsUseCase? = null,
+    val getElectronicInvoiceHomologationRunUseCase: GetElectronicInvoiceHomologationRunUseCase? = null,
+    val getElectronicInvoiceHomologationReportUseCase: GetElectronicInvoiceHomologationReportUseCase? = null,
+    val enableSriProductionUseCase: EnableSriProductionUseCase? = null,
 )

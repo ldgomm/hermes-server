@@ -11,7 +11,7 @@ import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Sorts
 import org.bson.Document
 import java.time.Instant
-import java.util.*
+import java.util.Date
 
 class MongoElectronicInvoiceIssueTimelineRepository(
     database: MongoDatabase,

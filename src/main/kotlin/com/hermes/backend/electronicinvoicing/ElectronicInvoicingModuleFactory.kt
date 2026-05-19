@@ -7,6 +7,19 @@ import com.hermes.application.electronicinvoicing.GetElectronicInvoiceTimelineUs
 import com.hermes.application.electronicinvoicing.GenerateElectronicInvoiceRideUseCase
 import com.hermes.application.electronicinvoicing.EmailElectronicInvoiceUseCase
 import com.hermes.application.electronicinvoicing.DownloadElectronicInvoiceArtifactUseCase
+import com.hermes.application.electronicinvoicing.SriEndpointGateConfig
+import com.hermes.application.electronicinvoicing.RunElectronicInvoiceHomologationUseCase
+import com.hermes.application.electronicinvoicing.RunElectronicInvoiceHomologationFromAdminUseCase
+import com.hermes.application.electronicinvoicing.RetrySriAuthorizationUseCaseRunner
+import com.hermes.application.electronicinvoicing.RetrySriAuthorizationUseCase
+import com.hermes.application.electronicinvoicing.ListElectronicInvoiceHomologationRunsUseCase
+import com.hermes.application.electronicinvoicing.IssueElectronicInvoiceUseCaseRunner
+import com.hermes.application.electronicinvoicing.GetElectronicInvoiceHomologationRunUseCase
+import com.hermes.application.electronicinvoicing.GetElectronicInvoiceHomologationReportUseCase
+import com.hermes.application.electronicinvoicing.GetElectronicInvoiceHomologationReadinessUseCase
+import com.hermes.application.electronicinvoicing.EnableSriProductionUseCase
+import com.hermes.application.electronicinvoicing.EmailElectronicInvoiceUseCaseDeliveryRunner
+import com.hermes.application.electronicinvoicing.ApproveElectronicInvoiceProductionReadinessUseCase
 import com.hermes.application.electronicinvoicing.EnsureElectronicSequenceAdminUseCase
 import com.hermes.application.electronicinvoicing.GetElectronicInvoiceErrorsUseCase
 import com.hermes.application.electronicinvoicing.GetElectronicInvoiceUseCase
@@ -33,6 +46,7 @@ import com.hermes.application.signature.UploadElectronicSignatureUseCase
 import com.hermes.application.signature.ValidateElectronicSignatureUseCase
 import com.hermes.infrastructure.mongo.electronicinvoicing.MongoElectronicDocumentArtifactStorage
 import com.hermes.infrastructure.mongo.electronicinvoicing.MongoElectronicInvoiceIssueAuditLogger
+import com.hermes.infrastructure.mongo.electronicinvoicing.MongoElectronicInvoiceHomologationRunRepository
 import com.hermes.infrastructure.mongo.electronicinvoicing.MongoElectronicInvoiceIssueRepository
 import com.hermes.infrastructure.mongo.electronicinvoicing.MongoElectronicInvoiceIssueTimelineRepository
 import com.hermes.infrastructure.mongo.electronicinvoicing.MongoElectronicSequenceRepository
@@ -61,6 +75,7 @@ object ElectronicInvoicingModuleFactory {
         sriWsConfig: SriWsConfig = SriWsConfig(),
         sriSoapTransport: SriSoapTransport = JdkSriSoapTransport(),
         clock: Clock = Clock.systemUTC(),
+        sriProductionGloballyEnabled: Boolean = false,
     ): ElectronicInvoicingModule {
         val issueRepository = MongoElectronicInvoiceIssueRepository(database)
         val settingsRepository = MongoOrganizationSriSettingsRepository(database)
@@ -72,6 +87,7 @@ object ElectronicInvoicingModuleFactory {
         val artifactStorage = MongoElectronicDocumentArtifactStorage(database, artifactRoot)
         val issueAuditLogger = MongoElectronicInvoiceIssueAuditLogger(database)
         val timelineRepository = MongoElectronicInvoiceIssueTimelineRepository(database)
+        val homologationRunRepository = MongoElectronicInvoiceHomologationRunRepository(database)
 
         val receptionClient = SoapSriReceptionClient(
             config = sriWsConfig,
@@ -141,6 +157,22 @@ object ElectronicInvoicingModuleFactory {
             clock = clock,
         )
 
+        val endpointGateConfig = SriEndpointGateConfig(
+            testReceptionWsdlUrl = sriWsConfig.testReceptionUrl,
+            testAuthorizationWsdlUrl = sriWsConfig.testAuthorizationUrl,
+            productionReceptionWsdlUrl = sriWsConfig.productionReceptionUrl,
+            productionAuthorizationWsdlUrl = sriWsConfig.productionAuthorizationUrl,
+            productionGloballyEnabled = sriProductionGloballyEnabled,
+        )
+        val homologationUseCase = RunElectronicInvoiceHomologationUseCase(
+            issueRunner = IssueElectronicInvoiceUseCaseRunner(issueElectronicInvoiceUseCase),
+            retryAuthorizationRunner = RetrySriAuthorizationUseCaseRunner(
+                RetrySriAuthorizationUseCase(querySriAuthorizationUseCase)
+            ),
+            deliveryRunner = EmailElectronicInvoiceUseCaseDeliveryRunner(emailElectronicInvoiceUseCase),
+            clock = clock,
+        )
+
         return ElectronicInvoicingModule(
             getElectronicInvoiceUseCase = GetElectronicInvoiceUseCase(issueRepository),
             listElectronicInvoicesUseCase = ListElectronicInvoicesUseCase(issueRepository),
@@ -190,6 +222,37 @@ object ElectronicInvoicingModuleFactory {
             getElectronicInvoiceTimelineUseCase = GetElectronicInvoiceTimelineUseCase(
                 issueRepository = issueRepository,
                 timelineRepository = timelineRepository,
+            ),
+            getElectronicInvoiceHomologationReadinessUseCase = GetElectronicInvoiceHomologationReadinessUseCase(
+                settingsRepository = settingsRepository,
+                signatureRepository = signatureRepository,
+                endpointGateConfig = endpointGateConfig,
+            ),
+            runElectronicInvoiceHomologationFromAdminUseCase = RunElectronicInvoiceHomologationFromAdminUseCase(
+                settingsRepository = settingsRepository,
+                signatureRepository = signatureRepository,
+                endpointGateConfig = endpointGateConfig,
+                homologationUseCase = homologationUseCase,
+                approvalUseCase = ApproveElectronicInvoiceProductionReadinessUseCase(clock),
+                repository = homologationRunRepository,
+                clock = clock,
+            ),
+            listElectronicInvoiceHomologationRunsUseCase = ListElectronicInvoiceHomologationRunsUseCase(
+                repository = homologationRunRepository,
+            ),
+            getElectronicInvoiceHomologationRunUseCase = GetElectronicInvoiceHomologationRunUseCase(
+                repository = homologationRunRepository,
+            ),
+            getElectronicInvoiceHomologationReportUseCase = GetElectronicInvoiceHomologationReportUseCase(
+                repository = homologationRunRepository,
+            ),
+            enableSriProductionUseCase = EnableSriProductionUseCase(
+                settingsRepository = settingsRepository,
+                signatureRepository = signatureRepository,
+                sequenceRepository = sequenceRepository,
+                homologationRunRepository = homologationRunRepository,
+                endpointGateConfig = endpointGateConfig,
+                clock = clock,
             ),
         )
     }

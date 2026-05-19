@@ -32,6 +32,7 @@ import com.hermes.infrastructure.mongo.migration.core.M028CreateReturnAndWarrant
 import com.hermes.infrastructure.mongo.migration.core.M029CreateElectronicInvoicingPersistenceMigration
 import com.hermes.infrastructure.mongo.migration.core.M030AddElectronicInvoiceRideDeliveryMigration
 import com.hermes.infrastructure.mongo.migration.core.M031CreateOrganizationSriSettingsMigration
+import com.hermes.infrastructure.mongo.migration.core.M032CreateElectronicInvoicingProductionGateMigration
 
 object HermesMongoMigrations {
     val all: List<MongoMigration> = listOf(
@@ -67,5 +68,6 @@ object HermesMongoMigrations {
         M029CreateElectronicInvoicingPersistenceMigration,
         M030AddElectronicInvoiceRideDeliveryMigration,
         M031CreateOrganizationSriSettingsMigration,
+        M032CreateElectronicInvoicingProductionGateMigration,
     )
 }

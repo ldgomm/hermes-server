@@ -1,15 +1,22 @@
 package com.hermes.application.electronicinvoicing
 
-import com.hermes.domain.electronicinvoicing.*
+import com.hermes.domain.electronicinvoicing.ElectronicDocumentStatus
+import com.hermes.domain.electronicinvoicing.SriAccessKeyGenerationCommand
+import com.hermes.domain.electronicinvoicing.SriAccessKeyGenerator
+import com.hermes.domain.electronicinvoicing.SriDocumentType
+import com.hermes.domain.electronicinvoicing.SriEnvironment
+import com.hermes.domain.electronicinvoicing.SriNumericCode
+import com.hermes.domain.electronicinvoicing.SriSequential
+import com.hermes.domain.electronicinvoicing.SriSeries
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.shared.DomainRuleViolation
-import java.security.MessageDigest
-import java.time.Instant
-import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
+import java.security.MessageDigest
+import java.time.Instant
+import java.time.LocalDate
 
 class ElectronicInvoiceDeliveryUseCasesTest {
     @Test
@@ -18,12 +25,7 @@ class ElectronicInvoiceDeliveryUseCasesTest {
         val storage = InMemory12DArtifactStorage()
         val record = deliveryRecord(ElectronicDocumentStatus.AUTHORIZED)
         repository.create(record)
-        storage.seed(
-            record.authorizedXmlObjectKey!!,
-            ElectronicDocumentArtifactType.AUTHORIZED_XML,
-            "authorized.xml",
-            "<autorizacion/>".toByteArray()
-        )
+        storage.seed(record.authorizedXmlObjectKey!!, ElectronicDocumentArtifactType.AUTHORIZED_XML, "authorized.xml", "<autorizacion/>".toByteArray())
 
         val useCase = DownloadElectronicInvoiceArtifactUseCase(repository, storage)
         val result = useCase.execute(
@@ -68,12 +70,7 @@ class ElectronicInvoiceDeliveryUseCasesTest {
         val storage = InMemory12DArtifactStorage()
         val record = deliveryRecord(ElectronicDocumentStatus.AUTHORIZED)
         repository.create(record)
-        storage.seed(
-            record.authorizedXmlObjectKey!!,
-            ElectronicDocumentArtifactType.AUTHORIZED_XML,
-            "authorized.xml",
-            "<autorizacion/>".toByteArray()
-        )
+        storage.seed(record.authorizedXmlObjectKey!!, ElectronicDocumentArtifactType.AUTHORIZED_XML, "authorized.xml", "<autorizacion/>".toByteArray())
 
         val rideUseCase = GenerateElectronicInvoiceRideUseCase(
             repository = repository,
@@ -179,8 +176,7 @@ private class InMemory12DArtifactStorage : ElectronicDocumentArtifactStorage, El
     }
 
     override fun put(command: StoreElectronicDocumentArtifactCommand): StoredElectronicDocumentArtifact {
-        val objectKey =
-            "${command.documentId}/${command.artifactType.storageValue}/${files.size + 1}_${command.fileName}"
+        val objectKey = "${command.documentId}/${command.artifactType.storageValue}/${files.size + 1}_${command.fileName}"
         seed(objectKey, command.artifactType, command.fileName, command.content)
         return files.getValue(objectKey).toStoredArtifact()
     }
@@ -222,8 +218,7 @@ private class InMemory12DTimelineRepository(
     private val events: List<ElectronicInvoiceTimelineEvent>,
 ) : ElectronicInvoiceTimelineRepository {
     override fun list(query: ElectronicInvoiceTimelineQuery): List<ElectronicInvoiceTimelineEvent> =
-        events.filter { it.organizationId == query.organizationId && it.documentId == query.documentId }
-            .take(query.limit)
+        events.filter { it.organizationId == query.organizationId && it.documentId == query.documentId }.take(query.limit)
 }
 
 private fun deliveryRecord(status: ElectronicDocumentStatus): ElectronicInvoiceIssueRecord {

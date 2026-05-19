@@ -3,22 +3,51 @@ package com.hermes.backend.routes
 import com.hermes.application.auth.ActiveOrganizationResolverUseCase
 import com.hermes.application.auth.AuthenticateRequestUseCase
 import com.hermes.application.auth.EffectivePermissionResolverUseCase
-import com.hermes.application.electronicinvoicing.ElectronicDocumentArtifactFile
-import com.hermes.application.electronicinvoicing.ElectronicInvoiceDownloadArtifactKind
 import com.hermes.application.electronicinvoicing.GetElectronicInvoiceCommand
 import com.hermes.application.electronicinvoicing.GetOrganizationSriSettingsCommand
+import com.hermes.application.electronicinvoicing.ElectronicDocumentArtifactFile
+import com.hermes.application.electronicinvoicing.ElectronicInvoiceDownloadArtifactKind
+import com.hermes.backend.electronicinvoicing.EmailElectronicInvoiceRequest
+import com.hermes.backend.electronicinvoicing.GenerateRideRequest
+import com.hermes.backend.electronicinvoicing.downloadArtifactCommand
+import com.hermes.backend.electronicinvoicing.generateRideCommand
+import com.hermes.backend.electronicinvoicing.timelineCommand
 import com.hermes.backend.auth.AuthModule
 import com.hermes.backend.auth.hermesAuthContext
 import com.hermes.backend.auth.hermesAuthenticated
 import com.hermes.backend.auth.hermesRequiresPermission
-import com.hermes.backend.electronicinvoicing.*
+import com.hermes.backend.electronicinvoicing.ElectronicInvoicingModule
+import com.hermes.backend.electronicinvoicing.IssueElectronicInvoiceRequest
+import com.hermes.backend.electronicinvoicing.electronicInvoiceErrorsCommand
+import com.hermes.backend.electronicinvoicing.retryAuthorizationCommand
+import com.hermes.backend.electronicinvoicing.electronicInvoiceSearchCommand
+import com.hermes.backend.electronicinvoicing.toDetailResponse
+import com.hermes.backend.electronicinvoicing.toResponse
+import com.hermes.backend.electronicinvoicing.toCommand
+import com.hermes.backend.electronicinvoicing.EnableSriProductionRequest
+import com.hermes.backend.electronicinvoicing.RunElectronicInvoiceHomologationRequest
+import com.hermes.backend.electronicinvoicing.getHomologationRunCommand
+import com.hermes.backend.electronicinvoicing.homologationReadinessCommand
+import com.hermes.backend.electronicinvoicing.listHomologationRunsCommand
+import com.hermes.backend.electronicinvoicing.toResponseText
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.shared.DomainRuleViolation
-import io.ktor.http.*
-import io.ktor.server.application.*
-import io.ktor.server.request.*
-import io.ktor.server.response.*
-import io.ktor.server.routing.*
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationCall
+import io.ktor.server.request.receive
+import io.ktor.server.response.header
+import io.ktor.server.response.respond
+import io.ktor.server.response.respondBytes
+import io.ktor.server.response.respondText
+import io.ktor.server.routing.Route
+import io.ktor.server.routing.get
+import io.ktor.server.routing.post
+import io.ktor.server.routing.put
+import io.ktor.server.routing.route
+import io.ktor.server.routing.routing
 
 fun Application.configureElectronicInvoiceRoutes(
     authModule: AuthModule,
@@ -44,6 +73,18 @@ fun Application.configureElectronicInvoiceRoutes(
             electronicInvoicingModule = electronicInvoicingModule,
         )
         electronicSequenceRoutes(
+            authenticateRequestUseCase = authModule.authenticateRequestUseCase,
+            activeOrganizationResolverUseCase = authModule.activeOrganizationResolverUseCase,
+            effectivePermissionResolverUseCase = authModule.effectivePermissionResolverUseCase,
+            electronicInvoicingModule = electronicInvoicingModule,
+        )
+        electronicInvoiceHomologationRoutes(
+            authenticateRequestUseCase = authModule.authenticateRequestUseCase,
+            activeOrganizationResolverUseCase = authModule.activeOrganizationResolverUseCase,
+            effectivePermissionResolverUseCase = authModule.effectivePermissionResolverUseCase,
+            electronicInvoicingModule = electronicInvoicingModule,
+        )
+        sriProductionGateRoutes(
             authenticateRequestUseCase = authModule.authenticateRequestUseCase,
             activeOrganizationResolverUseCase = authModule.activeOrganizationResolverUseCase,
             effectivePermissionResolverUseCase = authModule.effectivePermissionResolverUseCase,
@@ -139,8 +180,7 @@ fun Route.electronicInvoiceRoutes(
                     val context = call.hermesAuthContext()
                     val organizationId = call.requiredElectronicInvoiceOrganizationId()
                     val request = GenerateRideRequest(
-                        forceRegenerate = call.request.queryParameters["forceRegenerate"]?.toBooleanStrictOrNull()
-                            ?: false,
+                        forceRegenerate = call.request.queryParameters["forceRegenerate"]?.toBooleanStrictOrNull() ?: false,
                     )
                     val result = electronicInvoicingModule.generateElectronicInvoiceRideUseCase!!.execute(
                         generateRideCommand(
@@ -330,8 +370,7 @@ fun Route.electronicSignatureRoutes(
                 post {
                     val context = call.hermesAuthContext()
                     val organizationId = call.requiredElectronicInvoiceOrganizationId()
-                    val request =
-                        call.receive<com.hermes.backend.electronicinvoicing.UploadElectronicSignatureRequest>()
+                    val request = call.receive<com.hermes.backend.electronicinvoicing.UploadElectronicSignatureRequest>()
                     val result = electronicInvoicingModule.uploadElectronicSignatureUseCase!!.execute(
                         request.toCommand(
                             organizationId = organizationId,
@@ -478,15 +517,137 @@ fun Route.electronicSequenceRoutes(
     }
 }
 
-private suspend fun ApplicationCall.respondElectronicInvoiceArtifact(
-    artifact: ElectronicDocumentArtifactFile,
-) {
-    response.header(
-        HttpHeaders.ContentDisposition,
-        "attachment; filename=\"${artifact.filename.safeDownloadFileName()}\"",
-    )
-    response.header("X-Hermes-Artifact-Sha256", artifact.sha256)
 
+fun Route.electronicInvoiceHomologationRoutes(
+    authenticateRequestUseCase: AuthenticateRequestUseCase,
+    activeOrganizationResolverUseCase: ActiveOrganizationResolverUseCase,
+    effectivePermissionResolverUseCase: EffectivePermissionResolverUseCase,
+    electronicInvoicingModule: ElectronicInvoicingModule,
+) {
+    route("/api/v1/electronic-invoices/homologation") {
+        hermesAuthenticated(
+            authenticateRequestUseCase = authenticateRequestUseCase,
+            activeOrganizationResolverUseCase = activeOrganizationResolverUseCase,
+            effectivePermissionResolverUseCase = effectivePermissionResolverUseCase,
+            requireOrganization = true,
+        ) {
+            hermesRequiresPermission(PermissionCatalog.DOCUMENTS_ELECTRONIC_INVOICE_HOMOLOGATE) {
+                get("/readiness") {
+                    val context = call.hermesAuthContext()
+                    val organizationId = call.requiredElectronicInvoiceOrganizationId()
+                    val result = electronicInvoicingModule.getElectronicInvoiceHomologationReadinessUseCase!!.execute(
+                        homologationReadinessCommand(
+                            organizationId = organizationId,
+                            actorUserId = context.userId,
+                            permissions = context.effectivePermissions?.permissions.orEmpty(),
+                        )
+                    )
+                    call.respond(HttpStatusCode.OK, result.toResponse())
+                }
+
+                post("/run") {
+                    val context = call.hermesAuthContext()
+                    val organizationId = call.requiredElectronicInvoiceOrganizationId()
+                    val request = call.receive<RunElectronicInvoiceHomologationRequest>()
+                    val result = electronicInvoicingModule.runElectronicInvoiceHomologationFromAdminUseCase!!.execute(
+                        request.toCommand(
+                            organizationId = organizationId,
+                            actorUserId = context.userId,
+                            permissions = context.effectivePermissions?.permissions.orEmpty(),
+                        )
+                    )
+                    call.respond(HttpStatusCode.Created, result.toResponse())
+                }
+
+                get("/runs") {
+                    val context = call.hermesAuthContext()
+                    val organizationId = call.requiredElectronicInvoiceOrganizationId()
+                    val result = electronicInvoicingModule.listElectronicInvoiceHomologationRunsUseCase!!.execute(
+                        listHomologationRunsCommand(
+                            organizationId = organizationId,
+                            actorUserId = context.userId,
+                            permissions = context.effectivePermissions?.permissions.orEmpty(),
+                            statuses = call.request.queryParameters["statuses"],
+                            limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 50,
+                        )
+                    )
+                    call.respond(HttpStatusCode.OK, result.toResponse())
+                }
+
+                get("/runs/{runId}") {
+                    val context = call.hermesAuthContext()
+                    val organizationId = call.requiredElectronicInvoiceOrganizationId()
+                    val result = electronicInvoicingModule.getElectronicInvoiceHomologationRunUseCase!!.execute(
+                        getHomologationRunCommand(
+                            organizationId = organizationId,
+                            actorUserId = context.userId,
+                            permissions = context.effectivePermissions?.permissions.orEmpty(),
+                            runId = call.requiredElectronicInvoicePath("runId"),
+                        )
+                    )
+                    call.respond(HttpStatusCode.OK, result.toResponse())
+                }
+
+                get("/runs/{runId}/report.md") {
+                    val context = call.hermesAuthContext()
+                    val organizationId = call.requiredElectronicInvoiceOrganizationId()
+                    val result = electronicInvoicingModule.getElectronicInvoiceHomologationReportUseCase!!.execute(
+                        getHomologationRunCommand(
+                            organizationId = organizationId,
+                            actorUserId = context.userId,
+                            permissions = context.effectivePermissions?.permissions.orEmpty(),
+                            runId = call.requiredElectronicInvoicePath("runId"),
+                        )
+                    )
+                    call.respondText(
+                        text = result.toResponseText(),
+                        contentType = ContentType.parse("text/markdown; charset=UTF-8"),
+                        status = HttpStatusCode.OK,
+                    )
+                }
+            }
+        }
+    }
+}
+
+fun Route.sriProductionGateRoutes(
+    authenticateRequestUseCase: AuthenticateRequestUseCase,
+    activeOrganizationResolverUseCase: ActiveOrganizationResolverUseCase,
+    effectivePermissionResolverUseCase: EffectivePermissionResolverUseCase,
+    electronicInvoicingModule: ElectronicInvoicingModule,
+) {
+    route("/api/v1/sri/settings") {
+        hermesAuthenticated(
+            authenticateRequestUseCase = authenticateRequestUseCase,
+            activeOrganizationResolverUseCase = activeOrganizationResolverUseCase,
+            effectivePermissionResolverUseCase = effectivePermissionResolverUseCase,
+            requireOrganization = true,
+        ) {
+            hermesRequiresPermission(PermissionCatalog.DOCUMENTS_ELECTRONIC_INVOICE_ENABLE_PRODUCTION) {
+                post("/enable-production") {
+                    val context = call.hermesAuthContext()
+                    val organizationId = call.requiredElectronicInvoiceOrganizationId()
+                    val request = call.receive<EnableSriProductionRequest>()
+                    val result = electronicInvoicingModule.enableSriProductionUseCase!!.execute(
+                        request.toCommand(
+                            organizationId = organizationId,
+                            actorUserId = context.userId,
+                            permissions = context.effectivePermissions?.permissions.orEmpty(),
+                        )
+                    )
+                    call.respond(
+                        if (result.enabled) HttpStatusCode.OK else HttpStatusCode.Conflict,
+                        result.toResponse(),
+                    )
+                }
+            }
+        }
+    }
+}
+
+private suspend fun ApplicationCall.respondElectronicInvoiceArtifact(artifact: ElectronicDocumentArtifactFile) {
+    response.header(HttpHeaders.ContentDisposition, "attachment; filename=\"${artifact.filename.safeDownloadFileName()}\"")
+    response.header("X-Hermes-Artifact-Sha256", artifact.sha256)
     respondBytes(
         bytes = artifact.bytes,
         contentType = ContentType.parse(artifact.contentType),
