@@ -14,12 +14,15 @@ import com.hermes.backend.auth.hermesAuthContext
 import com.hermes.backend.auth.hermesAuthenticated
 import com.hermes.backend.auth.hermesRequiresAnyPermission
 import com.hermes.domain.permission.PermissionCatalog
+import com.hermes.domain.shared.DomainRuleViolation
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.call
+import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
+import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 
@@ -61,6 +64,24 @@ fun Route.adminBusinessRoutes(
                     val organizationId = context.requireActiveOrganization().organization.id
                     val result = adminBusinessModule.getBusinessUseCase.execute(
                         GetAdminBusinessCommand(
+                            organizationId = organizationId,
+                            actorUserId = context.userId,
+                            actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
+                        ),
+                    )
+                    call.respond(HttpStatusCode.OK, result.toResponse())
+                }
+            }
+
+            hermesRequiresAnyPermission(setOf(PermissionCatalog.ORGANIZATION_UPDATE)) {
+                put("/business") {
+                    val context = call.hermesAuthContext()
+                    val organizationId = context.requireActiveOrganization().organization.id
+                    val request = call.receive<UpdateAdminBusinessRequest>()
+                    val useCase = adminBusinessModule.updateBusinessUseCase
+                        ?: throw DomainRuleViolation("Admin business update module is not configured.")
+                    val result = useCase.execute(
+                        request.toCommand(
                             organizationId = organizationId,
                             actorUserId = context.userId,
                             actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),

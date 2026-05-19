@@ -11,6 +11,7 @@ import com.hermes.application.admin.business.AdminBusinessProfile
 import com.hermes.application.admin.business.AdminBusinessReadinessCheck
 import com.hermes.application.admin.business.AdminBusinessReadinessResult
 import com.hermes.application.admin.business.AdminBusinessResult
+import com.hermes.application.admin.business.UpdateAdminBusinessCommand
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -32,6 +33,17 @@ data class AdminBusinessResponse(
 @Serializable
 data class AdminBusinessEnvelope(
     val business: AdminBusinessResponse,
+)
+
+@Serializable
+data class UpdateAdminBusinessRequest(
+    val countryCode: String? = null,
+    val taxId: String? = null,
+    val legalName: String? = null,
+    val commercialName: String? = null,
+    val defaultCurrency: String? = null,
+    val timezone: String? = null,
+    val reason: String,
 )
 
 @Serializable
@@ -123,6 +135,23 @@ data class AdminBusinessReadinessCheckResponse(
     val required: Boolean,
     val message: String,
     val action: String? = null,
+)
+
+fun UpdateAdminBusinessRequest.toCommand(
+    organizationId: String,
+    actorUserId: String,
+    actorEffectivePermissions: Set<String>,
+): UpdateAdminBusinessCommand = UpdateAdminBusinessCommand(
+    organizationId = organizationId,
+    actorUserId = actorUserId,
+    actorEffectivePermissions = actorEffectivePermissions,
+    countryCode = countryCode,
+    taxId = taxId,
+    legalName = legalName,
+    commercialName = commercialName,
+    defaultCurrency = defaultCurrency,
+    timezone = timezone,
+    reason = reason,
 )
 
 fun AdminBusinessResult.toResponse(): AdminBusinessEnvelope = AdminBusinessEnvelope(business.toResponse())

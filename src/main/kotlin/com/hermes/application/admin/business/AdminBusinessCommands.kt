@@ -10,6 +10,19 @@ data class GetAdminBusinessCommand(
     val actorEffectivePermissions: Set<String>,
 )
 
+data class UpdateAdminBusinessCommand(
+    val organizationId: String,
+    val actorUserId: String,
+    val actorEffectivePermissions: Set<String>,
+    val countryCode: String? = null,
+    val taxId: String? = null,
+    val legalName: String? = null,
+    val commercialName: String? = null,
+    val defaultCurrency: String? = null,
+    val timezone: String? = null,
+    val reason: String,
+)
+
 data class GetAdminBusinessReadinessCommand(
     val organizationId: String,
     val actorUserId: String,

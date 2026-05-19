@@ -5,6 +5,7 @@ import com.hermes.application.admin.business.GetAdminBusinessUseCase
 import com.hermes.application.admin.business.ListAdminActivitiesUseCase
 import com.hermes.application.admin.business.ListAdminBranchesUseCase
 import com.hermes.application.admin.business.ListAdminEmissionPointsUseCase
+import com.hermes.application.admin.business.UpdateAdminBusinessUseCase
 import com.hermes.infrastructure.mongo.admin.business.MongoAdminBusinessRepository
 import com.mongodb.client.MongoDatabase
 import java.time.Clock
@@ -21,6 +22,11 @@ object AdminBusinessModuleFactory {
             listActivitiesUseCase = ListAdminActivitiesUseCase(repository),
             listBranchesUseCase = ListAdminBranchesUseCase(repository),
             listEmissionPointsUseCase = ListAdminEmissionPointsUseCase(repository),
+            updateBusinessUseCase = UpdateAdminBusinessUseCase(
+                readRepository = repository,
+                mutationRepository = repository,
+                clock = clock,
+            ),
         )
     }
 }

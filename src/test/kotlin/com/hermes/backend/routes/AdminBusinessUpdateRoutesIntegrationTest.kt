@@ -13,6 +13,7 @@ import com.hermes.domain.role.RoleScope
 import com.hermes.domain.role.RoleStatus
 import com.hermes.domain.role.RoleType
 import com.hermes.domain.session.UserSession
+import com.hermes.domain.shared.DomainRuleViolation
 import com.hermes.domain.user.User
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -26,9 +27,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class AdminBusinessRoutesIntegrationTest {
+class AdminBusinessUpdateRoutesIntegrationTest {
     @Test
-    fun `GET admin business readiness and lists return active organization data`() = testApplication {
+    fun `PUT admin business updates active organization settings`() = testApplication {
         val fixture = fixture()
 
         application {
@@ -44,41 +45,33 @@ class AdminBusinessRoutesIntegrationTest {
             }
         }
 
-        val readiness = client.get("/api/v1/admin/business/readiness") {
+        val response = client.put("/api/v1/admin/business") {
             header(HttpHeaders.Authorization, "Bearer ${fixture.accessToken}")
             header("X-Organization-Id", "org_1")
-        }
-        val activities = client.get("/api/v1/admin/activities") {
-            header(HttpHeaders.Authorization, "Bearer ${fixture.accessToken}")
-            header("X-Organization-Id", "org_1")
-        }
-        val branches = client.get("/api/v1/admin/branches") {
-            header(HttpHeaders.Authorization, "Bearer ${fixture.accessToken}")
-            header("X-Organization-Id", "org_1")
-        }
-        val emissionPoints = client.get("/api/v1/admin/emission-points") {
-            header(HttpHeaders.Authorization, "Bearer ${fixture.accessToken}")
-            header("X-Organization-Id", "org_1")
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+                {
+                  "legalName": "Hermes Demo Actualizada S.A.",
+                  "commercialName": "Hermes Admin",
+                  "defaultCurrency": "usd",
+                  "timezone": "America/Guayaquil",
+                  "reason": "Corrección de datos administrativos"
+                }
+                """.trimIndent()
+            )
         }
 
-        val readinessBody = readiness.bodyAsText()
-        val activitiesBody = activities.bodyAsText()
-        val branchesBody = branches.bodyAsText()
-        val emissionPointsBody = emissionPoints.bodyAsText()
-
-        assertEquals(HttpStatusCode.OK, readiness.status, readinessBody)
-        assertEquals(HttpStatusCode.OK, activities.status, activitiesBody)
-        assertEquals(HttpStatusCode.OK, branches.status, branchesBody)
-        assertEquals(HttpStatusCode.OK, emissionPoints.status, emissionPointsBody)
-        assertTrue(readinessBody.contains("\"overallStatus\":\"READY\""), readinessBody)
-        assertTrue(activitiesBody.contains("Restaurante"), activitiesBody)
-        assertTrue(branchesBody.contains("Sucursal principal"), branchesBody)
-        assertTrue(emissionPointsBody.contains("001-001"), emissionPointsBody)
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = response.bodyAsText()
+        assertTrue(body.contains("Hermes Demo Actualizada S.A."))
+        assertTrue(body.contains("Hermes Admin"))
+        assertTrue(body.contains("\"defaultCurrency\":\"USD\""))
     }
 
     @Test
-    fun `GET admin business rejects actor without organization view permission`() = testApplication {
-        val fixture = fixture(permissions = setOf(PermissionCatalog.SALES_VIEW))
+    fun `PUT admin business rejects actor without update permission`() = testApplication {
+        val fixture = fixture(permissions = setOf(PermissionCatalog.ORGANIZATION_VIEW))
 
         application {
             configureSerialization()
@@ -93,9 +86,18 @@ class AdminBusinessRoutesIntegrationTest {
             }
         }
 
-        val response = client.get("/api/v1/admin/business") {
+        val response = client.put("/api/v1/admin/business") {
             header(HttpHeaders.Authorization, "Bearer ${fixture.accessToken}")
             header("X-Organization-Id", "org_1")
+            contentType(ContentType.Application.Json)
+            setBody(
+                """
+                {
+                  "commercialName": "No permitido",
+                  "reason": "Intento sin permiso"
+                }
+                """.trimIndent()
+            )
         }
 
         assertEquals(HttpStatusCode.Forbidden, response.status)
@@ -123,13 +125,13 @@ class AdminBusinessRoutesIntegrationTest {
             now = now,
         )
         val role = RoleDefinition(
-            id = "role_admin_test",
-            code = "admin_business_read_test",
+            id = "role_admin_update_test",
+            code = "admin_business_update_test",
             organizationId = organization.id,
             scope = RoleScope.ORGANIZATION,
             type = RoleType.CUSTOM,
-            name = "Admin business read test",
-            description = "Custom test role for Admin Business read routes",
+            name = "Admin business update test",
+            description = "Custom test role for Admin Business update routes",
             permissionKeys = permissions,
             systemRole = false,
             critical = false,
@@ -156,7 +158,7 @@ class AdminBusinessRoutesIntegrationTest {
         authRepository.sessions[session.id] = session
 
         val jwt = HmacJwtTokenService(
-            secret = "test-jwt-secret-for-hermes-admin-business-32chars-minimum",
+            secret = "test-jwt-secret-for-hermes-admin-business-update-32chars-minimum",
             accessTokenTtlSeconds = 3600,
         )
         val authenticate = AuthenticateRequestUseCase(authRepository, jwt, clock)
@@ -164,7 +166,7 @@ class AdminBusinessRoutesIntegrationTest {
         val effectivePermissions = EffectivePermissionResolverUseCase(authRepository)
         val accessToken = jwt.issueAccessToken(userId = user.id, sessionId = session.id, issuedAt = now).token
 
-        val businessRepository = RouteFakeAdminBusinessRepository().apply {
+        val businessRepository = RouteFakeAdminBusinessMutationRepository().apply {
             business = AdminBusinessProfile(
                 id = "org_1",
                 countryCode = "EC",
@@ -175,39 +177,8 @@ class AdminBusinessRoutesIntegrationTest {
                 ownerUserId = user.id,
                 createdAt = now,
                 updatedAt = now,
+                version = 1,
             )
-            activities += AdminBusinessActivitySummary(
-                id = "act_1",
-                organizationId = "org_1",
-                code = "restaurant",
-                name = "Restaurante",
-                activityType = "restaurant",
-                workflowMode = "order",
-                status = "active",
-                requiresScheduling = false,
-                tracksInventory = true,
-                allowsReceivables = true,
-            )
-            branches += AdminBusinessBranchSummary(
-                id = "br_1",
-                organizationId = "org_1",
-                code = "001",
-                name = "Sucursal principal",
-                type = "main",
-                status = "active",
-            )
-            emissionPoints += AdminBusinessEmissionPointSummary(
-                id = "ep_1",
-                organizationId = "org_1",
-                branchId = "br_1",
-                establishmentCode = "001",
-                emissionPointCode = "001",
-                displayName = "Caja principal",
-                status = "active",
-            )
-            taxSettings = true
-            sriSettings = true
-            activeOwnerOrAdmin = true
         }
 
         return Fixture(
@@ -220,6 +191,11 @@ class AdminBusinessRoutesIntegrationTest {
                 listActivitiesUseCase = ListAdminActivitiesUseCase(businessRepository),
                 listBranchesUseCase = ListAdminBranchesUseCase(businessRepository),
                 listEmissionPointsUseCase = ListAdminEmissionPointsUseCase(businessRepository),
+                updateBusinessUseCase = UpdateAdminBusinessUseCase(
+                    readRepository = businessRepository,
+                    mutationRepository = businessRepository,
+                    clock = clock,
+                ),
             ),
             accessToken = accessToken,
         )
@@ -234,29 +210,38 @@ class AdminBusinessRoutesIntegrationTest {
     )
 }
 
-private class RouteFakeAdminBusinessRepository : AdminBusinessRepository {
+private class RouteFakeAdminBusinessMutationRepository : AdminBusinessRepository, AdminBusinessMutationRepository {
     var business: AdminBusinessProfile? = null
-    val activities: MutableList<AdminBusinessActivitySummary> = mutableListOf()
-    val branches: MutableList<AdminBusinessBranchSummary> = mutableListOf()
-    val emissionPoints: MutableList<AdminBusinessEmissionPointSummary> = mutableListOf()
-    var taxSettings: Boolean = false
-    var sriSettings: Boolean = false
-    var activeOwnerOrAdmin: Boolean = false
 
     override fun findBusiness(organizationId: String): AdminBusinessProfile? =
         business?.takeIf { it.id == organizationId }
 
-    override fun listActivities(organizationId: String): List<AdminBusinessActivitySummary> =
-        activities.filter { it.organizationId == organizationId }
+    override fun listActivities(organizationId: String): List<AdminBusinessActivitySummary> = emptyList()
+    override fun listBranches(organizationId: String): List<AdminBusinessBranchSummary> = emptyList()
+    override fun listEmissionPoints(organizationId: String): List<AdminBusinessEmissionPointSummary> = emptyList()
+    override fun hasTaxSettings(organizationId: String): Boolean = false
+    override fun hasSriSettings(organizationId: String): Boolean = false
+    override fun hasActiveOwnerOrAdminMembership(organizationId: String): Boolean = false
 
-    override fun listBranches(organizationId: String): List<AdminBusinessBranchSummary> =
-        branches.filter { it.organizationId == organizationId }
+    override fun existsBusinessWithTaxId(
+        countryCode: String,
+        taxId: String,
+        excludeOrganizationId: String,
+    ): Boolean = false
 
-    override fun listEmissionPoints(organizationId: String): List<AdminBusinessEmissionPointSummary> =
-        emissionPoints.filter { it.organizationId == organizationId }
-
-    override fun hasTaxSettings(organizationId: String): Boolean = taxSettings
-    override fun hasSriSettings(organizationId: String): Boolean = sriSettings
-    override fun hasActiveOwnerOrAdminMembership(organizationId: String): Boolean = activeOwnerOrAdmin
+    override fun updateBusiness(patch: AdminBusinessUpdatePatch): AdminBusinessProfile {
+        val current = business ?: throw DomainRuleViolation("Organization does not exist.")
+        val updated = current.copy(
+            countryCode = patch.countryCode ?: current.countryCode,
+            taxId = patch.taxId ?: current.taxId,
+            legalName = patch.legalName ?: current.legalName,
+            commercialName = patch.commercialName ?: current.commercialName,
+            defaultCurrency = patch.defaultCurrency ?: current.defaultCurrency,
+            timezone = patch.timezone ?: current.timezone,
+            updatedAt = patch.updatedAt,
+            version = current.version + 1,
+        )
+        business = updated
+        return updated
+    }
 }
-

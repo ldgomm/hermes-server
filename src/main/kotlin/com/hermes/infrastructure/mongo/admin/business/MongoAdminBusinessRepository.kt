@@ -3,17 +3,23 @@ package com.hermes.infrastructure.mongo.admin.business
 import com.hermes.application.admin.business.*
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.role.SystemRoleCode
+import com.hermes.domain.shared.DomainRuleViolation
 import com.hermes.infrastructure.mongo.MongoCollectionNames
 import com.hermes.infrastructure.mongo.electronicinvoicing.ElectronicInvoicingMongoCollectionNames
+import com.mongodb.client.FindIterable
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
 import com.mongodb.client.model.Filters.*
+import com.mongodb.client.model.FindOneAndUpdateOptions
+import com.mongodb.client.model.ReturnDocument
 import com.mongodb.client.model.Sorts
+import com.mongodb.client.model.Updates.*
 import org.bson.Document
+import java.util.*
 
 class MongoAdminBusinessRepository(
     database: MongoDatabase,
-) : AdminBusinessRepository {
+) : AdminBusinessRepository, AdminBusinessMutationRepository {
     private val organizations: MongoCollection<Document> = database.getCollection(MongoCollectionNames.ORGANIZATIONS)
     private val activities: MongoCollection<Document> =
         database.getCollection(MongoCollectionNames.ORGANIZATION_ACTIVITIES)
@@ -72,6 +78,40 @@ class MongoAdminBusinessRepository(
             .any { role -> role.isOwnerOrAdminRole() }
     }
 
+    override fun existsBusinessWithTaxId(
+        countryCode: String,
+        taxId: String,
+        excludeOrganizationId: String,
+    ): Boolean = organizations.countDocuments(
+        and(
+            eq("countryCode", countryCode.trim().uppercase()),
+            eq("taxId", taxId.trim()),
+            ne("_id", excludeOrganizationId.trim()),
+        )
+    ) > 0
+
+    override fun updateBusiness(patch: AdminBusinessUpdatePatch): AdminBusinessProfile {
+        val sets = buildList {
+            patch.countryCode?.let { add(set("countryCode", it)) }
+            patch.taxId?.let { add(set("taxId", it)) }
+            patch.legalName?.let { add(set("legalName", it)) }
+            patch.commercialName?.let { add(set("commercialName", it)) }
+            patch.defaultCurrency?.let { add(set("defaultCurrency", it)) }
+            patch.timezone?.let { add(set("timezone", it)) }
+            add(set("updatedAt", Date.from(patch.updatedAt)))
+            add(set("updatedBy", patch.updatedBy))
+            add(inc("version", 1L))
+        }
+
+        val updated = organizations.findOneAndUpdate(
+            eq("_id", patch.organizationId.trim()),
+            combine(sets),
+            FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER),
+        ) ?: throw DomainRuleViolation("Organization does not exist.")
+
+        return MongoAdminBusinessMappers.businessFromDocument(updated)
+    }
+
     private fun Document.isOwnerOrAdminRole(): Boolean {
         val code = getString("code").normalizedDbToken()
         val permissions = getList("permissionKeys", String::class.java).orEmpty() +
@@ -84,4 +124,4 @@ class MongoAdminBusinessRepository(
     }
 }
 
-private fun <T> com.mongodb.client.FindIterable<T>.firstOrNull(): T? = first()
+private fun <T> FindIterable<T>.firstOrNull(): T? = first()

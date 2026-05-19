@@ -2,12 +2,12 @@ package com.hermes.application.admin.business
 
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.shared.DomainRuleViolation
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class AdminBusinessReadinessUseCaseTest {
     private val now: Instant = Instant.parse("2026-05-19T00:00:00Z")
@@ -152,10 +152,18 @@ private class FakeAdminBusinessRepository : AdminBusinessRepository {
     var sriSettings: Boolean = false
     var activeOwnerOrAdmin: Boolean = false
 
-    override fun findBusiness(organizationId: String): AdminBusinessProfile? = business?.takeIf { it.id == organizationId }
-    override fun listActivities(organizationId: String): List<AdminBusinessActivitySummary> = activities.filter { it.organizationId == organizationId }
-    override fun listBranches(organizationId: String): List<AdminBusinessBranchSummary> = branches.filter { it.organizationId == organizationId }
-    override fun listEmissionPoints(organizationId: String): List<AdminBusinessEmissionPointSummary> = emissionPoints.filter { it.organizationId == organizationId }
+    override fun findBusiness(organizationId: String): AdminBusinessProfile? =
+        business?.takeIf { it.id == organizationId }
+
+    override fun listActivities(organizationId: String): List<AdminBusinessActivitySummary> =
+        activities.filter { it.organizationId == organizationId }
+
+    override fun listBranches(organizationId: String): List<AdminBusinessBranchSummary> =
+        branches.filter { it.organizationId == organizationId }
+
+    override fun listEmissionPoints(organizationId: String): List<AdminBusinessEmissionPointSummary> =
+        emissionPoints.filter { it.organizationId == organizationId }
+
     override fun hasTaxSettings(organizationId: String): Boolean = taxSettings
     override fun hasSriSettings(organizationId: String): Boolean = sriSettings
     override fun hasActiveOwnerOrAdminMembership(organizationId: String): Boolean = activeOwnerOrAdmin
