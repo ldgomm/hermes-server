@@ -4,6 +4,10 @@ import com.hermes.backend.admin.access.AdminAccessModule
 import com.hermes.backend.admin.access.AdminAccessModuleFactory
 import com.hermes.backend.admin.business.AdminBusinessModule
 import com.hermes.backend.admin.business.AdminBusinessModuleFactory
+import com.hermes.backend.admin.catalog.AdminCatalogModule
+import com.hermes.backend.admin.catalog.AdminCatalogModuleFactory
+import com.hermes.backend.admin.tax.AdminTaxModule
+import com.hermes.backend.admin.tax.AdminTaxModuleFactory
 import com.hermes.backend.auth.AuthModule
 import com.hermes.backend.auth.AuthModuleFactory
 import com.hermes.backend.catalog.CatalogModule
@@ -38,7 +42,8 @@ interface AppResources : Closeable {
     val electronicInvoicingModule: ElectronicInvoicingModule
     val adminBusinessModule: AdminBusinessModule
     val adminAccessModule: AdminAccessModule
-
+    val adminCatalogModule: AdminCatalogModule
+    val adminTaxModule: AdminTaxModule
 }
 
 class DefaultAppResources private constructor(
@@ -55,6 +60,8 @@ class DefaultAppResources private constructor(
     override val electronicInvoicingModule: ElectronicInvoicingModule,
     override val adminBusinessModule: AdminBusinessModule,
     override val adminAccessModule: AdminAccessModule,
+    override val adminCatalogModule: AdminCatalogModule,
+    override val adminTaxModule: AdminTaxModule,
 ) : AppResources {
     companion object {
         fun start(config: AppConfig): DefaultAppResources {
@@ -87,6 +94,8 @@ class DefaultAppResources private constructor(
             val electronicInvoicingModule = ElectronicInvoicingModuleFactory.fromMongo(database = mongoDatabase)
             val adminBusinessModule = AdminBusinessModuleFactory.fromMongo(database = mongoDatabase)
             val adminAccessModule = AdminAccessModuleFactory.fromMongo(client = mongoClient, database = mongoDatabase)
+            val adminCatalogModule = AdminCatalogModuleFactory.fromMongo(database = mongoDatabase)
+            val adminTaxModule = AdminTaxModuleFactory.fromMongo(database = mongoDatabase)
 
             return DefaultAppResources(
                 mongoClient = mongoClient,
@@ -102,6 +111,8 @@ class DefaultAppResources private constructor(
                 electronicInvoicingModule = electronicInvoicingModule,
                 adminBusinessModule = adminBusinessModule,
                 adminAccessModule = adminAccessModule,
+                adminCatalogModule = adminCatalogModule,
+                adminTaxModule = adminTaxModule,
             )
         }
     }
