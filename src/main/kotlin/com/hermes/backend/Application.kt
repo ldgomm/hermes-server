@@ -77,13 +77,11 @@ private fun Application.configureHermesApplication(config: AppConfig, resources:
         authModule = resources.authModule,
         adminBusinessModule = resources.adminBusinessModule,
     )
-    configureAdminAccessRoutes(
+    configureAdminAccessRoutes(authModule = resources.authModule, adminAccessModule = resources.adminAccessModule)
+    configureAdminTaxRoutes(authModule = resources.authModule, adminTaxModule = resources.adminTaxModule)
+    configureAdminOperationsRoutes(
         authModule = resources.authModule,
-        adminAccessModule = resources.adminAccessModule,
-    )
-    configureAdminTaxRoutes(
-        authModule = resources.authModule,
-        adminTaxModule = resources.adminTaxModule,
+        adminOperationsModule = resources.adminOperationsModule,
     )
 
     monitor.subscribe(ApplicationStopping) { resources.close() }

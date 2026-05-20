@@ -6,6 +6,8 @@ import com.hermes.backend.admin.business.AdminBusinessModule
 import com.hermes.backend.admin.business.AdminBusinessModuleFactory
 import com.hermes.backend.admin.catalog.AdminCatalogModule
 import com.hermes.backend.admin.catalog.AdminCatalogModuleFactory
+import com.hermes.backend.admin.operations.AdminOperationsModule
+import com.hermes.backend.admin.operations.AdminOperationsModuleFactory
 import com.hermes.backend.admin.tax.AdminTaxModule
 import com.hermes.backend.admin.tax.AdminTaxModuleFactory
 import com.hermes.backend.auth.AuthModule
@@ -44,6 +46,7 @@ interface AppResources : Closeable {
     val adminAccessModule: AdminAccessModule
     val adminCatalogModule: AdminCatalogModule
     val adminTaxModule: AdminTaxModule
+    val adminOperationsModule: AdminOperationsModule
 }
 
 class DefaultAppResources private constructor(
@@ -62,6 +65,7 @@ class DefaultAppResources private constructor(
     override val adminAccessModule: AdminAccessModule,
     override val adminCatalogModule: AdminCatalogModule,
     override val adminTaxModule: AdminTaxModule,
+    override val adminOperationsModule: AdminOperationsModule,
 ) : AppResources {
     companion object {
         fun start(config: AppConfig): DefaultAppResources {
@@ -96,6 +100,7 @@ class DefaultAppResources private constructor(
             val adminAccessModule = AdminAccessModuleFactory.fromMongo(client = mongoClient, database = mongoDatabase)
             val adminCatalogModule = AdminCatalogModuleFactory.fromMongo(database = mongoDatabase)
             val adminTaxModule = AdminTaxModuleFactory.fromMongo(database = mongoDatabase)
+            val adminOperationsModule = AdminOperationsModuleFactory.fromMongo(database = mongoDatabase)
 
             return DefaultAppResources(
                 mongoClient = mongoClient,
@@ -113,6 +118,7 @@ class DefaultAppResources private constructor(
                 adminAccessModule = adminAccessModule,
                 adminCatalogModule = adminCatalogModule,
                 adminTaxModule = adminTaxModule,
+                adminOperationsModule = adminOperationsModule,
             )
         }
     }
