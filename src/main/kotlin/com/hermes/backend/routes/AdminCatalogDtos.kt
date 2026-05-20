@@ -42,6 +42,7 @@ import com.hermes.domain.catalog.OrganizationCatalogItem
 import com.hermes.domain.catalog.PlatformCatalogFamily
 import com.hermes.domain.catalog.PlatformCatalogTemplate
 import com.hermes.domain.money.Money
+import com.hermes.domain.shared.DomainRuleViolation
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -491,6 +492,21 @@ fun AdminCatalogLocalItemActionRequest.toDeactivateCommand(
     reason = reason,
 )
 
+fun AdminCatalogLocalItemActionRequest.toStatusCommand(
+    organizationId: String,
+    itemId: String,
+    actorUserId: String,
+    actorEffectivePermissions: Set<String>,
+    status: CatalogItemStatus,
+): CatalogUpdateLocalItemCommand = CatalogUpdateLocalItemCommand(
+    organizationId = organizationId,
+    actorUserId = actorUserId,
+    actorEffectivePermissions = actorEffectivePermissions,
+    catalogItemId = itemId,
+    status = status,
+    reason = reason,
+)
+
 fun AdminCatalogLocalItemActionRequest.toRemoveCommand(
     organizationId: String,
     itemId: String,
@@ -769,7 +785,7 @@ fun CatalogApproveRequestAsTemplateResult.toAdminCatalogResponse(): AdminCatalog
 
 private inline fun <reified T : Enum<T>> String.toCatalogEnum(label: String): T =
     runCatching { enumValueOf<T>(trim().uppercase()) }.getOrElse {
-        throw IllegalArgumentException("Unsupported $label: $this.")
+        throw DomainRuleViolation("Unsupported $label: $this.")
     }
 
 private inline fun <reified T : Enum<T>> String?.toCatalogEnumSet(): Set<T> =
@@ -781,4 +797,4 @@ private inline fun <reified T : Enum<T>> String?.toCatalogEnumSet(): Set<T> =
         .orEmpty()
 
 private fun String?.requiredAdminCatalog(label: String): String =
-    this?.trim()?.takeIf { it.isNotBlank() } ?: throw IllegalArgumentException("$label cannot be blank.")
+    this?.trim()?.takeIf { it.isNotBlank() } ?: throw DomainRuleViolation("$label cannot be blank.")

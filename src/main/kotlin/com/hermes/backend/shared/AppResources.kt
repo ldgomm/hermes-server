@@ -1,5 +1,7 @@
 package com.hermes.backend.shared
 
+import com.hermes.backend.admin.access.AdminAccessModule
+import com.hermes.backend.admin.access.AdminAccessModuleFactory
 import com.hermes.backend.admin.business.AdminBusinessModule
 import com.hermes.backend.admin.business.AdminBusinessModuleFactory
 import com.hermes.backend.auth.AuthModule
@@ -35,6 +37,8 @@ interface AppResources : Closeable {
     val paymentsModule: PaymentsModule
     val electronicInvoicingModule: ElectronicInvoicingModule
     val adminBusinessModule: AdminBusinessModule
+    val adminAccessModule: AdminAccessModule
+
 }
 
 class DefaultAppResources private constructor(
@@ -50,6 +54,7 @@ class DefaultAppResources private constructor(
     override val paymentsModule: PaymentsModule,
     override val electronicInvoicingModule: ElectronicInvoicingModule,
     override val adminBusinessModule: AdminBusinessModule,
+    override val adminAccessModule: AdminAccessModule,
 ) : AppResources {
     companion object {
         fun start(config: AppConfig): DefaultAppResources {
@@ -59,10 +64,8 @@ class DefaultAppResources private constructor(
             val redisClient = RedisClient.create(config.redis.uri)
             val redisConnection = redisClient.connect()
 
-            val minioClient = MinioClient.builder()
-                .endpoint(config.minio.endpoint)
-                .credentials(config.minio.accessKey, config.minio.secretKey)
-                .build()
+            val minioClient = MinioClient.builder().endpoint(config.minio.endpoint)
+                .credentials(config.minio.accessKey, config.minio.secretKey).build()
 
             val checks = listOf(
                 ApplicationHealthCheck(),
@@ -83,6 +86,7 @@ class DefaultAppResources private constructor(
             val paymentsModule = PaymentsModuleFactory.fromMongo(client = mongoClient, database = mongoDatabase)
             val electronicInvoicingModule = ElectronicInvoicingModuleFactory.fromMongo(database = mongoDatabase)
             val adminBusinessModule = AdminBusinessModuleFactory.fromMongo(database = mongoDatabase)
+            val adminAccessModule = AdminAccessModuleFactory.fromMongo(client = mongoClient, database = mongoDatabase)
 
             return DefaultAppResources(
                 mongoClient = mongoClient,
@@ -97,6 +101,7 @@ class DefaultAppResources private constructor(
                 paymentsModule = paymentsModule,
                 electronicInvoicingModule = electronicInvoicingModule,
                 adminBusinessModule = adminBusinessModule,
+                adminAccessModule = adminAccessModule,
             )
         }
     }

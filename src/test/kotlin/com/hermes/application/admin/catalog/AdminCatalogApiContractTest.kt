@@ -53,22 +53,28 @@ class AdminCatalogApiContractTest {
         assertEquals(10, AdminCatalogSecurityContract.mutationEndpoints.size)
 
         assertEquals(
-            3, AdminCatalogSecurityContract.endpoints.count { it.surface == AdminCatalogSurface.MASTER_TEMPLATES })
+            3,
+            AdminCatalogSecurityContract.endpoints.count { it.surface == AdminCatalogSurface.MASTER_TEMPLATES })
         assertEquals(
-            2, AdminCatalogSecurityContract.endpoints.count { it.surface == AdminCatalogSurface.MASTER_CATEGORIES })
+            2,
+            AdminCatalogSecurityContract.endpoints.count { it.surface == AdminCatalogSurface.MASTER_CATEGORIES })
         assertEquals(
-            2, AdminCatalogSecurityContract.endpoints.count { it.surface == AdminCatalogSurface.MASTER_FAMILIES })
+            2,
+            AdminCatalogSecurityContract.endpoints.count { it.surface == AdminCatalogSurface.MASTER_FAMILIES })
         assertEquals(7, AdminCatalogSecurityContract.endpoints.count { it.surface == AdminCatalogSurface.LOCAL_ITEMS })
         assertEquals(4, AdminCatalogSecurityContract.endpoints.count { it.surface == AdminCatalogSurface.REQUESTS })
 
         assertEquals(
-            AdminCatalogSurface.entries.toSet(), AdminCatalogSecurityContract.endpoints.map { it.surface }.toSet()
+            AdminCatalogSurface.entries.toSet(),
+            AdminCatalogSecurityContract.endpoints.map { it.surface }.toSet()
         )
     }
 
     @Test
     fun `critical mutations are audited and reason protected`() {
-        AdminCatalogSecurityContract.mutationEndpoints.filter { it.critical }.forEach { endpoint ->
+        AdminCatalogSecurityContract.mutationEndpoints
+            .filter { it.critical }
+            .forEach { endpoint ->
                 assertTrue(endpoint.audited, "${endpoint.key} must be audited")
                 assertTrue(endpoint.requiresReason, "${endpoint.key} must require reason")
             }
@@ -84,7 +90,21 @@ class AdminCatalogApiContractTest {
 
     @Test
     fun `local item routes are organization scoped`() {
-        AdminCatalogSecurityContract.endpoints.filter { it.surface == AdminCatalogSurface.LOCAL_ITEMS }
+        AdminCatalogSecurityContract.endpoints
+            .filter { it.surface == AdminCatalogSurface.LOCAL_ITEMS }
             .forEach { endpoint -> assertTrue(endpoint.organizationScoped, endpoint.key) }
     }
+
+    @Test
+    fun `phase closure report stays aligned with executable contract`() {
+        val report = AdminCatalogPhase13CClosure.report
+
+        assertEquals("13C", report.phase)
+        assertTrue(report.totalRouteCountMatchesContract)
+        assertTrue(report.coversAllSurfaces)
+        assertEquals(AdminCatalogApiContract.routes.size, report.routeCount)
+        assertTrue(report.completedCapabilities.any { it.contains("Mongo wiring") })
+        assertTrue(report.safetyRules.any { it.contains("active organization") })
+    }
+
 }

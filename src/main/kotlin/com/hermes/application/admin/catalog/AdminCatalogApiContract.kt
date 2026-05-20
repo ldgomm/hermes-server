@@ -12,48 +12,26 @@ import com.hermes.domain.permission.PermissionCatalog
 object AdminCatalogApiContract {
     val routes: List<AdminCatalogRouteContract> = listOf(
         AdminCatalogRouteContract("GET", "/api/v1/admin/catalog/master/templates", "Search platform catalog templates"),
-        AdminCatalogRouteContract(
-            "GET", "/api/v1/admin/catalog/master/templates/{templateId}", "Get platform catalog template detail"
-        ),
+        AdminCatalogRouteContract("GET", "/api/v1/admin/catalog/master/templates/{templateId}", "Get platform catalog template detail"),
         AdminCatalogRouteContract("POST", "/api/v1/admin/catalog/master/templates", "Create platform catalog template"),
 
         AdminCatalogRouteContract("GET", "/api/v1/admin/catalog/master/categories", "List platform catalog categories"),
-        AdminCatalogRouteContract(
-            "POST", "/api/v1/admin/catalog/master/categories", "Create platform catalog category"
-        ),
+        AdminCatalogRouteContract("POST", "/api/v1/admin/catalog/master/categories", "Create platform catalog category"),
         AdminCatalogRouteContract("GET", "/api/v1/admin/catalog/master/families", "List platform catalog families"),
         AdminCatalogRouteContract("POST", "/api/v1/admin/catalog/master/families", "Create platform catalog family"),
 
         AdminCatalogRouteContract("GET", "/api/v1/admin/catalog/local/items", "List organization catalog items"),
-        AdminCatalogRouteContract(
-            "POST", "/api/v1/admin/catalog/local/items/copy-from-template", "Copy template into organization catalog"
-        ),
-        AdminCatalogRouteContract(
-            "GET", "/api/v1/admin/catalog/local/items/{itemId}", "Get organization catalog item detail"
-        ),
-        AdminCatalogRouteContract(
-            "PUT", "/api/v1/admin/catalog/local/items/{itemId}", "Update organization catalog item"
-        ),
-        AdminCatalogRouteContract(
-            "POST", "/api/v1/admin/catalog/local/items/{itemId}/activate", "Activate organization catalog item"
-        ),
-        AdminCatalogRouteContract(
-            "POST", "/api/v1/admin/catalog/local/items/{itemId}/deactivate", "Deactivate organization catalog item"
-        ),
-        AdminCatalogRouteContract(
-            "POST",
-            "/api/v1/admin/catalog/local/items/{itemId}/remove",
-            "Remove organization catalog item without destructive delete"
-        ),
+        AdminCatalogRouteContract("POST", "/api/v1/admin/catalog/local/items/copy-from-template", "Copy template into organization catalog"),
+        AdminCatalogRouteContract("GET", "/api/v1/admin/catalog/local/items/{itemId}", "Get organization catalog item detail"),
+        AdminCatalogRouteContract("PUT", "/api/v1/admin/catalog/local/items/{itemId}", "Update organization catalog item"),
+        AdminCatalogRouteContract("POST", "/api/v1/admin/catalog/local/items/{itemId}/activate", "Activate organization catalog item"),
+        AdminCatalogRouteContract("POST", "/api/v1/admin/catalog/local/items/{itemId}/deactivate", "Deactivate organization catalog item"),
+        AdminCatalogRouteContract("POST", "/api/v1/admin/catalog/local/items/{itemId}/remove", "Remove organization catalog item without destructive delete"),
 
         AdminCatalogRouteContract("GET", "/api/v1/admin/catalog/requests", "List organization catalog requests"),
         AdminCatalogRouteContract("POST", "/api/v1/admin/catalog/requests", "Create catalog item request"),
-        AdminCatalogRouteContract(
-            "GET", "/api/v1/admin/catalog/requests/{requestId}", "Get catalog item request detail"
-        ),
-        AdminCatalogRouteContract(
-            "POST", "/api/v1/admin/catalog/requests/{requestId}/review", "Review catalog item request"
-        ),
+        AdminCatalogRouteContract("GET", "/api/v1/admin/catalog/requests/{requestId}", "Get catalog item request detail"),
+        AdminCatalogRouteContract("POST", "/api/v1/admin/catalog/requests/{requestId}/review", "Review catalog item request"),
     )
 }
 
@@ -372,9 +350,14 @@ data class AdminCatalogEndpointSecurityContract(
 }
 
 enum class AdminCatalogPermissionMode {
-    ANY, ALL,
+    ANY,
+    ALL,
 }
 
 enum class AdminCatalogSurface {
-    MASTER_TEMPLATES, MASTER_CATEGORIES, MASTER_FAMILIES, LOCAL_ITEMS, REQUESTS,
+    MASTER_TEMPLATES,
+    MASTER_CATEGORIES,
+    MASTER_FAMILIES,
+    LOCAL_ITEMS,
+    REQUESTS,
 }
