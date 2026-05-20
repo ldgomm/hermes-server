@@ -1,6 +1,7 @@
 package com.hermes.backend.admin.access
 
 import com.hermes.application.admin.access.AdminResetUserPasswordUseCase
+import com.hermes.application.admin.access.CreateAdminTemporaryUserUseCase
 import com.hermes.application.admin.access.UnblockAdminUserUseCase
 import com.hermes.application.admin.access.RevokeAdminUserSessionsUseCase
 import com.hermes.application.admin.access.BlockAdminUserUseCase
@@ -19,6 +20,7 @@ import com.hermes.application.admin.access.UpdateAdminRoleUseCase
 import com.hermes.application.admin.access.UpdateAdminUserUseCase
 
 data class AdminAccessModule(
+    val createTemporaryUserUseCase: CreateAdminTemporaryUserUseCase,
     val listUsersUseCase: ListAdminUsersUseCase,
     val getUserUseCase: GetAdminUserUseCase,
     val updateUserUseCase: UpdateAdminUserUseCase,

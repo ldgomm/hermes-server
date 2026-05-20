@@ -12,14 +12,19 @@ import java.time.Instant
 import java.util.*
 
 internal object MongoAdminAccessMappers {
-    fun invitationToDocument(invitation: Invitation): Document =
-        Document("_id", invitation.id).append("organizationId", invitation.organizationId)
-            .append("email", invitation.email).append("invitedByUserId", invitation.invitedByUserId)
-            .append("roleIds", invitation.roleIds.sorted()).append("tokenHash", invitation.tokenHash)
-            .append("status", invitation.status.name).append("createdAt", invitation.createdAt.toDate())
-            .append("expiresAt", invitation.expiresAt.toDate()).append("acceptedAt", invitation.acceptedAt?.toDate())
-            .append("revokedAt", invitation.revokedAt?.toDate()).append("acceptedUserId", invitation.acceptedUserId)
-            .append("version", invitation.version)
+    fun invitationToDocument(invitation: Invitation): Document = Document("_id", invitation.id)
+        .append("organizationId", invitation.organizationId)
+        .append("email", invitation.email)
+        .append("invitedByUserId", invitation.invitedByUserId)
+        .append("roleIds", invitation.roleIds.sorted())
+        .append("tokenHash", invitation.tokenHash)
+        .append("status", invitation.status.name)
+        .append("createdAt", invitation.createdAt.toDate())
+        .append("expiresAt", invitation.expiresAt.toDate())
+        .append("acceptedAt", invitation.acceptedAt?.toDate())
+        .append("revokedAt", invitation.revokedAt?.toDate())
+        .append("acceptedUserId", invitation.acceptedUserId)
+        .append("version", invitation.version)
 
     fun invitationFromDocument(document: Document): Invitation = Invitation(
         id = document.requiredString("_id"),
@@ -39,20 +44,28 @@ internal object MongoAdminAccessMappers {
         version = document.getLongFlexible("version") ?: 1L,
     )
 
-    fun roleToDocument(role: RoleDefinition): Document =
-        Document("_id", role.id).append("code", role.code).append("organizationId", role.organizationId)
-            .append("scope", role.scope.name.lowercase()).append("type", role.type.name.lowercase())
-            .append("name", role.name).append("description", role.description)
-            .append("permissionKeys", role.permissionKeys.sorted()).append("permissions", role.permissionKeys.sorted())
-            .append("systemRole", role.systemRole).append("critical", role.critical).append("editable", role.editable)
-            .append("status", role.status.name.lowercase()).append("schemaVersion", role.schemaVersion)
+    fun roleToDocument(role: RoleDefinition): Document = Document("_id", role.id)
+        .append("code", role.code)
+        .append("organizationId", role.organizationId)
+        .append("scope", role.scope.name.lowercase())
+        .append("type", role.type.name.lowercase())
+        .append("name", role.name)
+        .append("description", role.description)
+        .append("permissionKeys", role.permissionKeys.sorted())
+        .append("permissions", role.permissionKeys.sorted())
+        .append("systemRole", role.systemRole)
+        .append("critical", role.critical)
+        .append("editable", role.editable)
+        .append("status", role.status.name.lowercase())
+        .append("schemaVersion", role.schemaVersion)
 
     fun roleFromDocument(document: Document): RoleDefinition {
         val scope = document.getEnum("scope", RoleScope.ORGANIZATION) { raw ->
             RoleScope.valueOf(raw.normalizedEnumToken())
         }
         val type = document.getEnum(
-            "type", if (scope == RoleScope.PLATFORM) RoleType.SYSTEM else RoleType.ORGANIZATION
+            "type",
+            if (scope == RoleScope.PLATFORM) RoleType.SYSTEM else RoleType.ORGANIZATION
         ) { raw ->
             RoleType.valueOf(raw.normalizedEnumToken())
         }
@@ -81,12 +94,17 @@ internal object MongoAdminAccessMappers {
 
     private fun Instant.toDate(): Date = Date.from(this)
 
-    private fun String.normalizedEnumToken(): String = trim().replace('-', '_').replace('.', '_').uppercase()
+    private fun String.normalizedEnumToken(): String = trim()
+        .replace('-', '_')
+        .replace('.', '_')
+        .uppercase()
 
-    private fun Document.requiredString(key: String): String = getString(key)?.trim()?.takeIf { it.isNotBlank() }
-        ?: throw DomainRuleViolation("Mongo document field $key is required.")
+    private fun Document.requiredString(key: String): String =
+        getString(key)?.trim()?.takeIf { it.isNotBlank() }
+            ?: throw DomainRuleViolation("Mongo document field $key is required.")
 
-    private fun Document.getNullableString(key: String): String? = getString(key)?.trim()?.takeIf { it.isNotBlank() }
+    private fun Document.getNullableString(key: String): String? =
+        getString(key)?.trim()?.takeIf { it.isNotBlank() }
 
     private fun Document.requiredInstant(key: String): Instant =
         getInstantOrNull(key) ?: throw DomainRuleViolation("Mongo document date field $key is required.")

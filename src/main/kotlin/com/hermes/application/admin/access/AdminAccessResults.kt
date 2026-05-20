@@ -2,6 +2,15 @@ package com.hermes.application.admin.access
 
 import java.time.Instant
 
+data class AdminTemporaryUserResult(
+    val user: AdminUserAccessDetail,
+    val credentialId: String,
+    val membershipId: String,
+    val temporaryPassword: String,
+    val mustChangePassword: Boolean,
+    val createdAt: Instant,
+)
+
 data class AdminUsersResult(
     val users: List<AdminUserAccessSummary>,
 )

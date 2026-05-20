@@ -1,27 +1,10 @@
 package com.hermes.backend.admin.access
 
-import com.hermes.application.admin.access.AdminResetUserPasswordUseCase
-import com.hermes.application.admin.access.UnblockAdminUserUseCase
-import com.hermes.application.admin.access.RevokeAdminUserSessionsUseCase
-import com.hermes.application.admin.access.BlockAdminUserUseCase
-import com.hermes.application.admin.access.ChangeAdminRoleStatusUseCase
-import com.hermes.application.admin.access.CreateAdminRoleUseCase
-import com.hermes.application.admin.access.GetAdminInvitationUseCase
-import com.hermes.application.admin.access.GetAdminRoleUseCase
-import com.hermes.application.admin.access.GetAdminUserUseCase
-import com.hermes.application.admin.access.ListAdminInvitationsUseCase
-import com.hermes.application.admin.access.ListAdminPermissionsUseCase
-import com.hermes.application.admin.access.ListAdminRolesUseCase
-import com.hermes.application.admin.access.ListAdminUsersUseCase
-import com.hermes.application.admin.access.RevokeAdminInvitationUseCase
-import com.hermes.application.admin.access.ResendAdminInvitationUseCase
-import com.hermes.application.admin.access.UpdateAdminRoleUseCase
-import com.hermes.application.admin.access.UpdateAdminUserUseCase
-import com.hermes.application.auth.PasswordPolicy
-import com.hermes.application.auth.Pbkdf2PasswordHasher
-import com.hermes.application.auth.SecureTokenGenerator
+import com.hermes.application.admin.access.*
+import com.hermes.application.auth.*
 import com.hermes.infrastructure.mongo.admin.access.MongoAdminAccessRepository
 import com.hermes.infrastructure.mongo.auth.MongoAuthStore
+import com.hermes.infrastructure.mongo.auth.MongoCredentialAdminStore
 import com.hermes.infrastructure.mongo.auth.MongoCredentialAuditLogger
 import com.mongodb.client.MongoClient
 import com.mongodb.client.MongoDatabase
@@ -35,9 +18,33 @@ object AdminAccessModuleFactory {
     ): AdminAccessModule {
         val repository = MongoAdminAccessRepository(database)
         val authStore = MongoAuthStore(database = database, client = client)
+        val credentialAdminStore = MongoCredentialAdminStore(database = database)
         val auditLogger = MongoCredentialAuditLogger(database)
+        val passwordPolicy = PasswordPolicy()
+        val passwordHasher = Pbkdf2PasswordHasher()
+        val tokenGenerator = SecureTokenGenerator()
+        val idGenerator = UuidAuthIdGenerator()
+
+        val temporaryUserUseCase = CreateTemporaryUserUseCase(
+            userRepository = authStore,
+            credentialRepository = authStore,
+            organizationRepository = authStore,
+            membershipRepository = credentialAdminStore,
+            roleRepository = credentialAdminStore,
+            idGenerator = idGenerator,
+            passwordPolicy = passwordPolicy,
+            passwordHasher = passwordHasher,
+            tokenGenerator = tokenGenerator,
+            auditLogger = auditLogger,
+            clock = clock,
+        )
 
         return AdminAccessModule(
+            createTemporaryUserUseCase = CreateAdminTemporaryUserUseCase(
+                delegate = temporaryUserUseCase,
+                accessRepository = repository,
+                clock = clock,
+            ),
             listUsersUseCase = ListAdminUsersUseCase(repository),
             getUserUseCase = GetAdminUserUseCase(repository),
             updateUserUseCase = UpdateAdminUserUseCase(repository, clock),
@@ -47,9 +54,9 @@ object AdminAccessModuleFactory {
             resetUserPasswordUseCase = AdminResetUserPasswordUseCase(
                 accessRepository = repository,
                 credentialRepository = authStore,
-                passwordPolicy = PasswordPolicy(),
-                passwordHasher = Pbkdf2PasswordHasher(),
-                tokenGenerator = SecureTokenGenerator(),
+                passwordPolicy = passwordPolicy,
+                passwordHasher = passwordHasher,
+                tokenGenerator = tokenGenerator,
                 auditLogger = auditLogger,
                 clock = clock,
             ),

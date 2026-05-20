@@ -1,5 +1,19 @@
 package com.hermes.application.admin.access
 
+data class CreateAdminTemporaryUserCommand(
+    val organizationId: String,
+    val actorUserId: String,
+    val actorEffectivePermissions: Set<String>,
+    val email: String,
+    val displayName: String,
+    val roleIds: Set<String>,
+    val temporaryPassword: String? = null,
+    val phone: String? = null,
+    val reason: String,
+    val ipAddress: String? = null,
+    val userAgent: String? = null,
+)
+
 data class ListAdminUsersCommand(
     val organizationId: String,
     val actorUserId: String,

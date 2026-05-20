@@ -11,6 +11,8 @@ import java.time.Instant
  * audit_logs/domain_events without changing use cases.
  */
 enum class AdminAccessAuditAction {
+    TEMPORARY_USER_CREATED,
+    USER_PASSWORD_RESET,
     USER_ACCESS_UPDATED,
     USER_BLOCKED,
     USER_UNBLOCKED,

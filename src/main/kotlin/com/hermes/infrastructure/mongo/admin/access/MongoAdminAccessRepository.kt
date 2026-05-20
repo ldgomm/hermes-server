@@ -60,12 +60,14 @@ class MongoAdminAccessRepository(
             if (!status.isNullOrBlank()) add(eq("status", status.trim().lowercase()))
         }
 
-        return memberships.find(and(membershipFilter)).limit(limit.coerceIn(1, 250)).into(mutableListOf())
+        return memberships.find(and(membershipFilter))
+            .limit(limit.coerceIn(1, 250))
+            .into(mutableListOf())
             .mapNotNull { membershipDocument ->
                 val membership = MongoAuthMappers.membershipFromDocument(membershipDocument)
-                val user =
-                    users.find(eq("_id", membership.userId)).firstOrNull()?.let(MongoAuthMappers::userFromDocument)
-                        ?: return@mapNotNull null
+                val user = users.find(eq("_id", membership.userId)).firstOrNull()
+                    ?.let(MongoAuthMappers::userFromDocument)
+                    ?: return@mapNotNull null
 
                 if (!query.matchesUserQuery(user)) return@mapNotNull null
 
@@ -76,7 +78,8 @@ class MongoAdminAccessRepository(
                     roles = roleList,
                     activeSessionCount = activeSessionCount(user.id),
                 )
-            }.sortedBy { it.user.displayName.lowercase() }
+            }
+            .sortedBy { it.user.displayName.lowercase() }
     }
 
     override fun findUserAccess(organizationId: String, userId: String): AdminUserAccessRecord? {
@@ -91,15 +94,17 @@ class MongoAdminAccessRepository(
         )
     }
 
-    override fun findUserById(userId: String): User? =
-        users.find(eq("_id", userId.trim())).firstOrNull()?.let(MongoAuthMappers::userFromDocument)
+    override fun findUserById(userId: String): User? = users.find(eq("_id", userId.trim()))
+        .firstOrNull()
+        ?.let(MongoAuthMappers::userFromDocument)
 
     override fun updateUser(user: User) {
         users.replaceOne(eq("_id", user.id), MongoAuthMappers.userToDocument(user), ReplaceOptions().upsert(false))
     }
 
     override fun findMembership(organizationId: String, userId: String): OrganizationMembership? =
-        memberships.find(and(eq("organizationId", organizationId.trim()), eq("userId", userId.trim()))).firstOrNull()
+        memberships.find(and(eq("organizationId", organizationId.trim()), eq("userId", userId.trim())))
+            .firstOrNull()
             ?.let(MongoAuthMappers::membershipFromDocument)
 
     override fun updateMembership(membership: OrganizationMembership) {
@@ -112,7 +117,9 @@ class MongoAdminAccessRepository(
 
     override fun findRolesByIds(roleIds: Set<String>): List<RoleDefinition> {
         if (roleIds.isEmpty()) return emptyList()
-        return roles.find(`in`("_id", roleIds)).into(mutableListOf()).map(MongoAdminAccessMappers::roleFromDocument)
+        return roles.find(`in`("_id", roleIds))
+            .into(mutableListOf())
+            .map(MongoAdminAccessMappers::roleFromDocument)
     }
 
     override fun listRoles(organizationId: String, includeSystemTemplates: Boolean): List<RoleDefinition> {
@@ -121,21 +128,27 @@ class MongoAdminAccessRepository(
         )
         if (includeSystemTemplates) {
             filters += and(
-                eq("scope", RoleScope.ORGANIZATION.name.lowercase()), Filters.exists("organizationId", false)
+                eq("scope", RoleScope.ORGANIZATION.name.lowercase()),
+                Filters.exists("organizationId", false)
             )
             filters += and(eq("scope", RoleScope.ORGANIZATION.name.lowercase()), eq("organizationId", null))
         }
 
-        return roles.find(or(filters)).sort(Sorts.ascending("type", "name")).into(mutableListOf())
-            .map(MongoAdminAccessMappers::roleFromDocument).distinctBy { it.id }
+        return roles.find(or(filters))
+            .sort(Sorts.ascending("type", "name"))
+            .into(mutableListOf())
+            .map(MongoAdminAccessMappers::roleFromDocument)
+            .distinctBy { it.id }
     }
 
     override fun findRole(organizationId: String, roleId: String): RoleDefinition? {
-        val role = roles.find(eq("_id", roleId.trim())).firstOrNull()?.let(MongoAdminAccessMappers::roleFromDocument)
+        val role = roles.find(eq("_id", roleId.trim()))
+            .firstOrNull()
+            ?.let(MongoAdminAccessMappers::roleFromDocument)
             ?: return null
 
-        val visible =
-            role.organizationId == organizationId.trim() || (role.scope == RoleScope.ORGANIZATION && role.organizationId == null)
+        val visible = role.organizationId == organizationId.trim() ||
+                (role.scope == RoleScope.ORGANIZATION && role.organizationId == null)
 
         return role.takeIf { visible }
     }
@@ -149,7 +162,9 @@ class MongoAdminAccessRepository(
             ),
             eq("code", code.trim()),
         )
-        return roles.find(filter).into(mutableListOf()).map(MongoAdminAccessMappers::roleFromDocument)
+        return roles.find(filter)
+            .into(mutableListOf())
+            .map(MongoAdminAccessMappers::roleFromDocument)
             .any { it.id != excludeRoleId }
     }
 
@@ -159,7 +174,9 @@ class MongoAdminAccessRepository(
 
     override fun updateRole(role: RoleDefinition) {
         roles.replaceOne(
-            eq("_id", role.id), MongoAdminAccessMappers.roleToDocument(role), ReplaceOptions().upsert(false)
+            eq("_id", role.id),
+            MongoAdminAccessMappers.roleToDocument(role),
+            ReplaceOptions().upsert(false)
         )
     }
 
@@ -168,12 +185,16 @@ class MongoAdminAccessRepository(
             add(eq("organizationId", organizationId.trim()))
             if (!status.isNullOrBlank()) add(eq("status", status.trim().uppercase()))
         }
-        return invitations.find(and(filters)).sort(Sorts.descending("createdAt")).limit(limit.coerceIn(1, 250))
-            .into(mutableListOf()).map(MongoAdminAccessMappers::invitationFromDocument)
+        return invitations.find(and(filters))
+            .sort(Sorts.descending("createdAt"))
+            .limit(limit.coerceIn(1, 250))
+            .into(mutableListOf())
+            .map(MongoAdminAccessMappers::invitationFromDocument)
     }
 
     override fun findInvitation(organizationId: String, invitationId: String): Invitation? =
-        invitations.find(and(eq("_id", invitationId.trim()), eq("organizationId", organizationId.trim()))).firstOrNull()
+        invitations.find(and(eq("_id", invitationId.trim()), eq("organizationId", organizationId.trim())))
+            .firstOrNull()
             ?.let(MongoAdminAccessMappers::invitationFromDocument)
 
     override fun updateInvitation(invitation: Invitation) {
@@ -188,12 +209,15 @@ class MongoAdminAccessRepository(
         if (includeReserved) PermissionCatalog.definitions else PermissionCatalog.active
 
     override fun findActiveSessionsByUserId(userId: String): List<UserSession> =
-        sessions.find(and(eq("userId", userId.trim()), eq("status", "active"))).into(mutableListOf())
+        sessions.find(and(eq("userId", userId.trim()), eq("status", "active")))
+            .into(mutableListOf())
             .map(MongoAuthMappers::sessionFromDocument)
 
     override fun updateSession(session: UserSession) {
         sessions.replaceOne(
-            eq("_id", session.id), MongoAuthMappers.sessionToDocument(session), ReplaceOptions().upsert(false)
+            eq("_id", session.id),
+            MongoAuthMappers.sessionToDocument(session),
+            ReplaceOptions().upsert(false)
         )
     }
 
@@ -213,14 +237,15 @@ class MongoAdminAccessRepository(
         organizationId: String,
         excludingUserId: String?,
         adminPermissionKeys: Set<String>,
-    ): Int =
-        memberships.find(and(eq("organizationId", organizationId.trim()), eq("status", "active"))).into(mutableListOf())
-            .map(MongoAuthMappers::membershipFromDocument).filterNot { it.userId == excludingUserId }
-            .count { membership ->
-                findRolesByIds(membership.roleIds).any { role ->
-                    role.status == RoleStatus.ACTIVE && role.permissionKeys.any { it in adminPermissionKeys }
-                }
+    ): Int = memberships.find(and(eq("organizationId", organizationId.trim()), eq("status", "active")))
+        .into(mutableListOf())
+        .map(MongoAuthMappers::membershipFromDocument)
+        .filterNot { it.userId == excludingUserId }
+        .count { membership ->
+            findRolesByIds(membership.roleIds).any { role ->
+                role.status == RoleStatus.ACTIVE && role.permissionKeys.any { it in adminPermissionKeys }
             }
+        }
 
     private fun activeSessionCount(userId: String): Int =
         sessions.countDocuments(and(eq("userId", userId.trim()), eq("status", "active"))).toInt()

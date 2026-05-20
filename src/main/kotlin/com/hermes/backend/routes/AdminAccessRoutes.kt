@@ -1,6 +1,7 @@
 package com.hermes.backend.routes
 
 import com.hermes.application.admin.access.AdminResetUserPasswordCommand
+import com.hermes.application.admin.access.CreateAdminTemporaryUserCommand
 import com.hermes.application.admin.access.UnblockAdminUserCommand
 import com.hermes.application.admin.access.RevokeAdminUserSessionsCommand
 import com.hermes.application.admin.access.BlockAdminUserCommand
@@ -17,13 +18,10 @@ import com.hermes.application.admin.access.RevokeAdminInvitationCommand
 import com.hermes.application.admin.access.ResendAdminInvitationCommand
 import com.hermes.application.admin.access.UpdateAdminRoleCommand
 import com.hermes.application.admin.access.UpdateAdminUserCommand
-import com.hermes.application.auth.CreateTemporaryUserCommand
 import com.hermes.application.auth.InviteUserCommand
 import com.hermes.backend.admin.access.AdminAccessModule
-import com.hermes.backend.auth.CreateTemporaryUserRequest
 import com.hermes.backend.auth.InviteUserRequest
 import com.hermes.backend.auth.toCredentialResponse
-import com.hermes.backend.auth.toResponse
 import com.hermes.backend.auth.AuthModule
 import com.hermes.backend.auth.hermesAuthContext
 import com.hermes.backend.auth.hermesAuthenticated
@@ -101,9 +99,9 @@ fun Route.adminAccessRoutes(
                 hermesRequiresPermission(PermissionCatalog.CREDENTIALS_USERS_CREATE) {
                     post("/temporary") {
                         val context = call.hermesAuthContext()
-                        val request = call.receive<CreateTemporaryUserRequest>()
-                        val result = authModule.credentialAdministrationModule.createTemporaryUserUseCase.execute(
-                            CreateTemporaryUserCommand(
+                        val request = call.receive<CreateAdminTemporaryUserRequest>()
+                        val result = adminAccessModule.createTemporaryUserUseCase.execute(
+                            CreateAdminTemporaryUserCommand(
                                 organizationId = call.adminAccessOrganizationId(),
                                 actorUserId = context.userId,
                                 actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
@@ -112,11 +110,12 @@ fun Route.adminAccessRoutes(
                                 roleIds = request.roleIds,
                                 temporaryPassword = request.temporaryPassword,
                                 phone = request.phone,
+                                reason = request.reason,
                                 ipAddress = call.adminAccessClientIpAddress(),
                                 userAgent = call.request.header(HttpHeaders.UserAgent),
                             )
                         )
-                        call.respond(HttpStatusCode.Created, result.toCredentialResponse())
+                        call.respond(HttpStatusCode.Created, result.toResponse())
                     }
 
                     put("/{userId}") {

@@ -8,6 +8,7 @@ import com.hermes.application.admin.access.AdminPermissionsResult
 import com.hermes.application.admin.access.AdminResetUserPasswordResult
 import com.hermes.application.admin.access.AdminRoleResult
 import com.hermes.application.admin.access.AdminRoleSummary
+import com.hermes.application.admin.access.AdminTemporaryUserResult
 import com.hermes.application.admin.access.AdminRolesResult
 import com.hermes.application.admin.access.AdminUserAccessDetail
 import com.hermes.application.admin.access.AdminUserAccessSummary
@@ -18,6 +19,26 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class AdminUsersResponse(val users: List<AdminUserResponse>)
+
+@Serializable
+data class CreateAdminTemporaryUserRequest(
+    val email: String,
+    val displayName: String,
+    val roleIds: Set<String>,
+    val temporaryPassword: String? = null,
+    val phone: String? = null,
+    val reason: String = "Create temporary admin user",
+)
+
+@Serializable
+data class AdminTemporaryUserResponse(
+    val user: AdminUserResponse,
+    val credentialId: String,
+    val membershipId: String,
+    val temporaryPassword: String,
+    val mustChangePassword: Boolean,
+    val createdAt: String,
+)
 
 @Serializable
 data class AdminUserResponse(
@@ -184,6 +205,15 @@ fun AdminUsersResult.toResponse(): AdminUsersResponse =
     AdminUsersResponse(users.map { it.toResponse() })
 
 fun AdminUserResult.toResponse(): AdminUserResponse = user.toResponse()
+
+fun AdminTemporaryUserResult.toResponse(): AdminTemporaryUserResponse = AdminTemporaryUserResponse(
+    user = user.toResponse(),
+    credentialId = credentialId,
+    membershipId = membershipId,
+    temporaryPassword = temporaryPassword,
+    mustChangePassword = mustChangePassword,
+    createdAt = createdAt.toString(),
+)
 
 fun AdminUserAccessSummary.toResponse(): AdminUserResponse = AdminUserResponse(
     id = id,

@@ -1,6 +1,13 @@
 package com.hermes.application.admin.access
 
-import com.hermes.application.auth.*
+import com.hermes.application.auth.CredentialAuditAction
+import com.hermes.application.auth.CredentialAuditEvent
+import com.hermes.application.auth.CredentialAuditLogger
+import com.hermes.application.auth.NoopCredentialAuditLogger
+import com.hermes.application.auth.PasswordHasher
+import com.hermes.application.auth.PasswordPolicy
+import com.hermes.application.auth.SecureTokenGenerator
+import com.hermes.application.auth.UserCredentialRepository
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.permission.PermissionRules
 import com.hermes.domain.shared.DomainRuleViolation
@@ -14,6 +21,7 @@ class AdminResetUserPasswordUseCase(
     private val passwordHasher: PasswordHasher,
     private val tokenGenerator: SecureTokenGenerator,
     private val auditLogger: CredentialAuditLogger = NoopCredentialAuditLogger,
+    private val adminAccessAuditLogger: AdminAccessAuditLogger = NoopAdminAccessAuditLogger,
     private val clock: Clock = Clock.systemUTC(),
 ) {
     fun execute(command: AdminResetUserPasswordCommand): AdminResetUserPasswordResult {
@@ -28,14 +36,19 @@ class AdminResetUserPasswordUseCase(
         val userId = command.userId.required("User id")
         val reason = command.reason.required("Password reset reason")
 
+        if (actorUserId == userId) {
+            throw DomainRuleViolation("Admin password reset cannot target the acting user; use change password instead.")
+        }
+
         val record = accessRepository.findUserAccess(organizationId, userId)
             ?: throw DomainRuleViolation("Target user does not belong to this organization.")
 
         val credential = credentialRepository.findByUserId(userId)
             ?: throw DomainRuleViolation("Target user credential does not exist.")
+        val before = record.toAdminAccessAuditMap() + credential.toAdminAccessAuditMap()
 
-        val temporaryPassword =
-            command.temporaryPassword?.takeIf { it.isNotBlank() } ?: (tokenGenerator.generate().take(24) + "aA1!")
+        val temporaryPassword = command.temporaryPassword?.takeIf { it.isNotBlank() }
+            ?: tokenGenerator.generate().take(24) + "aA1!"
 
         passwordPolicy.assertValid(
             password = temporaryPassword,
@@ -43,10 +56,12 @@ class AdminResetUserPasswordUseCase(
             displayName = record.user.displayName,
         )
 
-        val updatedCredential = credential.replacePassword(
-            newPasswordHash = passwordHasher.hash(temporaryPassword.toCharArray()),
-            changedAt = now,
-        ).forcePasswordChange(now)
+        val updatedCredential = credential
+            .replacePassword(
+                newPasswordHash = passwordHasher.hash(temporaryPassword.toCharArray()),
+                changedAt = now,
+            )
+            .forcePasswordChange(now)
 
         credentialRepository.update(updatedCredential)
 
@@ -75,6 +90,25 @@ class AdminResetUserPasswordUseCase(
                 ipAddress = command.ipAddress,
                 userAgent = command.userAgent,
                 message = reason,
+                createdAt = now,
+            )
+        )
+
+        val updatedRecord = accessRepository.findUserAccess(organizationId, userId) ?: record
+        adminAccessAuditLogger.log(
+            AdminAccessAuditEvent(
+                action = AdminAccessAuditAction.USER_PASSWORD_RESET,
+                organizationId = organizationId,
+                actorUserId = actorUserId,
+                targetId = userId,
+                targetType = "user_access",
+                before = before,
+                after = updatedRecord.toAdminAccessAuditMap() + updatedCredential.toAdminAccessAuditMap() + mapOf(
+                    "revokedSessions" to activeSessions.size.toString(),
+                    "revokedRefreshTokens" to revokedTokens.toString(),
+                    "rawTemporaryPasswordReturned" to "true",
+                ),
+                reason = reason,
                 createdAt = now,
             )
         )

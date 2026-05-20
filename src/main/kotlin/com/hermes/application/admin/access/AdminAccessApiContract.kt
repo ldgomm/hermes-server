@@ -13,9 +13,7 @@ object AdminAccessApiContract {
         AdminAccessRouteContract("POST", "/api/v1/admin/invitations", "Create invitation"),
         AdminAccessRouteContract("GET", "/api/v1/admin/invitations", "List invitations"),
         AdminAccessRouteContract("GET", "/api/v1/admin/invitations/{invitationId}", "Get invitation"),
-        AdminAccessRouteContract(
-            "POST", "/api/v1/admin/invitations/{invitationId}/resend", "Resend invitation placeholder"
-        ),
+        AdminAccessRouteContract("POST", "/api/v1/admin/invitations/{invitationId}/resend", "Resend invitation placeholder"),
         AdminAccessRouteContract("POST", "/api/v1/admin/invitations/{invitationId}/revoke", "Revoke invitation"),
         AdminAccessRouteContract("GET", "/api/v1/admin/roles", "List roles"),
         AdminAccessRouteContract("POST", "/api/v1/admin/roles", "Create custom role"),
