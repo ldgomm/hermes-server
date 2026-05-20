@@ -8,6 +8,8 @@ import com.hermes.backend.admin.catalog.AdminCatalogModule
 import com.hermes.backend.admin.catalog.AdminCatalogModuleFactory
 import com.hermes.backend.admin.operations.AdminOperationsModule
 import com.hermes.backend.admin.operations.AdminOperationsModuleFactory
+import com.hermes.backend.admin.support.AdminSupportModule
+import com.hermes.backend.admin.support.AdminSupportModuleFactory
 import com.hermes.backend.admin.tax.AdminTaxModule
 import com.hermes.backend.admin.tax.AdminTaxModuleFactory
 import com.hermes.backend.auth.AuthModule
@@ -47,6 +49,7 @@ interface AppResources : Closeable {
     val adminCatalogModule: AdminCatalogModule
     val adminTaxModule: AdminTaxModule
     val adminOperationsModule: AdminOperationsModule
+    val adminSupportModule: AdminSupportModule
 }
 
 class DefaultAppResources private constructor(
@@ -66,7 +69,9 @@ class DefaultAppResources private constructor(
     override val adminCatalogModule: AdminCatalogModule,
     override val adminTaxModule: AdminTaxModule,
     override val adminOperationsModule: AdminOperationsModule,
-) : AppResources {
+    override val adminSupportModule: AdminSupportModule,
+
+    ) : AppResources {
     companion object {
         fun start(config: AppConfig): DefaultAppResources {
             val mongoClient = MongoClients.create(config.mongo.uri)
@@ -101,6 +106,7 @@ class DefaultAppResources private constructor(
             val adminCatalogModule = AdminCatalogModuleFactory.fromMongo(database = mongoDatabase)
             val adminTaxModule = AdminTaxModuleFactory.fromMongo(database = mongoDatabase)
             val adminOperationsModule = AdminOperationsModuleFactory.fromMongo(database = mongoDatabase)
+            val adminSupportModule = AdminSupportModuleFactory.fromMongo(mongoDatabase)
 
             return DefaultAppResources(
                 mongoClient = mongoClient,
@@ -119,6 +125,7 @@ class DefaultAppResources private constructor(
                 adminCatalogModule = adminCatalogModule,
                 adminTaxModule = adminTaxModule,
                 adminOperationsModule = adminOperationsModule,
+                adminSupportModule = adminSupportModule,
             )
         }
     }

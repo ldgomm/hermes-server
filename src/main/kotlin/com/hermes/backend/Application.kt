@@ -83,6 +83,7 @@ private fun Application.configureHermesApplication(config: AppConfig, resources:
         authModule = resources.authModule,
         adminOperationsModule = resources.adminOperationsModule,
     )
+    configureAdminSupportRoutes(authModule = resources.authModule, adminSupportModule = resources.adminSupportModule)
 
     monitor.subscribe(ApplicationStopping) { resources.close() }
 }
