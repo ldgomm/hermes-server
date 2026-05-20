@@ -9,7 +9,7 @@ import com.hermes.domain.role.RoleType
 import com.hermes.domain.shared.DomainRuleViolation
 import org.bson.Document
 import java.time.Instant
-import java.util.*
+import java.util.Date
 
 internal object MongoAdminAccessMappers {
     fun invitationToDocument(invitation: Invitation): Document = Document("_id", invitation.id)
@@ -63,10 +63,7 @@ internal object MongoAdminAccessMappers {
         val scope = document.getEnum("scope", RoleScope.ORGANIZATION) { raw ->
             RoleScope.valueOf(raw.normalizedEnumToken())
         }
-        val type = document.getEnum(
-            "type",
-            if (scope == RoleScope.PLATFORM) RoleType.SYSTEM else RoleType.ORGANIZATION
-        ) { raw ->
+        val type = document.getEnum("type", if (scope == RoleScope.PLATFORM) RoleType.SYSTEM else RoleType.ORGANIZATION) { raw ->
             RoleType.valueOf(raw.normalizedEnumToken())
         }
         val permissionKeys = document.stringList("permissionKeys").ifEmpty {

@@ -1,5 +1,6 @@
 package com.hermes.backend.routes
 
+import com.hermes.application.admin.access.AdminInvitationCreatedResult
 import com.hermes.application.admin.access.AdminInvitationResult
 import com.hermes.application.admin.access.AdminInvitationResendResult
 import com.hermes.application.admin.access.AdminInvitationsResult
@@ -106,6 +107,25 @@ data class AdminResetUserPasswordResponse(
     val revokedSessions: Int,
     val revokedRefreshTokens: Int,
     val changedAt: String,
+)
+
+
+@Serializable
+data class CreateAdminInvitationRequest(
+    val email: String,
+    val displayName: String,
+    val roleIds: Set<String>,
+    val reason: String = "Create admin invitation",
+)
+
+@Serializable
+data class AdminInvitationCreatedResponse(
+    val invitation: AdminInvitationResponse,
+    val user: AdminUserResponse,
+    val membershipId: String,
+    val rawInvitationToken: String,
+    val invitationUrl: String? = null,
+    val createdAt: String,
 )
 
 @Serializable
@@ -269,6 +289,16 @@ fun AdminUserSessionRevocationResult.toResponse(): AdminUserSessionRevocationRes
     revokedRefreshTokens = revokedRefreshTokens,
     revokedAt = revokedAt.toString(),
     reason = reason,
+)
+
+
+fun AdminInvitationCreatedResult.toResponse(): AdminInvitationCreatedResponse = AdminInvitationCreatedResponse(
+    invitation = invitation.toResponse(),
+    user = user.toResponse(),
+    membershipId = membershipId,
+    rawInvitationToken = rawInvitationToken,
+    invitationUrl = invitationUrl,
+    createdAt = createdAt.toString(),
 )
 
 fun AdminInvitationsResult.toResponse(): AdminInvitationsResponse =

@@ -37,6 +37,16 @@ data class AdminUserSessionRevocationResult(
     val reason: String,
 )
 
+
+data class AdminInvitationCreatedResult(
+    val invitation: AdminInvitationSummary,
+    val user: AdminUserAccessDetail,
+    val membershipId: String,
+    val rawInvitationToken: String,
+    val invitationUrl: String? = null,
+    val createdAt: Instant,
+)
+
 data class AdminInvitationsResult(
     val invitations: List<AdminInvitationSummary>,
 )

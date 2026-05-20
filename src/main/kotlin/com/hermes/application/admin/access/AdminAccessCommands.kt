@@ -80,6 +80,19 @@ data class AdminResetUserPasswordCommand(
     val userAgent: String? = null,
 )
 
+
+data class CreateAdminInvitationCommand(
+    val organizationId: String,
+    val actorUserId: String,
+    val actorEffectivePermissions: Set<String>,
+    val email: String,
+    val displayName: String,
+    val roleIds: Set<String>,
+    val reason: String,
+    val ipAddress: String? = null,
+    val userAgent: String? = null,
+)
+
 data class ListAdminInvitationsCommand(
     val organizationId: String,
     val actorUserId: String,

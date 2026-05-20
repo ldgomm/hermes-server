@@ -2,6 +2,7 @@ package com.hermes.application.admin.access
 
 import com.hermes.application.auth.CreateTemporaryUserCommand
 import com.hermes.application.auth.CreateTemporaryUserUseCase
+import com.hermes.domain.shared.DomainRuleViolation
 import java.time.Clock
 import java.time.Instant
 

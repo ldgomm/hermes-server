@@ -3,6 +3,7 @@ package com.hermes.infrastructure.mongo.admin.access
 import com.hermes.application.admin.access.AdminAccessRepository
 import com.hermes.application.admin.access.AdminUserAccessRecord
 import com.hermes.domain.invitation.Invitation
+import com.hermes.domain.organization.MembershipStatus
 import com.hermes.domain.organization.OrganizationMembership
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.permission.PermissionDefinition
@@ -17,12 +18,20 @@ import com.hermes.infrastructure.mongo.auth.CredentialAdminMongoCollectionNames
 import com.hermes.infrastructure.mongo.auth.MongoAuthMappers
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
-import com.mongodb.client.model.*
-import com.mongodb.client.model.Filters.*
+import com.mongodb.client.model.Filters
+import com.mongodb.client.model.Filters.and
+import com.mongodb.client.model.Filters.eq
+import com.mongodb.client.model.Filters.`in`
+import com.mongodb.client.model.Filters.ne
+import com.mongodb.client.model.Filters.or
+import com.mongodb.client.model.IndexOptions
+import com.mongodb.client.model.Indexes
+import com.mongodb.client.model.ReplaceOptions
+import com.mongodb.client.model.Sorts
 import com.mongodb.client.model.Updates.set
 import org.bson.Document
 import java.time.Instant
-import java.util.*
+import java.util.Date
 import java.util.regex.Pattern
 
 class MongoAdminAccessRepository(
@@ -127,10 +136,7 @@ class MongoAdminAccessRepository(
             and(eq("organizationId", organizationId.trim()), ne("status", "archived")),
         )
         if (includeSystemTemplates) {
-            filters += and(
-                eq("scope", RoleScope.ORGANIZATION.name.lowercase()),
-                Filters.exists("organizationId", false)
-            )
+            filters += and(eq("scope", RoleScope.ORGANIZATION.name.lowercase()), Filters.exists("organizationId", false))
             filters += and(eq("scope", RoleScope.ORGANIZATION.name.lowercase()), eq("organizationId", null))
         }
 
@@ -148,7 +154,7 @@ class MongoAdminAccessRepository(
             ?: return null
 
         val visible = role.organizationId == organizationId.trim() ||
-                (role.scope == RoleScope.ORGANIZATION && role.organizationId == null)
+            (role.scope == RoleScope.ORGANIZATION && role.organizationId == null)
 
         return role.takeIf { visible }
     }
@@ -173,11 +179,7 @@ class MongoAdminAccessRepository(
     }
 
     override fun updateRole(role: RoleDefinition) {
-        roles.replaceOne(
-            eq("_id", role.id),
-            MongoAdminAccessMappers.roleToDocument(role),
-            ReplaceOptions().upsert(false)
-        )
+        roles.replaceOne(eq("_id", role.id), MongoAdminAccessMappers.roleToDocument(role), ReplaceOptions().upsert(false))
     }
 
     override fun listInvitations(organizationId: String, status: String?, limit: Int): List<Invitation> {
@@ -214,11 +216,7 @@ class MongoAdminAccessRepository(
             .map(MongoAuthMappers::sessionFromDocument)
 
     override fun updateSession(session: UserSession) {
-        sessions.replaceOne(
-            eq("_id", session.id),
-            MongoAuthMappers.sessionToDocument(session),
-            ReplaceOptions().upsert(false)
-        )
+        sessions.replaceOne(eq("_id", session.id), MongoAuthMappers.sessionToDocument(session), ReplaceOptions().upsert(false))
     }
 
     override fun revokeActiveRefreshTokensBySessionIds(sessionIds: Set<String>, revokedAt: Instant): Int {

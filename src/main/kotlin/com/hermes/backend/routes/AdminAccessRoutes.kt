@@ -2,6 +2,7 @@ package com.hermes.backend.routes
 
 import com.hermes.application.admin.access.AdminResetUserPasswordCommand
 import com.hermes.application.admin.access.CreateAdminTemporaryUserCommand
+import com.hermes.application.admin.access.CreateAdminInvitationCommand
 import com.hermes.application.admin.access.UnblockAdminUserCommand
 import com.hermes.application.admin.access.RevokeAdminUserSessionsCommand
 import com.hermes.application.admin.access.BlockAdminUserCommand
@@ -18,10 +19,7 @@ import com.hermes.application.admin.access.RevokeAdminInvitationCommand
 import com.hermes.application.admin.access.ResendAdminInvitationCommand
 import com.hermes.application.admin.access.UpdateAdminRoleCommand
 import com.hermes.application.admin.access.UpdateAdminUserCommand
-import com.hermes.application.auth.InviteUserCommand
 import com.hermes.backend.admin.access.AdminAccessModule
-import com.hermes.backend.auth.InviteUserRequest
-import com.hermes.backend.auth.toCredentialResponse
 import com.hermes.backend.auth.AuthModule
 import com.hermes.backend.auth.hermesAuthContext
 import com.hermes.backend.auth.hermesAuthenticated
@@ -215,20 +213,21 @@ fun Route.adminAccessRoutes(
                 hermesRequiresPermission(PermissionCatalog.CREDENTIALS_USERS_INVITE) {
                     post {
                         val context = call.hermesAuthContext()
-                        val request = call.receive<InviteUserRequest>()
-                        val result = authModule.credentialAdministrationModule.inviteUserUseCase.execute(
-                            InviteUserCommand(
+                        val request = call.receive<CreateAdminInvitationRequest>()
+                        val result = adminAccessModule.createInvitationUseCase.execute(
+                            CreateAdminInvitationCommand(
                                 organizationId = call.adminAccessOrganizationId(),
                                 actorUserId = context.userId,
                                 actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
                                 email = request.email,
                                 displayName = request.displayName,
                                 roleIds = request.roleIds,
+                                reason = request.reason,
                                 ipAddress = call.adminAccessClientIpAddress(),
                                 userAgent = call.request.header(HttpHeaders.UserAgent),
                             )
                         )
-                        call.respond(HttpStatusCode.Created, result.toCredentialResponse())
+                        call.respond(HttpStatusCode.Created, result.toResponse())
                     }
 
                     get {
