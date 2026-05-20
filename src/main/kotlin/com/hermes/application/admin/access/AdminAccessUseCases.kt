@@ -564,6 +564,12 @@ class UpdateAdminRoleUseCase(
         if (current.status == RoleStatus.ACTIVE && current.grantsAdminAccess() && !nextPermissionKeys.grantsAdminAccess()) {
             ensureRoleChangeDoesNotRemoveLastAdmin(repository, organizationId, current)
         }
+        if (current.status == RoleStatus.ACTIVE &&
+            current.grantsRoleManagementAccess() &&
+            !nextPermissionKeys.grantsRoleManagementAccess()
+        ) {
+            ensureRoleManagementChangeDoesNotRemoveLastRoleManager(repository, organizationId, current)
+        }
 
         val next = current.copy(
             name = command.name?.required("Role name") ?: current.name,
@@ -623,6 +629,12 @@ class ChangeAdminRoleStatusUseCase(
 
         if (targetStatus == RoleStatus.INACTIVE && current.status == RoleStatus.ACTIVE && current.grantsAdminAccess()) {
             ensureRoleChangeDoesNotRemoveLastAdmin(repository, organizationId, current)
+        }
+        if (targetStatus == RoleStatus.INACTIVE &&
+            current.status == RoleStatus.ACTIVE &&
+            current.grantsRoleManagementAccess()
+        ) {
+            ensureRoleManagementChangeDoesNotRemoveLastRoleManager(repository, organizationId, current)
         }
 
         val next = current.copy(status = targetStatus, schemaVersion = current.schemaVersion + 1)
@@ -715,6 +727,11 @@ private val adminPermissionKeys = setOf(
     PermissionCatalog.ORGANIZATION_UPDATE,
 )
 
+private val roleManagementPermissionKeys = setOf(
+    PermissionCatalog.ALL,
+    PermissionCatalog.CREDENTIALS_ROLES_MANAGE,
+)
+
 
 private fun ensureBlockingDoesNotRemoveLastAdmin(
     repository: AdminAccessRepository,
@@ -780,10 +797,36 @@ private fun ensureRoleChangeDoesNotRemoveLastAdmin(
     }
 }
 
+private fun ensureRoleManagementChangeDoesNotRemoveLastRoleManager(
+    repository: AdminAccessRepository,
+    organizationId: String,
+    roleBeingChanged: RoleDefinition,
+) {
+    val remainingRoleManagers = repository.listUserAccess(
+        organizationId = organizationId,
+        status = MembershipStatus.ACTIVE.name,
+        limit = 250,
+    ).count { record ->
+        record.membership.status == MembershipStatus.ACTIVE &&
+            record.roles
+                .filterNot { it.id == roleBeingChanged.id }
+                .any { it.status == RoleStatus.ACTIVE && it.grantsRoleManagementAccess() }
+    }
+
+    if (remainingRoleManagers == 0) {
+        throw DomainRuleViolation("Cannot change this role because it would remove the last active role manager from the organization.")
+    }
+}
+
 private fun RoleDefinition.grantsAdminAccess(): Boolean =
     permissionKeys.grantsAdminAccess() && status == RoleStatus.ACTIVE
 
+private fun RoleDefinition.grantsRoleManagementAccess(): Boolean =
+    permissionKeys.grantsRoleManagementAccess() && status == RoleStatus.ACTIVE
+
 private fun Set<String>.grantsAdminAccess(): Boolean = any { it in adminPermissionKeys }
+
+private fun Set<String>.grantsRoleManagementAccess(): Boolean = any { it in roleManagementPermissionKeys }
 
 private fun AdminUserAccessRecord.toAuditMap(): Map<String, String?> = mapOf(
     "userId" to user.id,
