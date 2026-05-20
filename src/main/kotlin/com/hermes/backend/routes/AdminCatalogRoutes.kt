@@ -8,6 +8,7 @@ import com.hermes.application.auth.EffectivePermissionResolverUseCase
 import com.hermes.application.catalog.CatalogGetOrganizationItemCommand
 import com.hermes.application.catalog.CatalogGetTemplateCommand
 import com.hermes.backend.admin.catalog.AdminCatalogModule
+import com.hermes.backend.auth.AuthModule
 import com.hermes.backend.auth.hermesAuthContext
 import com.hermes.backend.auth.hermesAuthenticated
 import com.hermes.backend.auth.hermesRequiresAnyPermission
@@ -28,14 +29,14 @@ import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 
 fun Application.configureAdminCatalogRoutes(
-    authModule: com.hermes.backend.auth.AuthModule,
+    authModule: AuthModule,
     adminCatalogModule: AdminCatalogModule,
 ) {
     routing { adminCatalogRoutes(authModule = authModule, adminCatalogModule = adminCatalogModule) }
 }
 
 fun Route.adminCatalogRoutes(
-    authModule: com.hermes.backend.auth.AuthModule,
+    authModule: AuthModule,
     adminCatalogModule: AdminCatalogModule,
 ) {
     adminCatalogRoutes(

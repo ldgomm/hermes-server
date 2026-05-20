@@ -17,6 +17,8 @@ import com.hermes.backend.auth.AuthModuleFactory
 import com.hermes.backend.catalog.CatalogModule
 import com.hermes.backend.catalog.CatalogModuleFactory
 import com.hermes.backend.config.AppConfig
+import com.hermes.backend.documents.CommercialDocumentsModule
+import com.hermes.backend.documents.CommercialDocumentsModuleFactory
 import com.hermes.backend.electronicinvoicing.ElectronicInvoicingModule
 import com.hermes.backend.electronicinvoicing.ElectronicInvoicingModuleFactory
 import com.hermes.backend.health.*
@@ -44,6 +46,7 @@ interface AppResources : Closeable {
     val reservationSchedulingModule: ReservationSchedulingModule
     val paymentsModule: PaymentsModule
     val electronicInvoicingModule: ElectronicInvoicingModule
+    val commercialDocumentsModule: CommercialDocumentsModule
     val adminBusinessModule: AdminBusinessModule
     val adminAccessModule: AdminAccessModule
     val adminCatalogModule: AdminCatalogModule
@@ -64,6 +67,7 @@ class DefaultAppResources private constructor(
     override val reservationSchedulingModule: ReservationSchedulingModule,
     override val paymentsModule: PaymentsModule,
     override val electronicInvoicingModule: ElectronicInvoicingModule,
+    override val commercialDocumentsModule: CommercialDocumentsModule,
     override val adminBusinessModule: AdminBusinessModule,
     override val adminAccessModule: AdminAccessModule,
     override val adminCatalogModule: AdminCatalogModule,
@@ -107,6 +111,7 @@ class DefaultAppResources private constructor(
             val adminTaxModule = AdminTaxModuleFactory.fromMongo(database = mongoDatabase)
             val adminOperationsModule = AdminOperationsModuleFactory.fromMongo(database = mongoDatabase)
             val adminSupportModule = AdminSupportModuleFactory.fromMongo(mongoDatabase)
+            val commercialDocumentsModule = CommercialDocumentsModuleFactory.fromMongo(mongoDatabase)
 
             return DefaultAppResources(
                 mongoClient = mongoClient,
@@ -126,6 +131,7 @@ class DefaultAppResources private constructor(
                 adminTaxModule = adminTaxModule,
                 adminOperationsModule = adminOperationsModule,
                 adminSupportModule = adminSupportModule,
+                commercialDocumentsModule = commercialDocumentsModule,
             )
         }
     }

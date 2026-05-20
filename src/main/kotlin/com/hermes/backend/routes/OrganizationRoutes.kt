@@ -25,7 +25,7 @@ fun Application.configureOrganizationRoutes(
     }
 }
 
-fun io.ktor.server.routing.Route.organizationRoutes(
+fun Route.organizationRoutes(
     createOrganizationUseCase: CreateOrganizationUseCase,
     createOwnerMembershipUseCase: CreateOwnerMembershipUseCase,
 ) {

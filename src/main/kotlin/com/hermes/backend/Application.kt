@@ -73,10 +73,16 @@ private fun Application.configureHermesApplication(config: AppConfig, resources:
         authModule = resources.authModule,
         electronicInvoicingModule = resources.electronicInvoicingModule,
     )
+    configureCommercialDocumentRoutes(
+        authModule = resources.authModule, commercialDocumentsModule = resources.commercialDocumentsModule
+    )
     configureAdminBusinessRoutes(
         authModule = resources.authModule,
         adminBusinessModule = resources.adminBusinessModule,
     )
+    configureSalesReadRoutes(authModule = resources.authModule, salesReadUseCases = resources.salesReadUseCases)
+    configureSalesTotalsRoutes(authModule = resources.authModule, salesTotalsModule = resources.salesTotalsModule)
+    configureAdminCatalogRoutes(authModule = resources.authModule, adminCatalogModule = resources.adminCatalogModule)
     configureAdminAccessRoutes(authModule = resources.authModule, adminAccessModule = resources.adminAccessModule)
     configureAdminTaxRoutes(authModule = resources.authModule, adminTaxModule = resources.adminTaxModule)
     configureAdminOperationsRoutes(

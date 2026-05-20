@@ -18,7 +18,7 @@ fun Application.configureMeRoutes(
     }
 }
 
-fun io.ktor.server.routing.Route.meRoutes(
+fun Route.meRoutes(
     meUseCase: MeUseCase,
 ) {
     get("/me") {

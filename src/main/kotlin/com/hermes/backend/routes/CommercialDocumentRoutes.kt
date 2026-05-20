@@ -3,6 +3,7 @@ package com.hermes.backend.routes
 import com.hermes.application.auth.ActiveOrganizationResolverUseCase
 import com.hermes.application.auth.AuthenticateRequestUseCase
 import com.hermes.application.auth.EffectivePermissionResolverUseCase
+import com.hermes.backend.auth.AuthModule
 import com.hermes.backend.auth.hermesAuthContext
 import com.hermes.backend.auth.hermesAuthenticated
 import com.hermes.backend.auth.hermesRequiresPermission
@@ -34,7 +35,7 @@ import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 
 fun Application.configureCommercialDocumentRoutes(
-    authModule: com.hermes.backend.auth.AuthModule,
+    authModule: AuthModule,
     commercialDocumentsModule: CommercialDocumentsModule,
 ) {
     routing {
