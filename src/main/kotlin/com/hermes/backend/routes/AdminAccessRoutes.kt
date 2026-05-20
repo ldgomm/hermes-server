@@ -1,16 +1,48 @@
 package com.hermes.backend.routes
 
-import com.hermes.application.admin.access.*
-import com.hermes.application.auth.*
+import com.hermes.application.admin.access.AdminResetUserPasswordCommand
+import com.hermes.application.admin.access.UnblockAdminUserCommand
+import com.hermes.application.admin.access.RevokeAdminUserSessionsCommand
+import com.hermes.application.admin.access.BlockAdminUserCommand
+import com.hermes.application.admin.access.ChangeAdminRoleStatusCommand
+import com.hermes.application.admin.access.CreateAdminRoleCommand
+import com.hermes.application.admin.access.GetAdminInvitationCommand
+import com.hermes.application.admin.access.GetAdminRoleCommand
+import com.hermes.application.admin.access.GetAdminUserCommand
+import com.hermes.application.admin.access.ListAdminInvitationsCommand
+import com.hermes.application.admin.access.ListAdminPermissionsCommand
+import com.hermes.application.admin.access.ListAdminRolesCommand
+import com.hermes.application.admin.access.ListAdminUsersCommand
+import com.hermes.application.admin.access.RevokeAdminInvitationCommand
+import com.hermes.application.admin.access.ResendAdminInvitationCommand
+import com.hermes.application.admin.access.UpdateAdminRoleCommand
+import com.hermes.application.admin.access.UpdateAdminUserCommand
+import com.hermes.application.auth.CreateTemporaryUserCommand
+import com.hermes.application.auth.InviteUserCommand
 import com.hermes.backend.admin.access.AdminAccessModule
-import com.hermes.backend.auth.*
+import com.hermes.backend.auth.CreateTemporaryUserRequest
+import com.hermes.backend.auth.InviteUserRequest
+import com.hermes.backend.auth.toCredentialResponse
+import com.hermes.backend.auth.toResponse
+import com.hermes.backend.auth.AuthModule
+import com.hermes.backend.auth.hermesAuthContext
+import com.hermes.backend.auth.hermesAuthenticated
+import com.hermes.backend.auth.hermesRequiresPermission
 import com.hermes.domain.permission.PermissionCatalog
 import com.hermes.domain.shared.DomainRuleViolation
-import io.ktor.http.*
-import io.ktor.server.application.*
-import io.ktor.server.request.*
-import io.ktor.server.response.*
-import io.ktor.server.routing.*
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationCall
+import io.ktor.server.request.header
+import io.ktor.server.request.receive
+import io.ktor.server.response.respond
+import io.ktor.server.routing.Route
+import io.ktor.server.routing.get
+import io.ktor.server.routing.post
+import io.ktor.server.routing.put
+import io.ktor.server.routing.route
+import io.ktor.server.routing.routing
 
 fun Application.configureAdminAccessRoutes(
     authModule: AuthModule,
@@ -110,38 +142,34 @@ fun Route.adminAccessRoutes(
                 hermesRequiresPermission(PermissionCatalog.CREDENTIALS_USERS_BLOCK) {
                     post("/{userId}/block") {
                         val context = call.hermesAuthContext()
-                        val request = call.receive<BlockUserRequest>()
-                        val result = authModule.credentialAdministrationModule.blockUserUseCase.execute(
-                            BlockUserCommand(
+                        val request = call.receive<AdminUserActionRequest>()
+                        val result = adminAccessModule.blockUserUseCase.execute(
+                            BlockAdminUserCommand(
                                 organizationId = call.adminAccessOrganizationId(),
                                 actorUserId = context.userId,
-                                targetUserId = call.requiredAdminAccessPath("userId"),
                                 actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
+                                userId = call.requiredAdminAccessPath("userId"),
                                 reason = request.reason,
-                                ipAddress = call.adminAccessClientIpAddress(),
-                                userAgent = call.request.header(HttpHeaders.UserAgent),
                             )
                         )
-                        call.respond(HttpStatusCode.OK, result.toCredentialResponse())
+                        call.respond(HttpStatusCode.OK, result.toResponse())
                     }
                 }
 
                 hermesRequiresPermission(PermissionCatalog.CREDENTIALS_USERS_UNBLOCK) {
                     post("/{userId}/unblock") {
                         val context = call.hermesAuthContext()
-                        val request = call.receive<UnblockUserRequest>()
-                        val result = authModule.credentialAdministrationModule.unblockUserUseCase.execute(
-                            UnblockUserCommand(
+                        val request = call.receive<AdminUserActionRequest>()
+                        val result = adminAccessModule.unblockUserUseCase.execute(
+                            UnblockAdminUserCommand(
                                 organizationId = call.adminAccessOrganizationId(),
                                 actorUserId = context.userId,
-                                targetUserId = call.requiredAdminAccessPath("userId"),
                                 actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
+                                userId = call.requiredAdminAccessPath("userId"),
                                 reason = request.reason,
-                                ipAddress = call.adminAccessClientIpAddress(),
-                                userAgent = call.request.header(HttpHeaders.UserAgent),
                             )
                         )
-                        call.respond(HttpStatusCode.OK, result.toCredentialResponse())
+                        call.respond(HttpStatusCode.OK, result.toResponse())
                     }
                 }
 
@@ -169,14 +197,14 @@ fun Route.adminAccessRoutes(
                 hermesRequiresPermission(PermissionCatalog.CREDENTIALS_SESSIONS_REVOKE) {
                     post("/{userId}/revoke-sessions") {
                         val context = call.hermesAuthContext()
-                        val request = call.receive<RevokeUserSessionsByAdminRequest>()
-                        val result = authModule.revokeSessionUseCase.revokeAllUserSessions(
-                            RevokeAllUserSessionsCommand(
-                                targetUserId = call.requiredAdminAccessPath("userId"),
-                                actorUserId = context.userId,
-                                reason = request.reason,
+                        val request = call.receive<AdminRevokeUserSessionsRequest>()
+                        val result = adminAccessModule.revokeUserSessionsUseCase.execute(
+                            RevokeAdminUserSessionsCommand(
                                 organizationId = call.adminAccessOrganizationId(),
+                                actorUserId = context.userId,
                                 actorEffectivePermissions = context.effectivePermissions?.permissions.orEmpty(),
+                                userId = call.requiredAdminAccessPath("userId"),
+                                reason = request.reason,
                             )
                         )
                         call.respond(HttpStatusCode.OK, result.toResponse())

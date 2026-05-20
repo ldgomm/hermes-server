@@ -11,7 +11,16 @@ import java.time.Instant
  * audit_logs/domain_events without changing use cases.
  */
 enum class AdminAccessAuditAction {
-    USER_ACCESS_UPDATED, INVITATION_RESENT, INVITATION_REVOKED, ROLE_CREATED, ROLE_UPDATED, ROLE_ACTIVATED, ROLE_DEACTIVATED,
+    USER_ACCESS_UPDATED,
+    USER_BLOCKED,
+    USER_UNBLOCKED,
+    USER_SESSIONS_REVOKED,
+    INVITATION_RESENT,
+    INVITATION_REVOKED,
+    ROLE_CREATED,
+    ROLE_UPDATED,
+    ROLE_ACTIVATED,
+    ROLE_DEACTIVATED,
 }
 
 data class AdminAccessAuditEvent(

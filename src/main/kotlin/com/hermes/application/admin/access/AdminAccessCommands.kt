@@ -28,6 +28,32 @@ data class UpdateAdminUserCommand(
     val reason: String,
 )
 
+
+
+data class BlockAdminUserCommand(
+    val organizationId: String,
+    val actorUserId: String,
+    val actorEffectivePermissions: Set<String>,
+    val userId: String,
+    val reason: String,
+)
+
+data class UnblockAdminUserCommand(
+    val organizationId: String,
+    val actorUserId: String,
+    val actorEffectivePermissions: Set<String>,
+    val userId: String,
+    val reason: String,
+)
+
+data class RevokeAdminUserSessionsCommand(
+    val organizationId: String,
+    val actorUserId: String,
+    val actorEffectivePermissions: Set<String>,
+    val userId: String,
+    val reason: String,
+)
+
 data class AdminResetUserPasswordCommand(
     val organizationId: String,
     val actorUserId: String,

@@ -20,6 +20,14 @@ data class AdminResetUserPasswordResult(
     val changedAt: Instant,
 )
 
+data class AdminUserSessionRevocationResult(
+    val userId: String,
+    val revokedSessions: Int,
+    val revokedRefreshTokens: Int,
+    val revokedAt: Instant,
+    val reason: String,
+)
+
 data class AdminInvitationsResult(
     val invitations: List<AdminInvitationSummary>,
 )

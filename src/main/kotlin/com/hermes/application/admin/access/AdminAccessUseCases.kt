@@ -16,7 +16,7 @@ import com.hermes.domain.role.RoleType
 import com.hermes.domain.shared.DomainRuleViolation
 import java.time.Clock
 import java.time.Instant
-import java.util.*
+import java.util.UUID
 
 class ListAdminUsersUseCase(
     private val repository: AdminAccessRepository,
@@ -30,7 +30,8 @@ class ListAdminUsersUseCase(
                 query = command.query,
                 status = command.status,
                 limit = command.limit.coerceIn(1, 250),
-            ).map { it.toSummary() })
+            ).map { it.toSummary() }
+        )
     }
 }
 
@@ -151,6 +152,193 @@ class UpdateAdminUserUseCase(
     }
 }
 
+
+class BlockAdminUserUseCase(
+    private val repository: AdminAccessRepository,
+    private val clock: Clock = Clock.systemUTC(),
+    private val auditLogger: AdminAccessAuditLogger = NoopAdminAccessAuditLogger,
+) {
+    fun execute(command: BlockAdminUserCommand): AdminUserResult {
+        PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.CREDENTIALS_USERS_BLOCK)
+
+        val now = Instant.now(clock)
+        val organizationId = command.organizationId.required("Organization id")
+        val actorUserId = command.actorUserId.required("Actor user id")
+        val userId = command.userId.required("User id")
+        val reason = command.reason.required("User block reason")
+
+        if (actorUserId == userId) {
+            throw DomainRuleViolation("User cannot block themselves.")
+        }
+
+        val record = repository.findUserAccess(organizationId, userId)
+            ?: throw DomainRuleViolation("Admin user does not exist in this organization.")
+        val before = record.toAuditMap()
+
+        ensureBlockingDoesNotRemoveLastAdmin(
+            repository = repository,
+            organizationId = organizationId,
+            targetUserId = userId,
+            record = record,
+        )
+
+        val blockedUser = record.user.block(reason, now)
+        repository.updateUser(blockedUser)
+
+        val suspendedMembership = record.membership.copy(
+            status = MembershipStatus.SUSPENDED,
+            updatedAt = now,
+            version = record.membership.version + 1,
+        )
+        repository.updateMembership(suspendedMembership)
+
+        val activeSessions = repository.findActiveSessionsByUserId(userId)
+        activeSessions.forEach { session ->
+            repository.updateSession(session.revoke(now, reason))
+        }
+        val revokedTokens = repository.revokeActiveRefreshTokensBySessionIds(
+            sessionIds = activeSessions.map { it.id }.toSet(),
+            revokedAt = now,
+        )
+
+        val updated = repository.findUserAccess(organizationId, userId)
+            ?: throw DomainRuleViolation("Blocked admin user does not exist.")
+
+        auditLogger.log(
+            AdminAccessAuditEvent(
+                action = AdminAccessAuditAction.USER_BLOCKED,
+                organizationId = organizationId,
+                actorUserId = actorUserId,
+                targetId = userId,
+                targetType = "user_access",
+                before = before,
+                after = updated.toAuditMap() + mapOf(
+                    "revokedSessions" to activeSessions.size.toString(),
+                    "revokedRefreshTokens" to revokedTokens.toString(),
+                ),
+                reason = reason,
+                createdAt = now,
+            )
+        )
+
+        return AdminUserResult(updated.toDetail())
+    }
+}
+
+class UnblockAdminUserUseCase(
+    private val repository: AdminAccessRepository,
+    private val clock: Clock = Clock.systemUTC(),
+    private val auditLogger: AdminAccessAuditLogger = NoopAdminAccessAuditLogger,
+) {
+    fun execute(command: UnblockAdminUserCommand): AdminUserResult {
+        PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.CREDENTIALS_USERS_UNBLOCK)
+
+        val now = Instant.now(clock)
+        val organizationId = command.organizationId.required("Organization id")
+        val actorUserId = command.actorUserId.required("Actor user id")
+        val userId = command.userId.required("User id")
+        val reason = command.reason.required("User unblock reason")
+
+        val record = repository.findUserAccess(organizationId, userId)
+            ?: throw DomainRuleViolation("Admin user does not exist in this organization.")
+        val before = record.toAuditMap()
+
+        val unblockedUser = record.user.unblock(now)
+        repository.updateUser(unblockedUser)
+
+        val activeMembership = if (record.membership.status == MembershipStatus.SUSPENDED) {
+            record.membership.copy(
+                status = MembershipStatus.ACTIVE,
+                updatedAt = now,
+                version = record.membership.version + 1,
+            ).also(repository::updateMembership)
+        } else {
+            record.membership
+        }
+
+        val updated = repository.findUserAccess(organizationId, userId)
+            ?: AdminUserAccessRecord(
+                user = unblockedUser,
+                membership = activeMembership,
+                roles = repository.findRolesByIds(activeMembership.roleIds),
+                activeSessionCount = 0,
+            )
+
+        auditLogger.log(
+            AdminAccessAuditEvent(
+                action = AdminAccessAuditAction.USER_UNBLOCKED,
+                organizationId = organizationId,
+                actorUserId = actorUserId,
+                targetId = userId,
+                targetType = "user_access",
+                before = before,
+                after = updated.toAuditMap(),
+                reason = reason,
+                createdAt = now,
+            )
+        )
+
+        return AdminUserResult(updated.toDetail())
+    }
+}
+
+class RevokeAdminUserSessionsUseCase(
+    private val repository: AdminAccessRepository,
+    private val clock: Clock = Clock.systemUTC(),
+    private val auditLogger: AdminAccessAuditLogger = NoopAdminAccessAuditLogger,
+) {
+    fun execute(command: RevokeAdminUserSessionsCommand): AdminUserSessionRevocationResult {
+        PermissionRules.assertCanPerform(command.actorEffectivePermissions, PermissionCatalog.CREDENTIALS_SESSIONS_REVOKE)
+
+        val now = Instant.now(clock)
+        val organizationId = command.organizationId.required("Organization id")
+        val actorUserId = command.actorUserId.required("Actor user id")
+        val userId = command.userId.required("User id")
+        val reason = command.reason.required("Session revoke reason")
+
+        val record = repository.findUserAccess(organizationId, userId)
+            ?: throw DomainRuleViolation("Admin user does not exist in this organization.")
+        val before = record.toAuditMap()
+
+        val activeSessions = repository.findActiveSessionsByUserId(userId)
+        activeSessions.forEach { session ->
+            repository.updateSession(session.revoke(now, reason))
+        }
+        val revokedTokens = repository.revokeActiveRefreshTokensBySessionIds(
+            sessionIds = activeSessions.map { it.id }.toSet(),
+            revokedAt = now,
+        )
+
+        val updated = repository.findUserAccess(organizationId, userId)
+            ?: throw DomainRuleViolation("Admin user does not exist after session revocation.")
+
+        auditLogger.log(
+            AdminAccessAuditEvent(
+                action = AdminAccessAuditAction.USER_SESSIONS_REVOKED,
+                organizationId = organizationId,
+                actorUserId = actorUserId,
+                targetId = userId,
+                targetType = "user_access",
+                before = before,
+                after = updated.toAuditMap() + mapOf(
+                    "revokedSessions" to activeSessions.size.toString(),
+                    "revokedRefreshTokens" to revokedTokens.toString(),
+                ),
+                reason = reason,
+                createdAt = now,
+            )
+        )
+
+        return AdminUserSessionRevocationResult(
+            userId = userId,
+            revokedSessions = activeSessions.size,
+            revokedRefreshTokens = revokedTokens,
+            revokedAt = now,
+            reason = reason,
+        )
+    }
+}
+
 class ListAdminInvitationsUseCase(
     private val repository: AdminAccessRepository,
 ) {
@@ -165,7 +353,8 @@ class ListAdminInvitationsUseCase(
         return AdminInvitationsResult(
             invitations.map { invitation ->
                 invitation.toSummary(repository.findRolesByIds(invitation.roleIds))
-            })
+            }
+        )
     }
 }
 
@@ -286,7 +475,8 @@ class ListAdminRolesUseCase(
             repository.listRoles(
                 organizationId = organizationId,
                 includeSystemTemplates = command.includeSystemTemplates,
-            ).sortedWith(compareBy({ it.type.name }, { it.name })).map { it.toSummary() })
+            ).sortedWith(compareBy({ it.type.name }, { it.name })).map { it.toSummary() }
+        )
     }
 }
 
@@ -462,7 +652,9 @@ class ListAdminPermissionsUseCase(
         command.organizationId.required("Organization id")
         return AdminPermissionsResult(
             repository.listPermissionDefinitions(command.includeReserved)
-                .sortedWith(compareBy({ it.category.name }, { it.code })).map { it.toSummary() })
+                .sortedWith(compareBy({ it.category.name }, { it.code }))
+                .map { it.toSummary() }
+        )
     }
 }
 
@@ -475,12 +667,16 @@ class UuidAdminAccessIdGenerator : AdminAccessIdGenerator {
         prefix.trim().lowercase() + "_" + UUID.randomUUID().toString().replace("-", "")
 }
 
-internal fun String.required(label: String): String =
-    trim().takeIf { it.isNotBlank() } ?: throw DomainRuleViolation("$label cannot be blank.")
+internal fun String.required(label: String): String = trim().takeIf { it.isNotBlank() }
+    ?: throw DomainRuleViolation("$label cannot be blank.")
 
-private fun String.normalizedRoleCode(): String =
-    required("Role code").lowercase().replace(Regex("[^a-z0-9_]+"), "_").replace(Regex("_+"), "_").trim('_')
-        .takeIf { it.isNotBlank() } ?: throw DomainRuleViolation("Role code is invalid.")
+private fun String.normalizedRoleCode(): String = required("Role code")
+    .lowercase()
+    .replace(Regex("[^a-z0-9_]+"), "_")
+    .replace(Regex("_+"), "_")
+    .trim('_')
+    .takeIf { it.isNotBlank() }
+    ?: throw DomainRuleViolation("Role code is invalid.")
 
 private fun Set<String>.normalizedPermissionKeys(): Set<String> {
     if (isEmpty()) throw DomainRuleViolation("Role requires at least one permission.")
@@ -496,7 +692,8 @@ private fun Set<String>.normalizedPermissionKeys(): Set<String> {
 }
 
 private fun String.normalizedRoleStatus(): RoleStatus =
-    runCatching { RoleStatus.valueOf(required("Role status").uppercase()) }.getOrElse { throw DomainRuleViolation("Unsupported role status: $this.") }
+    runCatching { RoleStatus.valueOf(required("Role status").uppercase()) }
+        .getOrElse { throw DomainRuleViolation("Unsupported role status: $this.") }
 
 private fun RoleDefinition.assertEditableCustomRole(organizationId: String) {
     if (type != RoleType.CUSTOM || this.organizationId != organizationId) {
@@ -517,6 +714,27 @@ private val adminPermissionKeys = setOf(
     PermissionCatalog.CREDENTIALS_ROLES_MANAGE,
     PermissionCatalog.ORGANIZATION_UPDATE,
 )
+
+
+private fun ensureBlockingDoesNotRemoveLastAdmin(
+    repository: AdminAccessRepository,
+    organizationId: String,
+    targetUserId: String,
+    record: AdminUserAccessRecord,
+) {
+    val targetIsActiveAdmin = record.membership.status == MembershipStatus.ACTIVE &&
+        record.roles.any { it.grantsAdminAccess() }
+    if (!targetIsActiveAdmin) return
+
+    val remainingAdmins = repository.countActiveAdminMemberships(
+        organizationId = organizationId,
+        excludingUserId = targetUserId,
+        adminPermissionKeys = adminPermissionKeys,
+    )
+    if (remainingAdmins == 0) {
+        throw DomainRuleViolation("Cannot block the last active administrator from the organization.")
+    }
+}
 
 private fun ensureNotRemovingLastAdmin(
     repository: AdminAccessRepository,
@@ -551,8 +769,10 @@ private fun ensureRoleChangeDoesNotRemoveLastAdmin(
         status = MembershipStatus.ACTIVE.name,
         limit = 250,
     ).count { record ->
-        record.membership.status == MembershipStatus.ACTIVE && record.roles.filterNot { it.id == roleBeingChanged.id }
-            .any { it.status == RoleStatus.ACTIVE && it.grantsAdminAccess() }
+        record.membership.status == MembershipStatus.ACTIVE &&
+            record.roles
+                .filterNot { it.id == roleBeingChanged.id }
+                .any { it.status == RoleStatus.ACTIVE && it.grantsAdminAccess() }
     }
 
     if (remainingAdminUsers == 0) {

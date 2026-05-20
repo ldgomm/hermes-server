@@ -1,6 +1,19 @@
 package com.hermes.backend.routes
 
-import com.hermes.application.admin.access.*
+import com.hermes.application.admin.access.AdminInvitationResult
+import com.hermes.application.admin.access.AdminInvitationResendResult
+import com.hermes.application.admin.access.AdminInvitationsResult
+import com.hermes.application.admin.access.AdminPermissionSummary
+import com.hermes.application.admin.access.AdminPermissionsResult
+import com.hermes.application.admin.access.AdminResetUserPasswordResult
+import com.hermes.application.admin.access.AdminRoleResult
+import com.hermes.application.admin.access.AdminRoleSummary
+import com.hermes.application.admin.access.AdminRolesResult
+import com.hermes.application.admin.access.AdminUserAccessDetail
+import com.hermes.application.admin.access.AdminUserAccessSummary
+import com.hermes.application.admin.access.AdminUserResult
+import com.hermes.application.admin.access.AdminUsersResult
+import com.hermes.application.admin.access.AdminUserSessionRevocationResult
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -34,6 +47,25 @@ data class UpdateAdminUserRequest(
     val phone: String? = null,
     val clearPhone: Boolean = false,
     val roleIds: Set<String>? = null,
+    val reason: String,
+)
+
+@Serializable
+data class AdminUserActionRequest(
+    val reason: String,
+)
+
+@Serializable
+data class AdminRevokeUserSessionsRequest(
+    val reason: String,
+)
+
+@Serializable
+data class AdminUserSessionRevocationResponse(
+    val userId: String,
+    val revokedSessions: Int,
+    val revokedRefreshTokens: Int,
+    val revokedAt: String,
     val reason: String,
 )
 
@@ -148,7 +180,8 @@ data class AdminPermissionResponse(
     val featureFlag: String? = null,
 )
 
-fun AdminUsersResult.toResponse(): AdminUsersResponse = AdminUsersResponse(users.map { it.toResponse() })
+fun AdminUsersResult.toResponse(): AdminUsersResponse =
+    AdminUsersResponse(users.map { it.toResponse() })
 
 fun AdminUserResult.toResponse(): AdminUserResponse = user.toResponse()
 
@@ -200,6 +233,14 @@ fun AdminResetUserPasswordResult.toResponse(): AdminResetUserPasswordResponse = 
     changedAt = changedAt.toString(),
 )
 
+fun AdminUserSessionRevocationResult.toResponse(): AdminUserSessionRevocationResponse = AdminUserSessionRevocationResponse(
+    userId = userId,
+    revokedSessions = revokedSessions,
+    revokedRefreshTokens = revokedRefreshTokens,
+    revokedAt = revokedAt.toString(),
+    reason = reason,
+)
+
 fun AdminInvitationsResult.toResponse(): AdminInvitationsResponse =
     AdminInvitationsResponse(invitations.map { it.toResponse() })
 
@@ -228,7 +269,8 @@ fun com.hermes.application.admin.access.AdminInvitationSummary.toResponse(): Adm
         version = version,
     )
 
-fun AdminRolesResult.toResponse(): AdminRolesResponse = AdminRolesResponse(roles.map { it.toResponse() })
+fun AdminRolesResult.toResponse(): AdminRolesResponse =
+    AdminRolesResponse(roles.map { it.toResponse() })
 
 fun AdminRoleResult.toResponse(): AdminRoleResponse = role.toResponse()
 
